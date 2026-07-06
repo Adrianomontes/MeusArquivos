@@ -1,0 +1,80 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  width: 640px; height: 360px; overflow: hidden;
+  background: #F4F6F7; color: #2C3E50;
+  font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 11px;
+}
+.win-title {
+  background: #1B2631; color: #ECF0F1; padding: 6px 12px; font-size: 11px; font-weight: 600;
+}
+.tabs { display: flex; background: #E5E8E8; border-bottom: 1px solid #BDC3C7; overflow: hidden; }
+.tab { padding: 6px 10px; font-size: 9px; color: #566573; white-space: nowrap; }
+.tab.on { background: #F4F6F7; color: #1A5276; font-weight: 700; border-top: 2px solid #2E86C1; }
+.badge-demo {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  font-size: 8px; font-weight: 700; letter-spacing: .05em;
+  color: #f39c12; border: 1px solid #d68910; border-radius: 4px; padding: 2px 6px;
+  background: rgba(27,38,49,.85);
+}
+.content { padding: 8px 10px; position: relative; }
+fieldset {
+  border: 1px solid #D5D8DC; border-radius: 4px; padding: 8px; margin-bottom: 8px;
+  background: #fff;
+}
+legend { font-size: 9px; font-weight: 700; color: #1A5276; padding: 0 4px; }
+label { font-size: 8px; color: #566573; display: block; margin-bottom: 2px; }
+input, select {
+  width: 100%; border: 1px solid #D5D8DC; border-radius: 3px; padding: 4px 6px;
+  font-size: 9px; background: #fff; color: #2C3E50; margin-bottom: 6px;
+}
+.grid2 { display: grid; grid-template-columns: 1fr 90px; gap: 8px; }
+.form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; }
+.logo-box {
+  background: #fff; border: 1px solid #D5D8DC; border-radius: 4px; text-align: center; padding: 12px 8px;
+}
+.logo-box .mark { font-size: 28px; margin-bottom: 4px; }
+.logo-box strong { font-size: 9px; color: #2E86C1; display: block; }
+.crm { display: flex; gap: 16px; font-size: 9px; padding: 6px 0; }
+.crm span { font-weight: 700; }
+.crm .g { color: #27AE60; } .crm .b { color: #2E86C1; }
+table { width: 100%; border-collapse: collapse; font-size: 9px; background: #fff; border: 1px solid #D5D8DC; }
+th { background: #EBF5FB; color: #1A5276; padding: 5px 6px; text-align: left; font-weight: 700; }
+td { padding: 4px 6px; border-top: 1px solid #EBF5FB; }
+tr.alt td { background: #EBF5FB; }
+.toolbar { display: flex; gap: 6px; margin: 6px 0; }
+.btn { background: #E5E8E8; border: 1px solid #BDC3C7; border-radius: 3px; padding: 4px 8px; font-size: 8px; }
+.btn.primary { background: #2E86C1; color: #fff; border-color: #1A5276; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.filters .field { min-width: 100px; }
+.total { margin-top: 6px; font-size: 10px; font-weight: 700; }
+.total.blue { color: #1A5276; } .total.red { color: #C0392B; }
+.pago { background: #D4EDDA !important; color: #155724; }
+.pend { background: #fff; }
+</style></head><body>
+<div class="win-title">Controle de Oficina Mecânica v1.2</div>
+<div class="tabs">
+  <div class="tab">👥 Clientes</div>
+  <div class="tab">🚚 Fornecedores</div>
+  <div class="tab">💰 Receber</div>
+  <div class="tab on">💸 Contas a Pagar</div>
+</div>
+<div class="content">
+  <span class="badge-demo">DEMONSTRAÇÃO</span>
+  <fieldset><legend>Relatório de Faturas de Fornecedores (SAÍDAS)</legend>
+    <div class="filters">
+      <div class="field"><label>Fornecedor</label><input value="Auto Peças Sul" readonly></div>
+      <div class="field"><label>Mês/Ano</label><input value="07/2026" readonly style="width:80px"></div>
+      <button class="btn primary">Pesquisar Custos</button>
+      <button class="btn">Dar Baixa (Pago)</button>
+    </div>
+  </fieldset>
+  <table>
+    <tr><th>ID</th><th>Nº Orç</th><th>Fornecedor</th><th>Parcela</th><th>Item/Peça</th><th>Custo</th><th>Venc.</th><th>Status</th></tr>
+    <tr class="pago"><td>8</td><td>104</td><td>Auto Peças Sul</td><td>1/1</td><td>Kit embreagem</td><td>R$ 620,00</td><td>01/07</td><td>Pago</td></tr>
+    <tr class="pend"><td>9</td><td>108</td><td>Distribuidora XYZ</td><td>1/2</td><td>Pastilha freio</td><td>R$ 185,00</td><td>10/07</td><td>Aberto</td></tr>
+    <tr class="alt pend"><td>10</td><td>108</td><td>Distribuidora XYZ</td><td>2/2</td><td>Óleo 5W30</td><td>R$ 92,00</td><td>10/08</td><td>Aberto</td></tr>
+  </table>
+  <div class="total red">Total Comprometido: R$ 277,00</div>
+</div>
+</body></html>

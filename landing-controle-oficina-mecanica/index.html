@@ -43,6 +43,22 @@
         .card h3 { margin: 0 0 8px; font-size: .95rem; color: var(--accent); }
         .card p { margin: 0; font-size: .84rem; color: var(--muted); }
         .card-icon { font-size: 1.6rem; margin-bottom: 8px; }
+        .card-modulo { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+        .card-thumb {
+            height: 160px; overflow: hidden; border-bottom: 1px solid var(--border);
+            background: #0b1220; position: relative;
+        }
+        .card-thumb img {
+            width: 100%; height: 100%; object-fit: cover;
+            object-position: top center; display: block;
+        }
+        .card-thumb .demo-tag {
+            position: absolute; top: 8px; right: 8px; font-size: .62rem; font-weight: 700;
+            letter-spacing: .05em; color: #fbbf24; background: rgba(15,23,42,.88);
+            border: 1px solid #b45309; border-radius: 4px; padding: 2px 6px;
+        }
+        .card-modulo h3 { margin: 0; padding: 14px 16px 6px; font-size: .95rem; color: var(--accent); }
+        .card-modulo p { margin: 0; padding: 0 16px 16px; font-size: .84rem; color: var(--muted); }
         .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
         .pill { font-size: .75rem; padding: 6px 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
         .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 24px; }
@@ -98,6 +114,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
     </a>
     <div class="nav-links">
         <a href="#proposta">Proposta</a>
+        <a href="#telas">Telas</a>
         <a href="#modulos">Módulos</a>
         <a href="#download">Trial 30 dias</a>
         <a href="#contato">Contato</a>
@@ -135,6 +152,37 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
             <div class="card"><div class="card-icon">👥</div><h3>CRM automotivo</h3><p>Cadastro de clientes, placas, marcas com logos e histórico de serviços.</p></div>
             <div class="card"><div class="card-icon">📝</div><h3>Orçamentos</h3><p>Peças, mão de obra, parcelamento, taxas de cartão e PDF para o cliente.</p></div>
             <div class="card"><div class="card-icon">💰</div><h3>Financeiro</h3><p>Contas a pagar e receber geradas na aprovação, fluxo de caixa mensal.</p></div>
+        </div>
+    </section>
+
+    <section id="telas">
+        <h2>Telas do sistema</h2>
+        <p class="lead">Miniaturas das telas reais — layout demonstrativo, sem dados da sua oficina.</p>
+        <div class="grid-3">
+            <div class="card card-modulo">
+                <div class="card-thumb">
+                    <span class="demo-tag">DEMO</span>
+                    <img src="assets/previews/cadastro_clientes.png" alt="Cadastro de clientes e veículos" loading="lazy">
+                </div>
+                <h3>👥 Cadastro de clientes</h3>
+                <p>Nome, placa, marca com logo, modelo, ano, contato e histórico CRM na mesma tela.</p>
+            </div>
+            <div class="card card-modulo">
+                <div class="card-thumb">
+                    <span class="demo-tag">DEMO</span>
+                    <img src="assets/previews/contas_receber.png" alt="Contas a receber" loading="lazy">
+                </div>
+                <h3>💰 Contas a receber</h3>
+                <p>Parcelas geradas na aprovação do orçamento, filtros por mês, baixa e totais a receber.</p>
+            </div>
+            <div class="card card-modulo">
+                <div class="card-thumb">
+                    <span class="demo-tag">DEMO</span>
+                    <img src="assets/previews/contas_pagar.png" alt="Contas a pagar" loading="lazy">
+                </div>
+                <h3>💸 Contas a pagar</h3>
+                <p>Custos de fornecedores vinculados ao orçamento, com baixa e total comprometido.</p>
+            </div>
         </div>
     </section>
 
