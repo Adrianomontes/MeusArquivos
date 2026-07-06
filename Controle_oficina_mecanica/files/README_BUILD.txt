@@ -1,12 +1,12 @@
 ═══════════════════════════════════════════════════════════════════════
-      MULTI ESCAPE ERP v1.2 — Guia de Build e Distribuição
+      CONTROLE DE OFICINA MECÂNICA v1.2 — Guia de Build e Distribuição
 ═══════════════════════════════════════════════════════════════════════
 
 ARQUIVOS DESTE PACOTE
 ───────────────────────────────────────────────────────────────────────
   sistema_oficina_v2.py   → Código-fonte principal do sistema
   construir_exe.bat       → Script de build com um clique (rode este!)
-  MultiEscape.spec        → Configuração do PyInstaller
+  ControleOficina.spec        → Configuração do PyInstaller
   versao_info.txt         → Informações de versão do .exe
   README_BUILD.txt        → Este arquivo
 
@@ -21,7 +21,7 @@ PRÉ-REQUISITO: Python 3.7 ou superior instalado na SUA máquina.
   1. Coloque TODOS os arquivos acima na mesma pasta
   2. Clique duas vezes em:  construir_exe.bat
   3. Aguarde (1 a 3 minutos — o script instala tudo automaticamente)
-  4. O executável é gerado em:  dist\MultiEscape_ERP.exe
+  4. O executável é gerado em:  dist\ControleOficina_ERP.exe
   5. Uma janela do Explorer abrirá automaticamente na pasta dist\
 
 ═══════════════════════════════════════════════════════════════════════
@@ -44,7 +44,7 @@ PARA DISTRIBUIR AO DONO DA OFICINA
 Após o build, envie a pasta  dist\  inteira contendo:
 
   dist\
-  ├── MultiEscape_ERP.exe     ← Executável principal (clique duplo)
+  ├── ControleOficina_ERP.exe     ← Executável principal (clique duplo)
   └── logos_marcas\           ← Logos de marcas (se já baixados)
        ├── fiat.png
        ├── volkswagen.png
@@ -52,7 +52,7 @@ Após o build, envie a pasta  dist\  inteira contendo:
 
 OPÇÃO 1 — Envio por email / WhatsApp:
   → Compacte a pasta dist\ em .zip e envie
-  → O destinatário descompacta e clica em MultiEscape_ERP.exe
+  → O destinatário descompacta e clica em ControleOficina_ERP.exe
 
 OPÇÃO 2 — Pendrive:
   → Copie a pasta dist\ para o pendrive
@@ -81,7 +81,7 @@ ONDE O BANCO DE DADOS É SALVO
 ═══════════════════════════════════════════════════════════════════════
 
   O arquivo sistema_oficina.db é criado AUTOMATICAMENTE na mesma pasta
-  onde o MultiEscape_ERP.exe estiver.
+  onde o ControleOficina_ERP.exe estiver.
 
   ATENÇÃO: Não mova o .exe de pasta depois de começar a usar o sistema,
   pois o banco de dados ficará para trás!
@@ -108,7 +108,7 @@ ERRO: Antivírus bloqueia o .exe gerado
 
 ERRO: Tela preta ao abrir na máquina destino
   → Verifique se o Windows está atualizado
-  → Tente copiar para C:\MultiEscape\ e executar de lá (evita problemas de permissão)
+  → Tente copiar para C:\ControleOficina\ e executar de lá (evita problemas de permissão)
 
 ERRO: "The application was unable to start correctly (0xc000007b)"
   → Visual C++ Redistributable não instalado na máquina destino
@@ -121,17 +121,17 @@ PERSONALIZAÇÃO ANTES DO BUILD
 ÍCONE PERSONALIZADO:
   1. Crie ou baixe um arquivo .ico (ícone Windows)
   2. Salve como icone_multiescap.ico na mesma pasta
-  3. No arquivo MultiEscape.spec, descomente a linha:
+  3. No arquivo ControleOficina.spec, descomente a linha:
      # icon='icone_multiescap.ico',
   4. Execute construir_exe.bat novamente
 
 NOME DO EXECUTÁVEL:
-  No arquivo MultiEscape.spec, altere a linha:
-    name='MultiEscape_ERP',
+  No arquivo ControleOficina.spec, altere a linha:
+    name='ControleOficina_ERP',
   Para o nome desejado, ex:
     name='SistemaOficina',
 
 ═══════════════════════════════════════════════════════════════════════
-  Multi Escape ERP v1.2 — Build System
+  Controle de Oficina Mecânica v1.2 — Build System
   Gerado automaticamente pelo assistente de desenvolvimento
 ═══════════════════════════════════════════════════════════════════════

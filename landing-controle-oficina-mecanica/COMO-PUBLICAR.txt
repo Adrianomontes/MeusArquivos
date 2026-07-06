@@ -1,0 +1,10 @@
+LANDING — CONTROLE DE OFICINA MECÂNICA
+======================================
+
+Publicada em: docs/controle-oficina-mecanica/
+
+URL: https://adrianomontes.github.io/sistema-gestao-logistico/controle-oficina-mecanica/
+
+Sincronize com landing-controle-oficina-mecanica/
+
+E-mails trial: .github/access-control-oficina.json

@@ -59,7 +59,7 @@ class TelaCompatibilidade:
 
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Multi Escape ERP — Verificando Compatibilidade")
+        self.root.title("Controle de Oficina Mecânica — Verificando Compatibilidade")
         self.root.configure(bg=self.C_BG)
         self.root.resizable(False, False)
         self._continuar = False
@@ -80,7 +80,7 @@ class TelaCompatibilidade:
         frame_top.pack(fill="x")
         frame_top.pack_propagate(False)
 
-        tk.Label(frame_top, text="🔧  MULTI ESCAPE ERP",
+        tk.Label(frame_top, text="🔧  CONTROLE DE OFICINA MECÂNICA",
                  font=("Arial", 16, "bold"),
                  bg=self.C_ACENTO, fg="white").pack(pady=(14, 2))
         tk.Label(frame_top, text="Verificando compatibilidade do ambiente...",
@@ -575,7 +575,7 @@ def buscar_taxas_web(bandeira):
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; MultiEscapeERP/1.2)"},
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ControleOficina/1.2)"},
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             html = resp.read().decode("utf-8", errors="ignore")
@@ -1412,7 +1412,7 @@ def gerar_pdf_orcamento(orcamento_id):
 
     tbl_cab = Table(
         [[
-            Paragraph("MULTI ESCAPE<br/>Serviços Automotivos Especializados",
+            Paragraph("CONTROLE DE OFICINA<br/>MECÂNICA",
                       ParagraphStyle("cab_esq", parent=st_empresa, leading=22)),
             Paragraph(
                 f"ORÇAMENTO Nº {orcamento_id:04d}<br/>"
@@ -1673,7 +1673,7 @@ def gerar_pdf_orcamento(orcamento_id):
     story.append(HRFlowable(width=CONTENT_W, thickness=0.5, color=BORDA))
     story.append(Spacer(1, 4))
     story.append(Paragraph(
-        f"Multi Escape — Serviços Automotivos Especializados  •  "
+        f"Controle de Oficina Mecânica  •  "
         f"Orçamento Nº {orcamento_id:04d}  •  Emitido em {data_orc}  •  "
         f"Documento gerado automaticamente pelo sistema ERP v1.2",
         st_rodape
@@ -1924,7 +1924,7 @@ class MesAnoPopup:
 class AplicacaoOficina:
     def __init__(self, root):
         self.root = root
-        self.root.title("Multi Escape - Sistema de Gestão ERP v1.2")
+        self.root.title("Controle de Oficina Mecânica v1.2")
         
         self.caminho_imagem_selecionada = ""
         self.lista_produtos_temporaria = []
@@ -3282,7 +3282,7 @@ class AplicacaoOficina:
         frame_cabecalho.pack(fill="x", padx=0, pady=0)
         frame_cabecalho.pack_propagate(False)
         tk.Label(frame_cabecalho,
-                 text="📖  MULTI ESCAPE — Central de Apoio & Manual do Usuário  v1.2",
+                 text="📖  Controle de Oficina Mecânica — Manual do Usuário  v1.2",
                  font=("Arial", 13, "bold"), bg="#2C3E50", fg="white").pack(side="left", padx=15, pady=10)
 
         # ── Barra de busca rápida ─────────────────────────────────────────
@@ -3401,14 +3401,14 @@ class AplicacaoOficina:
         ancora("inicio")
         w("\n", "corpo")
         w("  ╔══════════════════════════════════════════════════════════════════╗\n", "banner")
-        w("  ║       MULTI ESCAPE — SISTEMA DE GESTÃO ERP v1.2                ║\n", "banner")
+        w("  ║       CONTROLE DE OFICINA MECÂNICA v1.2                      ║\n", "banner")
         w("  ║       Central de Apoio & Manual Operacional Completo            ║\n", "banner")
         w("  ╚══════════════════════════════════════════════════════════════════╝\n", "banner")
 
         # ── Visão geral ────────────────────────────────────────────────────
         h1("🏠  VISÃO GERAL DO SISTEMA")
         sep()
-        w("  O Multi Escape ERP organiza todo o fluxo de uma oficina automotiva:\n  desde o cadastro do cliente até o controle financeiro completo.\n", "corpo")
+        w("  O Controle de Oficina Mecânica organiza todo o fluxo de uma oficina automotiva:\n  desde o cadastro do cliente até o controle financeiro completo.\n", "corpo")
         nl()
         w("  O sistema é dividido em 9 abas (módulos), acessíveis pelo topo da janela:\n", "corpo")
         nl()
@@ -3776,7 +3776,7 @@ class AplicacaoOficina:
         aviso("Nunca exclua um fornecedor que já tem peças em orçamentos ativos — isso pode quebrar os vínculos no Contas a Pagar.")
         nl()
         w("  " + "─" * 72 + "\n", "separador")
-        w("  Sistema Multi Escape ERP v1.2  •  Todos os direitos reservados.\n", "separador")
+        w("  Controle de Oficina Mecânica v1.2  •  Animo Serviços Administrativos.\n", "separador")
         w("  " + "─" * 72 + "\n", "separador")
 
     def _manual_ir_para(self, chave):

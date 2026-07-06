@@ -1,0 +1,9 @@
+{
+  "versao": "v1",
+  "nome_arquivo": "ControleOficinaTrial-v1.zip",
+  "url_download": "https://github.com/Adrianomontes/sistema-gestao-logistico/raw/main/Controle_oficina_mecanica/trial_distribuicao/releases/ControleOficinaTrial-v1.zip",
+  "expira_em": "2026-08-05",
+  "dias_trial": 30,
+  "login_demo": "Não requer login — use trial.lic na pasta do .exe",
+  "observacao": "Pacote Windows com ControleOficina_Trial.exe e trial.lic assinado. Após 30 dias o sistema não inicia."
+}

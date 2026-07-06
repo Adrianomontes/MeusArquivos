@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Licença trial de 30 dias — arquivo trial.lic com assinatura HMAC (Multi Escape ERP)."""
+"""Licença trial de 30 dias — arquivo trial.lic com assinatura HMAC."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from typing import Any
 
 LICENCA_ARQUIVO = 'trial.lic'
 DIAS_PADRAO = 30
+NOME_PRODUTO = 'Controle de Oficina Mecânica'
 
 
 def _base_dir() -> str:
@@ -22,9 +23,9 @@ def _base_dir() -> str:
 
 
 def _carregar_chave() -> bytes:
-    candidatos = [os.environ.get('MULTISCAPE_TRIAL_SECRET', '').strip()]
+    candidatos = [os.environ.get('OFICINA_TRIAL_SECRET', '').strip()]
     base = _base_dir()
-    for nome in ('multiscape_trial_secret.key', os.path.join('scripts', 'multiscape_trial_secret.key')):
+    for nome in ('oficina_trial_secret.key', os.path.join('scripts', 'oficina_trial_secret.key')):
         caminho = os.path.join(base, nome)
         if os.path.isfile(caminho):
             with open(caminho, encoding='utf-8') as f:
@@ -32,7 +33,7 @@ def _carregar_chave() -> bytes:
     for valor in candidatos:
         if valor:
             return valor.encode('utf-8')
-    return b'multiscape-trial-dev-altere-esta-chave-em-producao'
+    return b'oficina-trial-dev-altere-esta-chave-em-producao'
 
 
 def _assinatura(payload: dict[str, Any], chave: bytes) -> str:
@@ -42,7 +43,7 @@ def _assinatura(payload: dict[str, Any], chave: bytes) -> str:
         str(payload.get('emitido_em', '')),
         str(payload.get('expira_em', '')),
         str(payload.get('dias', '')),
-        'multiscape',
+        'oficina_mecanica',
     ])
     return hmac.new(chave, base.encode('utf-8'), hashlib.sha256).hexdigest()
 
@@ -51,7 +52,7 @@ def gerar_licenca(email: str, empresa: str = '', dias: int = DIAS_PADRAO) -> dic
     emitido = datetime.now().date()
     expira = emitido + timedelta(days=max(1, int(dias)))
     payload = {
-        'produto': 'Multi Escape ERP',
+        'produto': NOME_PRODUTO,
         'email': email.strip().lower(),
         'empresa': empresa.strip(),
         'emitido_em': emitido.isoformat(),
@@ -96,7 +97,6 @@ def edicao_trial_ativa() -> bool:
 
 
 def verificar_trial_ou_sair() -> None:
-    """Bloqueia o app se edição trial estiver ativa e licença inválida/expirada."""
     if not edicao_trial_ativa():
         return
 
@@ -112,14 +112,14 @@ def verificar_trial_ou_sair() -> None:
         except (OSError, json.JSONDecodeError):
             dados = {}
 
-    ok, msg, restantes = _validar(dados)
+    ok, msg, _ = _validar(dados)
     if ok:
         return
 
     root = tk.Tk()
     root.withdraw()
     messagebox.showerror(
-        'Multi Escape ERP — Trial',
+        f'{NOME_PRODUTO} — Trial',
         msg + '\n\nContato: adrianomontes55@gmail.com\nAnimo Serviços Administrativos',
     )
     root.destroy()

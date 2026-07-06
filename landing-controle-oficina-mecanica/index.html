@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="ERP para oficinas mecânicas: clientes, veículos, orçamentos PDF, fornecedores, contas a pagar e receber, fluxo de caixa. Trial 30 dias.">
-    <meta property="og:title" content="Multi Escape ERP">
+    <meta property="og:title" content="Controle de Oficina Mecânica">
     <meta property="og:description" content="Gestão completa para oficinas mecânicas — desktop Windows, offline, SQLite.">
-    <title>Multi Escape ERP — Gestão para oficinas mecânicas</title>
+    <title>Controle de Oficina Mecânica — Gestão para oficinas mecânicas</title>
     <style>
         :root {
             --bg: #1B2631; --surface: #212F3D; --surface2: #17202A;
@@ -73,9 +73,9 @@
 
 <script>
 const CONFIG = {
-    nomeSistema: 'Multi Escape ERP',
+    nomeSistema: 'Controle de Oficina Mecânica',
     tagline: 'Gestão completa para oficinas mecânicas — clientes, orçamentos em PDF, peças, financeiro e fluxo de caixa em um único sistema desktop.',
-    siglaLogo: 'ME',
+    siglaLogo: 'COM',
     empresa: 'Animo Serviços Administrativos',
     cargo: 'Desenvolvedor',
     diretor: 'Adriano Montes',
@@ -83,7 +83,7 @@ const CONFIG = {
     telefone: '',
     whatsapp: '',
     urlLogistica: '../',
-    trialControleUrl: 'https://raw.githubusercontent.com/Adrianomontes/sistema-gestao-logistico/main/.github/access-control-multiscape.json',
+    trialControleUrl: 'https://raw.githubusercontent.com/Adrianomontes/sistema-gestao-logistico/main/.github/access-control-oficina.json',
     trialInfoUrl: 'trial-info.json',
     leadApiUrl: '',
     rodapeTech: 'Desenvolvemos nossos produtos com as melhores ferramentas de IA do mercado, em linguagem Python e bancos de dados SQLite e MySQL.'
@@ -93,8 +93,8 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 
 <nav class="nav">
     <a href="#" class="nav-brand">
-        <span class="nav-logo">ME</span>
-        <span>Multi Escape ERP</span>
+        <span class="nav-logo">COM</span>
+        <span>Controle de Oficina Mecânica</span>
     </a>
     <div class="nav-links">
         <a href="#proposta">Proposta</a>
@@ -107,9 +107,9 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 </nav>
 
 <header class="hero">
-    <div class="logo-slot">ME</div>
+    <div class="logo-slot">COM</div>
     <div class="hero-badge" id="hero-badge">Oficinas mecânicas · Pequenas empresas</div>
-    <h1 id="hero-titulo">Multi Escape ERP</h1>
+    <h1 id="hero-titulo">Controle de Oficina Mecânica</h1>
     <p class="tagline" id="hero-tagline">Do orçamento ao recebimento — controle da oficina sem planilhas.</p>
     <div class="hero-cta">
         <a href="#download" class="btn btn-primary">Solicitar trial 30 dias</a>
@@ -188,7 +188,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
             </form>
             <div class="download-msg" id="download-msg"></div>
             <div id="trial-download-painel">
-                <a href="#" class="btn btn-ok" id="btn-baixar-trial" download>Baixar MultiEscapeTrial-v1.zip</a>
+                <a href="#" class="btn btn-ok" id="btn-baixar-trial" download>Baixar ControleOficinaTrial-v1.zip</a>
                 <p class="trial-expira" id="trial-expira-texto"></p>
                 <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Mantenha <strong>trial.lic</strong> na mesma pasta do .exe.</p>
             </div>
@@ -275,7 +275,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
                 return Promise.reject('email');
             }
             var fd = new FormData(document.getElementById('form-solicitar-trial'));
-            fd.append('_subject', 'Trial Multi Escape ERP — ' + empresa);
+            fd.append('_subject', 'Trial Controle de Oficina Mecânica — ' + empresa);
             fd.append('_captcha', 'false');
             fd.append('_template', 'table');
             return fetch('https://formsubmit.co/ajax/' + encodeURIComponent(EMAIL_SOLICITACOES), { method:'POST', headers:{'Accept':'application/json'}, body:fd })

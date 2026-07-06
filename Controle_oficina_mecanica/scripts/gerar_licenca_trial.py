@@ -12,7 +12,7 @@ from modulo_licenca_trial import DIAS_PADRAO, gerar_licenca, salvar_licenca
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Gerar trial.lic — Multi Escape ERP')
+    parser = argparse.ArgumentParser(description='Gerar trial.lic — Controle de Oficina Mecânica')
     parser.add_argument('--email', required=True, help='E-mail corporativo do cliente')
     parser.add_argument('--empresa', default='', help='Nome da oficina')
     parser.add_argument('--dias', type=int, default=DIAS_PADRAO, help='Dias de trial (padrão 30)')

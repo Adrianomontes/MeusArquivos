@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 # ============================================================
-# Multi Escape ERP — PyInstaller Spec File
+# Controle de Oficina Mecânica — PyInstaller Spec File
 # Gerado automaticamente. Execute via construir_exe.bat
 # ============================================================
 
@@ -85,7 +85,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='MultiEscape_ERP',
+    name='ControleOficina',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

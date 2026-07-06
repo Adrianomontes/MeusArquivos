@@ -1,0 +1,13 @@
+PACOTE TRIAL — Controle de Oficina Mecânica v1
+==============================================
+
+Arquivo para download na landing:
+
+  ControleOficinaTrial-v1.zip
+
+Conteúdo:
+  - ControleOficina_Trial.exe
+  - trial.lic
+
+Gerar licença:
+  py Controle_oficina_mecanica\scripts\gerar_licenca_trial.py --email cliente@oficina.com.br --empresa "Oficina"

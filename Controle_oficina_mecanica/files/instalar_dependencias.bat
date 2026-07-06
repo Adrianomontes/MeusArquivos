@@ -5,7 +5,7 @@ cls
 
 echo.
 echo  ╔══════════════════════════════════════════════════════════════╗
-echo  ║   MULTI ESCAPE ERP — Instalador de Dependências             ║
+echo  ║   CONTROLE DE OFICINA MECÂNICA — Instalador de Dependências ║
 echo  ║   (Apenas instalação dos pacotes Python necessários)        ║
 echo  ╚══════════════════════════════════════════════════════════════╝
 echo.
