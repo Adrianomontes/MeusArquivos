@@ -44,6 +44,9 @@ Documentação interna: `Controle_ocorrencias/trial_distribuicao/GUIA_ADRIANO.tx
 
 Limitações trial: banco `sistema_trial.db`, licença `trial.lic` com expiração, importação máx. 80 linhas, sem exportação completa.
 
+**Download pacote trial oficial (v1):**  
+[Controle_ocorrencias/trial_distribuicao/releases/SistemaLogisticoTrial-v1.zip](Controle_ocorrencias/trial_distribuicao/releases/SistemaLogisticoTrial-v1.zip) (~247 MB, via Git LFS)
+
 ## Controle de acesso (downloads Git)
 
 - Lista de e-mails: `.github/access-control.json`

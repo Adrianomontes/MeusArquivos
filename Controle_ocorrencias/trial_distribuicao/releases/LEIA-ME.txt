@@ -1,0 +1,29 @@
+PACOTE TRIAL OFICIAL — v1
+==========================
+
+Arquivo: SistemaLogisticoTrial-v1.zip (~247 MB)
+
+Download direto no GitHub:
+https://github.com/Adrianomontes/MeusArquivos/blob/main/Controle_ocorrencias/trial_distribuicao/releases/SistemaLogisticoTrial-v1.zip
+
+Conteúdo do ZIP
+---------------
+- SistemaLogisticoTrial.exe
+- trial.lic (licença vinculada ao e-mail autorizado)
+- sistema_trial.db (banco demonstrativo)
+- LEIA-ME_CLIENTE.txt
+
+Licença desta build (v1)
+--------------------------
+- E-mail autorizado: adrianomontes55@gmail.com
+- Empresa: Animo Serviços Administrativos
+- Validade: 30 dias a partir da geração
+
+Login demonstração: trial / trial123
+
+Para clientes
+-------------
+Gere pacotes personalizados com:
+  py -3 scripts\montar_pacote_trial.py --email cliente@empresa.com --dias 15
+
+Não commite pacotes de clientes em envios/ — use apenas releases/ para build oficial.
