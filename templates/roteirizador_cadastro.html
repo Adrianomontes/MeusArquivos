@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <title>Cadastro de Rotas</title>
+    <style>
+        body{margin:0;padding:14px;background:#0f172a;color:#e2e8f0;font-family:var(--portal-font,'Segoe UI',sans-serif);font-size:12px;}
+        .wrap{max-width:1500px;margin:0 auto;}
+        h1{margin:0;font-size:18px;color:#38bdf8;}
+        .nav a{color:#38bdf8;margin-right:12px;}
+        .box{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px;}
+        label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:600;}
+        input,select{width:100%;box-sizing:border-box;padding:7px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#fff;margin-bottom:8px;}
+        .btn{border:none;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:12px;}
+        .btn-p{background:#2563eb;color:#fff;}.btn-g{background:#059669;color:#fff;}.btn-s{background:#475569;color:#fff;}.btn-o{background:transparent;border:1px solid #475569;color:#94a3b8;padding:4px 8px;font-size:10px;}
+        .filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+        .filtros>div{min-width:130px;flex:1;}
+        .hint{font-size:10px;color:#64748b;margin:-4px 0 8px;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{border:1px solid #334155;padding:6px 8px;text-align:left;vertical-align:top;}
+        th{background:#1e293b;color:#38bdf8;position:sticky;top:0;z-index:1;}
+        tr:nth-child(even) td{background:#141c2b;}
+        tr.row-detalhe td{background:#0b1220 !important;}
+        .tbl-wrap{max-height:420px;overflow:auto;border:1px solid #334155;border-radius:6px;}
+        .msg{padding:8px;border-radius:6px;margin-top:8px;font-size:11px;}
+        .msg.ok{background:#064e3b;color:#6ee7b7;}.msg.err{background:#450a0a;color:#fca5a5;}
+        .cel-detalhe{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .detalhe-box{margin:6px 0;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:6px;font-size:11px;}
+        .detalhe-box table th,.detalhe-box table td{font-size:10px;padding:4px 6px;}
+        .badge{font-size:10px;padding:1px 6px;border-radius:4px;background:#1e3a5f;color:#7dd3fc;}
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <p class="nav"><a href="/roteirizador">← Roteirizador</a> · <a href="/roteirizador/montagem">Montagem</a></p>
+    <h1>📋 Cadastro de rotas</h1>
+
+    <div class="box">
+        <div class="filtros">
+            <div><label>UF *</label><select id="selUf"><option value="">— UF —</option></select></div>
+            <div><label>Município</label><select id="selMun"><option value="">— Todos —</option></select></div>
+            <div><label>Bairro</label><select id="selBairro"><option value="">— Todos —</option></select>
+                <p class="hint" id="hintBairro">Bairros vêm do cache de CEP ou sincronização WEB</p>
+            </div>
+            <div><label>Mesorregião</label><select id="selMeso"><option value="">— Todas —</option></select></div>
+            <div style="flex:0;min-width:auto">
+                <button type="button" class="btn btn-s" id="btnSync">🌐 Sync CEP</button>
+                <button type="button" class="btn btn-p" id="btnCarregar">↻ Carregar</button>
+            </div>
+        </div>
+        <div id="msgSync" class="msg" style="display:none"></div>
+    </div>
+
+    <div class="box">
+        <h2 style="margin:0 0 10px;color:#38bdf8;font-size:13px">Faixas por cabeça de CEP (3 dígitos)</h2>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr>
+                    <th><input type="checkbox" id="chkTodos"></th>
+                    <th>Cabeça</th><th>Faixa CEP</th><th>UF</th><th>Mesorregião</th><th>Microreg.</th>
+                    <th>Municípios</th><th>Bairros</th><th>Notas</th><th>Peso</th><th>Valor</th><th>Vol.</th><th>Transp.</th><th></th>
+                </tr></thead>
+                <tbody id="corpoClusters"><tr><td colspan="14">Selecione UF e carregue faixas.</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="box">
+        <h2 style="margin:0 0 10px;color:#38bdf8;font-size:13px">Salvar rota</h2>
+        <div class="filtros">
+            <div style="flex:2"><label>Nome da rota</label><input type="text" id="nomeRota" placeholder="Ex: Interior SP — Rodonaves"></div>
+            <div style="flex:2"><label>Transportadora principal</label><select id="selTransp"><option value="">—</option></select></div>
+            <div style="flex:2"><label>Transportadoras adicionais (vírgula)</label><input type="text" id="transpExtra" placeholder="JADLOG, TOTAL"></div>
+            <div><button type="button" class="btn btn-g" id="btnSalvar">💾 Salvar rota</button></div>
+        </div>
+        <p class="hint" id="hintSalvar">Com município filtrado, o critério do município também será gravado na rota.</p>
+        <div id="msgSalvar" class="msg" style="display:none"></div>
+    </div>
+
+    <div class="box">
+        <h2 style="margin:0 0 10px;color:#38bdf8;font-size:13px">Rotas já cadastradas</h2>
+        <div id="listaRotas">Carregando…</div>
+    </div>
+</div>
+<script>
+async function api(u,m,b){const r=await fetch(u,{method:m||'GET',headers:b?{'Content-Type':'application/json'}:{},credentials:'same-origin',body:b?JSON.stringify(b):undefined});return r.json();}
+function show(el,txt,ok){el.style.display='block';el.className='msg '+(ok?'ok':'err');el.textContent=txt;}
+function brl(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function filtrosAtivos(){
+    return{
+        uf:document.getElementById('selUf').value,
+        municipio:document.getElementById('selMun').value,
+        bairro:document.getElementById('selBairro').value,
+        mesoregiao:document.getElementById('selMeso').value,
+    };
+}
+function urlClusters(){
+    const f=filtrosAtivos();
+    return '/api/roteirizador/clusters?uf='+encodeURIComponent(f.uf)
+        +'&mesoregiao='+encodeURIComponent(f.mesoregiao)
+        +'&municipio='+encodeURIComponent(f.municipio)
+        +'&bairro='+encodeURIComponent(f.bairro);
+}
+
+document.getElementById('chkTodos').addEventListener('change',e=>{
+    document.querySelectorAll('.chk-faixa').forEach(c=>c.checked=e.target.checked);
+});
+
+async function carregarUfs(){
+    const ufs=await api('/api/roteirizador/ufs');
+    const s=document.getElementById('selUf');
+    ufs.forEach(u=>s.innerHTML+=`<option value="${u}">${u}</option>`);
+}
+async function carregarTransp(){
+    const t=await api('/api/roteirizador/transportadoras');
+    const s=document.getElementById('selTransp');
+    t.forEach(x=>s.innerHTML+=`<option value="${x}">${x}</option>`);
+}
+async function carregarMunicipios(){
+    const uf=document.getElementById('selUf').value;
+    const s=document.getElementById('selMun');
+    s.innerHTML='<option value="">— Todos —</option>';
+    if(!uf)return;
+    const m=await api('/api/roteirizador/municipios?uf='+encodeURIComponent(uf));
+    m.forEach(x=>s.innerHTML+=`<option value="${esc(x.municipio)}">${esc(x.municipio)}</option>`);
+}
+async function carregarBairros(){
+    const uf=document.getElementById('selUf').value;
+    const mun=document.getElementById('selMun').value;
+    const s=document.getElementById('selBairro');
+    const hint=document.getElementById('hintBairro');
+    s.innerHTML='<option value="">— Todos —</option>';
+    if(!uf){hint.textContent='Selecione UF para carregar bairros.';return;}
+    const b=await api('/api/roteirizador/bairros?uf='+encodeURIComponent(uf)+'&municipio='+encodeURIComponent(mun));
+    if(!b.length){
+        hint.textContent='Nenhum bairro no cache — sincronize CEPs (WEB) ou importe faturamento com CEP.';
+        return;
+    }
+    hint.textContent=b.length+' bairro(s) disponível(is) via CEP sincronizado.';
+    b.forEach(x=>s.innerHTML+=`<option value="${esc(x.bairro)}">${esc(x.bairro)}${mun?'':' · '+esc(x.municipio)}</option>`);
+}
+async function carregarMeso(){
+    const uf=document.getElementById('selUf').value;
+    const s=document.getElementById('selMeso');
+    s.innerHTML='<option value="">— Todas —</option>';
+    const url=uf?'/api/roteirizador/mesoregioes?uf='+encodeURIComponent(uf):'/api/roteirizador/mesoregioes';
+    const m=await api(url);
+    m.forEach(x=>s.innerHTML+=`<option value="${esc(x.mesoregiao)}">${esc(x.mesoregiao)}</option>`);
+}
+
+async function toggleDetalhe(btn, prefixo, uf, meso){
+    const tr=btn.closest('tr');
+    const next=tr.nextElementSibling;
+    if(next&&next.classList.contains('row-detalhe')){
+        next.remove();btn.textContent='▸';return;
+    }
+    document.querySelectorAll('.row-detalhe').forEach(r=>r.remove());
+    document.querySelectorAll('.btn-detalhe').forEach(b=>b.textContent='▸');
+    btn.textContent='▾';
+    const f=filtrosAtivos();
+  let url='/api/roteirizador/cluster_detalhe?prefixo_cep='+encodeURIComponent(prefixo)
+        +'&uf='+encodeURIComponent(uf)+'&mesoregiao='+encodeURIComponent(meso)
+        +'&municipio='+encodeURIComponent(f.municipio)+'&bairro='+encodeURIComponent(f.bairro);
+    const det=await api(url);
+    const detTr=document.createElement('tr');
+    detTr.className='row-detalhe';
+    if(!det.length){
+        detTr.innerHTML=`<td colspan="14"><div class="detalhe-box">Sem detalhamento para esta faixa.</div></td>`;
+    }else{
+        detTr.innerHTML=`<td colspan="14"><div class="detalhe-box">
+            <b>Detalhe: ${prefixo}xxx · ${esc(uf)} · ${esc(meso)}</b>
+            <table style="width:100%;margin-top:6px">
+                <thead><tr><th>Município</th><th>Bairro</th><th>Logradouros (amostra)</th><th>Notas</th><th>Peso</th><th>Valor</th><th>Vol.</th></tr></thead>
+                <tbody>${det.map(d=>`<tr>
+                    <td>${esc(d.municipio)}</td><td>${esc(d.bairro)}</td>
+                    <td class="cel-detalhe" title="${esc(d.logradouros)}">${esc(d.logradouros)||'—'}</td>
+                    <td>${d.qtd_notas}</td><td>${d.peso_total} kg</td><td>${brl(d.valor_total)}</td><td>${d.volumes_total}</td>
+                </tr>`).join('')}</tbody>
+            </table></div></td>`;
+    }
+    tr.after(detTr);
+}
+
+document.getElementById('corpoClusters').addEventListener('click',e=>{
+    const btn=e.target.closest('.btn-detalhe');
+    if(btn) toggleDetalhe(btn, btn.dataset.prefixo, btn.dataset.uf, btn.dataset.meso||'');
+});
+
+async function carregarClusters(){
+    const uf=document.getElementById('selUf').value;
+    if(!uf){alert('Selecione a UF.');return;}
+    const rows=await api(urlClusters());
+    const tb=document.getElementById('corpoClusters');
+    if(!rows.length){tb.innerHTML='<tr><td colspan="14">Nenhuma faixa com estes filtros. Importe faturamento e sincronize CEPs.</td></tr>';return;}
+    tb.innerHTML=rows.map(r=>{
+        const mesoRaw=r.mesoregiao==='— (sem classificação)'?'':r.mesoregiao;
+        return `<tr data-prefixo="${r.prefixo_cep}">
+        <td><input type="checkbox" class="chk-faixa" value="${r.prefixo_cep}" data-uf="${r.uf}"></td>
+        <td><b>${r.prefixo_cep}</b>xxx</td>
+        <td>${esc(r.faixa_cep)||'—'}</td>
+        <td>${r.uf}</td>
+        <td>${esc(r.mesoregiao)}</td>
+        <td class="cel-detalhe" title="${esc(r.microregioes)}">${esc(r.microregioes)||'—'}</td>
+        <td class="cel-detalhe" title="${esc(r.municipios)}">${r.qtd_municipios||0} · ${esc(r.municipios)||'—'}</td>
+        <td class="cel-detalhe" title="${esc(r.bairros)}">${r.qtd_bairros||0} · ${esc(r.bairros)||'—'}</td>
+        <td>${r.qtd_notas}</td>
+        <td>${(r.peso_total||0).toLocaleString('pt-BR')} kg</td>
+        <td>${brl(r.valor_total)}</td>
+        <td>${r.volumes_total||0}</td>
+        <td>${(r.transportadoras||[]).map(t=>`<span class="badge">${esc(t)}</span>`).join(' ')||'<span style="color:#64748b">—</span>'}</td>
+        <td><button type="button" class="btn btn-o btn-detalhe"
+            data-prefixo="${r.prefixo_cep}" data-uf="${r.uf}" data-meso="${esc(mesoRaw)}">▸</button></td>
+    </tr>`;}).join('');
+}
+
+async function carregarRotas(){
+    const rotas=await api('/api/roteirizador/rotas_predefinidas');
+    const el=document.getElementById('listaRotas');
+    if(!rotas.length){el.innerHTML='<span style="color:#64748b">Nenhuma rota salva.</span>';return;}
+    el.innerHTML=rotas.map(r=>`<div style="padding:6px 0;border-bottom:1px solid #334155">
+        <b>${esc(r.nome)}</b> · 🚛 ${esc(r.transportadora)}
+        <span style="color:#64748b"> — ${(r.criterios||[]).map(c=>c.prefixo_cep?c.prefixo_cep+'xxx':c.municipio+'/'+c.uf).join(', ')}</span>
+    </div>`).join('');
+}
+
+document.getElementById('selUf').addEventListener('change',async()=>{
+    await carregarMunicipios();
+    await carregarBairros();
+    await carregarMeso();
+});
+document.getElementById('selMun').addEventListener('change',carregarBairros);
+
+document.getElementById('btnSync').onclick=async()=>{
+    const uf=document.getElementById('selUf').value;
+    const msg=document.getElementById('msgSync');
+    if(!uf){alert('Selecione UF');return;}
+    show(msg,'Consultando CEPs (base IBGE local + WEB)…',true);
+    const r=await api('/api/roteirizador/sincronizar_cep','POST',{uf,limite:200});
+    show(msg,`Sincronizados: ${r.sincronizados}/${r.total} · Erros: ${r.erros}`,r.sincronizados>0);
+    await carregarMeso();
+    await carregarBairros();
+    await carregarClusters();
+};
+document.getElementById('btnCarregar').onclick=carregarClusters;
+document.getElementById('btnSalvar').onclick=async()=>{
+    const prefixos=[...document.querySelectorAll('.chk-faixa:checked')].map(c=>c.value);
+    const nome=document.getElementById('nomeRota').value.trim();
+    const transp=document.getElementById('selTransp').value;
+    const msg=document.getElementById('msgSalvar');
+    const f=filtrosAtivos();
+    if(!nome||!transp||!prefixos.length){show(msg,'Nome, transportadora e ao menos uma faixa CEP.',false);return;}
+    const extras=document.getElementById('transpExtra').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const payload={
+        nome, transportadora:transp, transportadoras_extra:extras,
+        uf:f.uf, mesoregiao:f.mesoregiao, prefixos_cep:prefixos,
+    };
+    if(f.municipio){
+        payload.municipios=[{municipio:f.municipio, uf:f.uf}];
+    }
+    const r=await api('/api/roteirizador/rota_completa','POST',payload);
+    show(msg,r.mensagem||'Erro',r.status==='sucesso');
+    if(r.status==='sucesso'){await carregarClusters();await carregarRotas();}
+};
+(async()=>{await carregarUfs();await carregarTransp();await carregarMeso();await carregarRotas();})();
+</script>
+</body>
+</html>

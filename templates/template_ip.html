@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>📡 CONEXÃO DE REDE - TORRE DE CONTROLE</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+            font-family: var(--portal-font); 
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .card-rede { 
+            background: #1e293b; 
+            border: 2px solid #334155; 
+            border-radius: 12px; 
+            padding: 40px; 
+            max-width: 900px; 
+            width: 100%;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6); 
+            text-align: center;
+        }
+        h1 { color: #10b981; font-size: 32px; font-weight: bold; margin-bottom: 30px; letter-spacing: 2px; }
+        .ip-destaque { 
+            background-color: #0f172a; 
+            border: 2px dashed #38bdf8; 
+            color: #38bdf8; 
+            font-size: 42px; 
+            font-weight: bold; 
+            padding: 15px 30px; 
+            border-radius: 8px; 
+            display: inline-block;
+            margin-bottom: 35px;
+            letter-spacing: 1px;
+        }
+        .secao-links {
+            background-color: #111827;
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        .item-link { margin-bottom: 20px; }
+        .item-link:last-child { margin-bottom: 0; }
+        .titulo-link { color: #fbbf24; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
+        .url-completa { color: #e2e8f0; font-size: 18px; font-weight: bold; background: #1e293b; padding: 8px 12px; border-radius: 4px; display: block; border-left: 4px solid #fbbf24; }
+        .txt-suporte { color: #94a3b8; font-size: 13px; margin-top: 25px; text-transform: uppercase; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="card-rede">
+        <h1>📡 ECOSSISTEMA LOGÍSTICO ONLINE</h1>
+        <p class="fs-5 text-muted mb-4">Para conectar seus dispositivos (Celular ou Computador) na mesma rede Wi-Fi, utilize o IP do Servidor:</p>
+        
+        <div class="ip-destaque">
+            🌐 {{ ip_servidor }}
+        </div>
+
+        <div class="secao-links">
+            <div class="item-link">
+                <div class="titulo-link">📲 PARA ASSINAR E BAIXAR CANHOTO (CELULAR MOTORISTA):</div>
+                <span class="url-completa">http://{{ ip_servidor }}:5000/canhoto</span>
+            </div>
+            
+            <div class="item-link class-mt">
+                <div class="titulo-link">📊 PARA VISUALIZAR OS CANHOTOS ASSINADOS (TV/AUDITORIA):</div>
+                <span class="url-completa">http://{{ ip_servidor }}:5000/canhotos_assinados</span>
+            </div>
+        </div>
+
+        <div class="txt-suporte">
+            🔒 Protocolo de Rede Ativo • Porta de Comunicação: 5000
+        </div>
+    </div>
+
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>🏢 Portal Mestre — Modelo Botões em Bloco</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        .faixa-horizontal-topo { background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); border-bottom: 2px solid #334155; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; height: 65px; }
+        
+        /* ⚡ GRUPO DE BOTÕES HORIZONTAIS DIRETOS NO TOPO */
+        .bloco-botoes-grupo { display: flex; gap: 8px; }
+        .btn-modulo-direto { background: #334155; color: #e2e8f0; border: 1px solid #475569; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 4px; transition: all 0.2s; }
+        .btn-modulo-direto:hover { background: #38bdf8; color: #0f172a; border-color: #38bdf8; }
+        .btn-modulo-direto.ativo-bloco { background: #2563eb; color: #fff; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.3); }
+        
+        .conteudo-dinamico-iframe { flex-grow: 1; width: 100%; border: none; background-color: #0f172a; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="faixa-horizontal-topo">
+        <div style="font-weight:bold; font-size:12px; color:#38bdf8;">🏢 MODELO 3: BOTÕES TOPO</div>
+        
+        <div class="bloco-botoes-grupo">
+            <button class="btn-modulo-direto ativo-bloco" onclick="navegarBloco(this, '/monitor_tv')">🚀 Torre</button>
+            <button class="btn-modulo-direto" onclick="navegarBloco(this, '/devolucoes')">🚚 Devoluções</button>
+            <button class="btn-modulo-direto" onclick="navegarBloco(this, '/relatorio_faturamento_local')">📊 Faturamento</button>
+            <button class="btn-modulo-direto" onclick="navegarBloco(this, '/gerenciar_transportadoras')">🚛 Transportadoras</button>
+            <button class="btn-modulo-direto" onclick="navegarBloco(this, '/gestor_emails')">📬 E-mails</button>
+            <button class="btn-modulo-direto" onclick="navegarBloco(this, '/manual')">📖 Manual</button>
+            <button class="btn-modulo-direto text-warning" onclick="navegarBloco(this, '/gerenciar_usuarios')">⚙️ Acessos</button>
+        </div>
+
+        <a href="/logout" class="btn btn-sm btn-danger fw-bold" style="font-size:10px; padding:4px 10px;">🔒 SAIR</a>
+    </div>
+
+    <iframe id="frameBlocos" class="conteudo-dinamico-iframe" src="/monitor"></iframe>
+
+    <script>
+        function navegarBloco(elemento, url) {
+            document.querySelectorAll('.btn-modulo-direto').forEach(btn => btn.classList.remove('ativo-bloco'));
+            elemento.classList.add('ativo-bloco');
+            document.getElementById('frameBlocos').src = url;
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

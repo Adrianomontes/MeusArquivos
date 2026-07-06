@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 Praças de Atendimento — Ultra Safe</title>
+    <style>
+        /* Remove qualquer margem e trava o visor da TV */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            background-color: #ffffff;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Faz a imagem ocupar o máximo da tela mantendo a proporção limpa */
+        .img-painel-cheio {
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain; /* Garante que a tabela não fique distorcida ou cortada */
+            background-color: #ffffff;
+        }
+    </style>
+    
+    <meta http-equiv="refresh" content="10"> 
+</head>
+<body class="portal-page embedded">
+
+    <img src="{{ url_for('static', filename='pracas_atendimento.png') }}" class="img-painel-cheio" alt="Praças de Atendimento">
+
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

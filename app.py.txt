@@ -1,0 +1,1205 @@
+from flask import Flask, render_template, request, redirect, send_file
+import pandas as pd
+import os
+import glob
+import sqlite3
+from datetime import datetime
+
+app = Flask(__name__)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 📂 CAMINHO DO BANCO DE DADOS SQLITE E ARQUIVOS INTERNOS
+DB_FILE = os.path.join(BASE_DIR, 'sistema_operacional.db')
+EXCEL_OCORRENCIAS = os.path.join(BASE_DIR, 'relatorio_ocorrencias.xlsx')
+EXCEL_COLETAS = os.path.join(BASE_DIR, 'relatorio_coletas.xlsx')
+EXCEL_TRANSPORTADORAS = os.path.join(BASE_DIR, 'cadastro_transportadoras.xlsx')
+EXCEL_CANHOTOS = os.path.join(BASE_DIR, 'relatorio_canhotos.xlsx')
+EXCEL_LISTA_MOTIVOS = os.path.join(BASE_DIR, 'lista_motivos.xlsx')
+
+def buscar_ultimo_faturamento():
+    pasta_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+    padrao_busca = os.path.join(pasta_downloads, "NF-e_emitidas_endereços*.xlsx")
+    arquivos_encontrados = glob.glob(padrao_busca)
+    if not arquivos_encontrados:
+        return None
+    return max(arquivos_encontrados, key=os.path.getmtime)
+
+def buscar_ultima_expedicao():
+    pasta_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+    padrao_busca = os.path.join(pasta_downloads, "Notas_expedidas*.xlsx")
+    arquivos_encontrados = glob.glob(padrao_busca)
+    if not arquivos_encontrados:
+        return None
+    return max(arquivos_encontrados, key=os.path.getmtime)
+
+def inicializar_banco():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ocorrencias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT, nota_fiscal TEXT, data TEXT, tratativa TEXT, motivo TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS coletas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT, nota_fiscal TEXT, transportadora TEXT, data_solicitacao TEXT, status TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transportadoras (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, telefone TEXT, responsavel TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS canhotos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, cliente TEXT, nota_fiscal TEXT, data_recebimento TEXT, status TEXT, observacoes TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS entregas_efetuadas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nota_fiscal TEXT UNIQUE,
+            data_entrega TEXT
+        )
+    ''')
+    cursor.execute("SELECT COUNT(*) FROM transportadoras")
+    if cursor.fetchone() == 0:
+        padroes = [('Braspress', '', ''), ('TNT Mercurio', '', ''), ('Jamef', '', ''), ('Planalto', '', '')]
+        cursor.executemany("INSERT INTO transportadoras (name, telefone, responsavel) VALUES (?, ?, ?)", padroes)
+    conn.commit()
+    conn.close()
+
+def ler_lista_do_excel():
+    itens = []
+    if os.path.exists(EXCEL_LISTA_MOTIVOS):
+        try:
+            df_motivos = pd.read_excel(EXCEL_LISTA_MOTIVOS)
+            if df_motivos.shape >= 2:
+                col_codigo = df_motivos.iloc[:, 0].fillna("").astype(str)
+                col_motivo = df_motivos.iloc[:, 1].fillna("").astype(str)
+                for cod, mot in zip(col_codigo, col_motivo):
+                    if cod.strip() and mot.strip(): itens.append(f"{cod.strip()} - {mot.strip()}")
+                    elif mot.strip(): itens.append(mot.strip())
+        except: pass
+    return itens
+
+def ler_transportadoras_db():
+    inicializar_banco()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM transportadoras ORDER BY name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [r for r in rows]
+
+@app.route('/')
+def home():
+    return render_template('abrir.html')
+
+@app.route('/formulario')
+def index():
+    return render_template('index.html', itens_word=ler_lista_do_excel())
+
+@app.route('/coletas')
+def coletas():
+    return render_template('coletas.html', lista_transportadoras=ler_transportadoras_db())
+
+@app.route('/cadastro_transportadora')
+def cadastro_transportadora():
+    return render_template('cadastro_transportadora.html')
+@app.route('/sistema_canhotos', methods=['GET'])
+def sistema_canhotos():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    if filtro_cliente:
+        cursor.execute("SELECT * FROM canhotos WHERE LOWER(cliente) LIKE ? ORDER BY id DESC", (f'%{filtro_cliente.lower()}%',))
+    else:
+        cursor.execute("SELECT * FROM canhotos ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'], 'Data Recebimento': r['data_recebimento'], 'Status': r['status'], 'Observações': r['observacoes']} for r in rows]
+    return render_template('canhotos_sistema.html', canhotos=lista)
+
+@app.route('/salvar', methods=['POST'])
+def salvar():
+    cliente = request.form['cliente']
+    nf = request.form['nota_fiscal']
+    data_orig = request.form['data']
+    tratativa = request.form['tratativa']
+    motivo = request.form['item_word']
+    try: data_f = datetime.strptime(data_orig, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except: data_f = data_orig
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO ocorrencias (cliente, nota_fiscal, data, tratativa, motivo) VALUES (?, ?, ?, ?, ?)", (cliente, nf, data_f, tratativa, motivo))
+    conn.commit()
+    conn.close()
+    texto_gerado = f"Prezados,\n\nNova ocorrência da área de {tratativa}.\n\n• Cliente: {cliente}\n• NF: {nf}\n• Data: {data_f}\n• Motivo: {motivo}"
+    return render_template('sucesso.html', texto_notificacao=texto_gerado)
+
+@app.route('/salvar_coleta', methods=['POST'])
+def salvar_coleta():
+    cliente = request.form['cliente']
+    nf = request.form['nota_fiscal']
+    transportadora = request.form['transportadora'].strip()
+    data_orig = request.form['data']
+    status = request.form['status']
+    try: data_f = datetime.strptime(data_orig, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except: data_f = data_orig
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO coletas (cliente, nota_fiscal, transportadora, data_solicitacao, status) VALUES (?, ?, ?, ?, ?)", (cliente, nf, transportadora, data_f, status))
+    conn.commit()
+    conn.close()
+    return redirect('/relatorio_coletas')
+
+@app.route('/salvar_canhoto', methods=['POST'])
+def salvar_canhoto():
+    cliente = request.form['cliente']
+    nf = request.form['nota_fiscal']
+    data_orig = request.form['data_recebimento']
+    status = request.form['status_canhoto']
+    observacoes = request.form['observacoes']
+    try: data_f = datetime.strptime(data_orig, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except: data_f = data_orig
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO canhotos (cliente, nota_fiscal, data_recebimento, status, observacoes) VALUES (?, ?, ?, ?, ?)", (cliente, nf, data_f, status, observacoes))
+    conn.commit()
+    conn.close()
+    return redirect('/sistema_canhotos')
+
+@app.route('/salvar_transportadora', methods=['POST'])
+def salvar_transportadora():
+    nova_transp = request.form['nome_transportadora'].strip()
+    telefone = request.form['telefone_transportadora'].strip()
+    responsavel = request.form['responsavel_transportadora'].strip()
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO transportadoras (name, telefone, responsavel) VALUES (?, ?, ?)", (nova_transp, telefone, responsavel))
+        conn.commit()
+    except sqlite3.IntegrityError: pass
+    conn.close()
+    return redirect('/relatorio_transportadoras')
+
+@app.route('/salvar_entrega_faturamento', methods=['POST'])
+def salvar_entrega_faturamento():
+    nf = request.form['entrega_nf'].strip()
+    data_orig = request.form['entrega_data'].strip()
+    try: data_f = datetime.strptime(data_orig, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except: data_f = data_orig
+    if nf and data_f:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO entregas_efetuadas (nota_fiscal, data_entrega) VALUES (?, ?) ON CONFLICT(nota_fiscal) DO UPDATE SET data_entrega=?", (nf, data_f, data_f))
+        conn.commit()
+        conn.close()
+    return redirect('/relatorio_faturamento')
+
+@app.route('/relatorio_faturamento', methods=['GET'])
+def relatorio_faturamento():
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    busca_status = request.args.get('busca_status', '').strip()
+    
+    colunas, dados_lista, msg_erro = [], [], None
+    total_faturadas, total_expedidas, total_em_aberto = 0, 0, 0
+    
+    excel_faturamento_atual = buscar_ultimo_faturamento()
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_faturamento_atual and os.path.exists(excel_faturamento_atual):
+        try:
+            df = pd.read_excel(excel_faturamento_atual)
+            col_data_real = 'Emissão da NF-e'
+            col_nf_real = 'Número da NF-e'
+            col_cli_real = 'Cliente'
+            
+            if col_data_real in df.columns:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23,minute=59,second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+                
+            if col_nf_real in df.columns: 
+                df[col_nf_real] = df[col_nf_real].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+            if col_cli_real in df.columns and filtro_cliente: 
+                df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+
+            conn = sqlite3.connect(DB_FILE)
+            df_db_entregas = pd.read_sql_query("SELECT nota_fiscal, data_entrega FROM entregas_efetuadas", conn)
+            conn.close()
+            df_db_entregas['nota_fiscal'] = df_db_entregas['nota_fiscal'].astype(str).str.strip().str.replace(r'\.0$', '', regex=True)
+
+            df_exp_min = pd.DataFrame(columns=['Nota', 'Emissão', 'Transportadora'])
+            if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+                df_exp = pd.read_excel(excel_expedicao_atual)
+                col_dt_exp = 'Emissão'
+                col_nf_exp = 'Nota'
+                col_transp_exp = 'Transportadora'
+                
+                if col_nf_exp in df_exp.columns:
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].astype(str).str.split(',')
+                    df_exp = df_exp.explode(col_nf_exp)
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].str.strip().str.replace(r'\.0$', '', regex=True)
+                    df_exp = df_exp[df_exp[col_nf_exp] != ""]
+                    
+                if col_dt_exp in df_exp.columns:
+                    df_exp[col_dt_exp] = df_exp[col_dt_exp].replace(r'^\s*$', pd.NA, regex=True).ffill()
+                    df_exp[col_dt_exp] = pd.to_datetime(df_exp[col_dt_exp], errors='coerce').dt.strftime('%d/%m/%Y')
+
+                cols_b = [col_nf_exp]
+                if col_dt_exp in df_exp.columns: cols_b.append(col_dt_exp)
+                if col_transp_exp in df_exp.columns: cols_b.append(col_transp_exp)
+                df_exp_min = df_exp[cols_b].drop_duplicates(subset=[col_nf_exp])
+
+            df = pd.merge(df, df_db_entregas, left_on=col_nf_real, right_on='nota_fiscal', how='left')
+            if not df_exp_min.empty:
+                df = pd.merge(df, df_exp_min, left_on=col_nf_real, right_on='Nota', how='left')
+
+            status_lista, data_lista, transp_lista = [], [], []
+            for _, r in df.iterrows():
+                if pd.notna(r.get('data_entrega')) and str(r['data_entrega']).strip() != "":
+                    status_lista.append('ENTREGUE')
+                    data_lista.append(str(r['data_entrega']))
+                    transp_lista.append(str(r.get('Transportadora_x', r.get('Transportadora', '---'))))
+                elif 'Nota' in df.columns and pd.notna(r.get('Nota')):
+                    status_lista.append('EXPEDIDO')
+                    data_lista.append(str(r.get('Emissão', '---')))
+                    transp_lista.append(str(r.get('Transportadora_y', '---')))
+                else:
+                    status_lista.append('NÃO EXPEDIDO')
+                    data_lista.append('---')
+                    transp_lista.append('---')
+
+            df['STATUS EXPEDIÇÃO'] = status_lista
+            df['DATA EXPEDIDO'] = data_lista
+            df['TRANSP. EXPEDIÇÃO'] = transp_lista
+            # 5. Aplica filtros secundários pós-cruzamento nas buscas
+            if col_nf_real in df.columns and filtro_nf: 
+                df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if 'TRANSP. EXPEDIÇÃO' in df.columns and filtro_transp:
+                df = df[df['TRANSP. EXPEDIÇÃO'].astype(str).str.contains(filtro_transp, case=False, na=False)]
+
+            # 6. Cálculo dos Indicadores do Dashboard
+            total_faturadas = len(df)
+            total_expedidas = len(df[df['STATUS EXPEDIÇÃO'].isin(['EXPEDIDO', 'ENTREGUE'])])
+            total_em_aberto = total_faturadas - total_expedidas
+
+            # 7. Filtro Logístico de Status Selecionado
+            if busca_status:
+                df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+
+            # Filtra a lista de colunas para exibir apenas os dados limpos do Faturamento
+            colunas = [c for c in df.columns if c not in ['STATUS EXPEDIÇÃO', 'DATA EXPEDIDO', 'TRANSP. EXPEDIÇÃO', 'Nota', 'Emissão', 'nota_fiscal', 'data_entrega'] and not c.endswith('_y') and not c.endswith('_x')]
+            dados_lista = df.to_dict(orient='records')
+        except Exception as e: msg_erro = f"Erro ao processar faturamento: {str(e)}"
+    else: msg_erro = "Nenhum arquivo 'NF-e_emitidas_endereços' localizado em Downloads."
+    
+    return render_template('relatorio_faturamento.html', dados=dados_lista, colunas=colunas, filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp, busca_status=busca_status, data_inicio=filtro_inicio, data_fim=filtro_fim, total_faturadas=total_faturadas, total_expedidas=total_expedidas, total_em_aberto=total_em_aberto, erro=msg_erro)
+
+@app.route('/relatorio', methods=['GET'])
+def relatorio():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    query = "SELECT * FROM ocorrencias WHERE 1=1"
+    params = []
+    if filtro_cliente: query += " AND LOWER(cliente) LIKE ?"; params.append(f'%{filtro_cliente.lower()}%')
+    if filtro_nf: query += " AND CAST(nota_fiscal AS TEXT) LIKE ?"; params.append(f'%{filtro_nf}%')
+    query += " ORDER BY id DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'], 'Data': r['data'], 'Tratativa': r['tratativa'], 'Motivo': r['motivo']} for r in rows]
+    return render_template('relatorio.html', ocorrencias=lista, filtro_cliente=filtro_cliente, filtro_nf=filtro_nf)
+
+@app.route('/relatorio_coletas', methods=['GET'])
+def relatorio_coletas():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM coletas WHERE status LIKE '%Pendente%'")
+    p_count = cursor.fetchone()
+    cursor.execute("SELECT COUNT(*) FROM coletas WHERE status LIKE '%Efetuada%'")
+    e_count = cursor.fetchone()
+    query = "SELECT * FROM coletas WHERE 1=1"
+    params = []
+    if filtro_cliente: query += " AND LOWER(cliente) LIKE ?"; params.append(f'%{filtro_cliente.lower()}%')
+    if filtro_nf: query += " AND CAST(nota_fiscal AS TEXT) LIKE ?"; params.append(f'%{filtro_nf}%')
+    if filtro_transp: query += " AND LOWER(transportadora) LIKE ?"; params.append(f'%{filtro_transp.lower()}%')
+    query += " ORDER BY id DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'], 'Transportadora': r['transportadora'], 'Data Solicitação': r['data_solicitacao'], 'Status': r['status']} for r in rows]
+    return render_template('relatorio_coletas.html', coletas=lista, filtro_cliente=filtro_cliente, filtro_nf=filtro_nf, filtro_transp=filtro_transp, pendentes=p_count, efetuadas=e_count)
+
+@app.route('/relatorio_transportadoras', methods=['GET'])
+def relatorio_transportadoras():
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    if filtro_transp: cursor.execute("SELECT * FROM transportadoras WHERE LOWER(name) LIKE ? ORDER BY name ASC", (f'%{filtro_transp.lower()}%',))
+    else: cursor.execute("SELECT * FROM transportadoras ORDER BY name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Transportadora': r['name'], 'Telefone': r['telefone'], 'Responsável': r['responsavel']} for r in rows]
+    return render_template('relatorio_transportadoras.html', transportadoras=lista, filtro_transp=filtro_transp)
+
+@app.route('/exportar')
+def exportar():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], data AS Data, tratativa AS Tratativa, motivo AS Motivo FROM ocorrencias ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_OCORRENCIAS, index=False)
+    return send_file(EXCEL_OCORRENCIAS, as_attachment=True, download_name='relatorio_ocorrencias.xlsx')
+
+@app.route('/exportar_coletas')
+def exportar_coletas():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], transportadora AS Transportadora, data_solicitacao AS [Data Solicitação], status AS Status FROM coletas ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_COLETAS, index=False)
+    return send_file(EXCEL_COLETAS, as_attachment=True, download_name='relatorio_coletas.xlsx')
+
+@app.route('/exportar_transportadoras')
+def exportar_transportadoras():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT name AS Transportadora, telefone AS Telefone, responsavel AS Responsável FROM transportadoras ORDER BY name ASC", conn)
+    conn.close()
+    df.to_excel(EXCEL_TRANSPORTADORAS, index=False)
+    return send_file(EXCEL_TRANSPORTADORAS, as_attachment=True, download_name='cadastro_transportadoras.xlsx')
+
+@app.route('/exportar_canhotos')
+def exportar_canhotos():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], data_recebimento AS [Data Recebimento], status AS Status, observacoes AS Observações FROM canhotos ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_CANHOTOS, index=False)
+    return send_file(EXCEL_CANHOTOS, as_attachment=True, download_name='relatorio_canhotos.xlsx')
+
+@app.route('/exportar_base_faturamento')
+def exportar_base_faturamento():
+    excel_faturamento_atual = buscar_ultimo_faturamento()
+    if excel_faturamento_atual and os.path.exists(excel_faturamento_atual):
+        return send_file(excel_faturamento_atual, as_attachment=True, download_name=os.path.basename(excel_faturamento_atual))
+    return "Erro: Arquivo não encontrado."
+
+@app.route('/exportar_base_expedicao')
+def exportar_base_expedicao():
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        return send_file(excel_expedicao_atual, as_attachment=True, download_name=os.path.basename(excel_expedicao_atual))
+    return "Erro: Arquivo não encontrado."
+
+@app.route('/exportar_faturamento_filtrado', methods=['GET'])
+def exportar_faturamento_filtrado():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    busca_status = request.args.get('busca_status', '').strip()
+    
+    excel_faturamento_atual = buscar_ultimo_faturamento()
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_faturamento_atual and os.path.exists(excel_faturamento_atual):
+        try:
+            df = pd.read_excel(excel_faturamento_atual)
+            col_data_real = 'Emissão da NF-e'
+            col_nf_real = 'Número da NF-e'
+            col_cli_real = 'Cliente'
+            
+            if col_data_real in df.columns:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23, minute=59, second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+                
+            if col_nf_real in df.columns: df[col_nf_real] = df[col_nf_real].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+            if col_cli_real in df.columns and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+
+            conn = sqlite3.connect(DB_FILE)
+            df_db_entregas = pd.read_sql_query("SELECT nota_fiscal, data_entrega FROM entregas_efetuadas", conn)
+            conn.close()
+            df_db_entregas['nota_fiscal'] = df_db_entregas['nota_fiscal'].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+
+            df_exp_min = pd.DataFrame(columns=['Nota', 'Emissão', 'Transportadora'])
+            if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+                df_exp = pd.read_excel(excel_expedicao_atual)
+            if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+                df_exp = pd.read_excel(excel_expedicao_atual)
+                col_dt_exp = 'Emissão'
+                col_nf_exp = 'Nota'
+                col_transp_exp = 'Transportadora'
+                
+                if col_nf_exp in df_exp.columns:
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].astype(str).str.split(',')
+                    df_exp = df_exp.explode(col_nf_exp)
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].str.strip().str.replace(r'\.0\$', '', regex=True)
+                    df_exp = df_exp[df_exp[col_nf_exp] != ""]
+                    
+                if col_dt_exp in df_exp.columns:
+                    df_exp[col_dt_exp] = df_exp[col_dt_exp].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                    df_exp[col_dt_exp] = pd.to_datetime(df_exp[col_dt_exp], errors='coerce').dt.strftime('%d/%m/%Y')
+
+                cols_b = [col_nf_exp]
+                if col_dt_exp in df_exp.columns: cols_b.append(col_dt_exp)
+                if col_transp_exp in df_exp.columns: cols_b.append(col_transp_exp)
+                df_exp_min = df_exp[cols_b].drop_duplicates(subset=[col_nf_exp])
+
+                df = pd.merge(df, df_db_entregas, left_on=col_nf_real, right_on='nota_fiscal', how='left')
+                if not df_exp_min.empty:
+                    df = pd.merge(df, df_exp_min, left_on=col_nf_real, right_on='Nota', how='left')
+
+                status_lista, data_lista, transp_lista = [], [], []
+                for _, r in df.iterrows():
+                    if pd.notna(r.get('data_entrega')) and str(r['data_entrega']).strip() != "":
+                        status_lista.append('ENTREGUE')
+                        data_lista.append(str(r['data_entrega']))
+                        transp_lista.append(str(r.get('Transportadora_x', r.get('Transportadora', '---'))))
+                    elif 'Nota' in df.columns and pd.notna(r.get('Nota')):
+                        status_lista.append('EXPEDIDO')
+                        data_lista.append(str(r.get('Emissão', '---')))
+                        transp_lista.append(str(r.get('Transportadora_y', '---')))
+                    else:
+                        status_lista.append('NÃO EXPEDIDO')
+                        data_lista.append('---')
+                        transp_lista.append('---')
+
+                df['STATUS EXPEDIÇÃO'] = status_lista
+                df['DATA EXPEDIDO'] = data_lista
+                df['TRANSP. EXPEDIÇÃO'] = transp_lista
+            else:
+                df['STATUS EXPEDIÇÃO'] = 'NÃO'
+                df['DATA EXPEDIDO'] = '---'
+                df['TRANSP. EXPEDIÇÃO'] = '---'
+
+            if col_nf_real in df.columns and filtro_nf: 
+                df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if 'TRANSP. EXPEDIÇÃO' in df.columns and filtro_transp:
+                df = df[df['TRANSP. EXPEDIÇÃO'].astype(str).str.contains(filtro_transp, case=False, na=False)]
+
+            total_faturadas = len(df)
+            total_expedidas = len(df[df['STATUS EXPEDIÇÃO'].isin(['EXPEDIDO', 'ENTREGUE'])])
+            total_em_aberto = total_faturadas - total_expedidas
+
+            if busca_status:
+                df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+
+            colunas = [c for c in df.columns if c not in ['STATUS EXPEDIÇÃO', 'DATA EXPEDIDO', 'TRANSP. EXPEDIÇÃO', 'Nota', 'Emissão', 'nota_fiscal', 'data_entrega'] and not c.endswith('_y') and not c.endswith('_x')]
+            dados_lista = df.to_dict(orient='records')
+        except Exception as e: msg_erro = f"Erro ao processar faturamento: {str(e)}"
+    else: msg_erro = "Nenhum arquivo 'NF-e_emitidas_endereços' localizado em Downloads."
+    
+    return render_template('relatorio_faturamento.html', dados=dados_lista, colunas=colunas, filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp, busca_status=busca_status, data_inicio=filtro_inicio, data_fim=filtro_fim, total_faturadas=total_faturadas, total_expedidas=total_expedidas, total_em_aberto=total_em_aberto, erro=msg_erro)
+
+@app.route('/relatorio', methods=['GET'])
+def relatorio():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    query = "SELECT * FROM ocorrencias WHERE 1=1"
+    params = []
+    if filtro_cliente: query += " AND LOWER(cliente) LIKE ?"; params.append(f'%{filtro_cliente.lower()}%')
+    if filtro_nf: query += " AND CAST(nota_fiscal AS TEXT) LIKE ?"; params.append(f'%{filtro_nf}%')
+    query += " ORDER BY id DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'], 'Data': r['data'], 'Tratativa': r['tratativa'], 'Motivo': r['motivo']} for r in rows]
+    return render_template('relatorio.html', ocorrencias=lista, filtro_cliente=filtro_cliente, filtro_nf=filtro_nf)
+
+@app.route('/relatorio_coletas', methods=['GET'])
+def relatorio_coletas():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM coletas WHERE status LIKE '%Pendente%'")
+    p_count = cursor.fetchone()
+    cursor.execute("SELECT COUNT(*) FROM coletas WHERE status LIKE '%Efetuada%'")
+    e_count = cursor.fetchone()
+    query = "SELECT * FROM coletas WHERE 1=1"
+    params = []
+    if filtro_cliente: query += " AND LOWER(cliente) LIKE ?"; params.append(f'%{filtro_cliente.lower()}%')
+    if filtro_nf: query += " AND CAST(nota_fiscal AS TEXT) LIKE ?"; params.append(f'%{filtro_nf}%')
+    if filtro_transp: query += " AND LOWER(transportadora) LIKE ?"; params.append(f'%{filtro_transp.lower()}%')
+    query += " ORDER BY id DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'], 'Transportadora': r['transportadora'], 'Data Solicitação': r['data_solicitacao'], 'Status': r['status']} for r in rows]
+    return render_template('relatorio_coletas.html', coletas=lista, filtro_cliente=filtro_cliente, filtro_nf=filtro_nf, filtro_transp=filtro_transp, pendentes=p_count, efetuadas=e_count)
+
+@app.route('/relatorio_transportadoras', methods=['GET'])
+def relatorio_transportadoras():
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    if filtro_transp: cursor.execute("SELECT * FROM transportadoras WHERE LOWER(name) LIKE ? ORDER BY name ASC", (f'%{filtro_transp.lower()}%',))
+    else: cursor.execute("SELECT * FROM transportadoras ORDER BY name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    lista = [{'Transportadora': r['name'], 'Telefone': r['telefone'], 'Responsável': r['responsavel']} for r in rows]
+    return render_template('relatorio_transportadoras.html', transportadoras=lista, filtro_transp=filtro_transp)
+
+@app.route('/exportar')
+def exportar():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], data AS Data, tratativa AS Tratativa, motivo AS Motivo FROM ocorrencias ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_OCORRENCIAS, index=False)
+    return send_file(EXCEL_OCORRENCIAS, as_attachment=True, download_name='relatorio_ocorrencias.xlsx')
+
+@app.route('/exportar_coletas')
+def exportar_coletas():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], transportadora AS Transportadora, data_solicitacao AS [Data Solicitação], status AS Status FROM coletas ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_COLETAS, index=False)
+    return send_file(EXCEL_COLETAS, as_attachment=True, download_name='relatorio_coletas.xlsx')
+
+@app.route('/exportar_transportadoras')
+def exportar_transportadoras():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT name AS Transportadora, telefone AS Telefone, responsavel AS Responsável FROM transportadoras ORDER BY name ASC", conn)
+    conn.close()
+    df.to_excel(EXCEL_TRANSPORTADORAS, index=False)
+    return send_file(EXCEL_TRANSPORTADORAS, as_attachment=True, download_name='cadastro_transportadoras.xlsx')
+
+@app.route('/exportar_canhotos')
+def exportar_canhotos():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], data_recebimento AS [Data Recebimento], status AS Status, observacoes AS Observações FROM canhotos ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_CANHOTOS, index=False)
+    return send_file(EXCEL_CANHOTOS, as_attachment=True, download_name='relatorio_canhotos.xlsx')
+
+@app.route('/exportar_base_faturamento')
+def exportar_base_faturamento():
+    excel_faturamento_atual = buscar_ultimo_faturamento()
+    if excel_faturamento_atual and os.path.exists(excel_faturamento_atual):
+        return send_file(excel_faturamento_atual, as_attachment=True, download_name=os.path.basename(excel_faturamento_atual))
+    return "Erro: Arquivo não encontrado."
+
+@app.route('/exportar_base_expedicao')
+def exportar_base_expedicao():
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        return send_file(excel_expedicao_atual, as_attachment=True, download_name=os.path.basename(excel_expedicao_atual))
+    return "Erro: Arquivo não encontrado."
+
+@app.route('/exportar_faturamento_filtrado', methods=['GET'])
+def exportar_faturamento_filtrado():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    busca_status = request.args.get('busca_status', '').strip()
+    
+    excel_faturamento_atual = buscar_ultimo_faturamento()
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_faturamento_atual and os.path.exists(excel_faturamento_atual):
+        try:
+            df = pd.read_excel(excel_faturamento_atual)
+            col_data_real = 'Emissão da NF-e'
+            col_nf_real = 'Número da NF-e'
+            col_cli_real = 'Cliente'
+            
+            if col_data_real in df.columns:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23, minute=59, second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+                
+            if col_nf_real in df.columns: df[col_nf_real] = df[col_nf_real].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+            if col_cli_real in df.columns and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+
+            conn = sqlite3.connect(DB_FILE)
+            df_db_entregas = pd.read_sql_query("SELECT nota_fiscal, data_entrega FROM entregas_efetuadas", conn)
+            conn.close()
+            df_db_entregas['nota_fiscal'] = df_db_entregas['nota_fiscal'].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+
+            df_exp_min = pd.DataFrame(columns=['Nota', 'Emissão', 'Transportadora'])
+            if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+                df_exp = pd.read_excel(excel_expedicao_atual)
+                col_dt_exp = 'Emissão'
+                col_nf_exp = 'Nota'
+                col_transp_exp = 'Transportadora'
+                if col_nf_exp in df_exp.columns:
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].astype(str).str.split(',')
+                    df_exp = df_exp.explode(col_nf_exp)
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].str.strip().str.replace(r'\.0\$', '', regex=True)
+                    df_exp = df_exp[df_exp[col_nf_exp] != ""]
+                if col_dt_exp in df_exp.columns:
+                    df_exp[col_dt_exp] = df_exp[col_dt_exp].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                    df_exp[col_dt_exp] = pd.to_datetime(df_exp[col_dt_exp], errors='coerce').dt.strftime('%d/%m/%Y')
+                cols_b = [col_nf_exp]
+                if col_dt_exp in df_exp.columns: cols_b.append(col_dt_exp)
+                if col_transp_exp in df_exp.columns: cols_b.append(col_transp_exp)
+                df_exp_min = df_exp[cols_b].drop_duplicates(subset=[col_nf_exp])
+
+            df = pd.merge(df, df_db_entregas, left_on=col_nf_real, right_on='nota_fiscal', how='left')
+            if not df_exp_min.empty: df = pd.merge(df, df_exp_min, left_on=col_nf_real, right_on='Nota', how='left')
+
+            status_lista, data_lista, transp_lista = [], [], []
+            for _, r in df.iterrows():
+                if pd.notna(r.get('data_entrega')) and str(r['data_entrega']).strip() != "":
+                    status_lista.append('ENTREGUE')
+                    data_lista.append(str(r['data_entrega']))
+                    transp_lista.append(str(r.get('Transportadora_x', r.get('Transportadora', '---'))))
+                elif 'Nota' in df.columns and pd.notna(r.get('Nota')):
+                    status_lista.append('EXPEDIDO')
+                    data_lista.append(str(r.get('Emissão', '---')))
+                    transp_lista.append(str(r.get('Transportadora_y', '---')))
+                else:
+                    status_lista.append('NÃO EXPEDIDO')
+                    data_lista.append('---')
+                    transp_lista.append('---')
+
+            df['STATUS EXPEDIÇÃO'] = status_lista
+            df['DATA EXPEDIDO'] = data_lista
+            df['TRANSP. EXPEDIÇÃO'] = transp_lista
+
+            if col_nf_real in df.columns and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if 'TRANSP. EXPEDIÇÃO' in df.columns and filtro_transp: df = df[df['TRANSP. EXPEDIÇÃO'].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            if busca_status: df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+            
+            if 'Nota' in df.columns: df = df.drop(columns=['Nota'])
+            if 'Emissão' in df.columns: df = df.drop(columns=['Emissão'])
+            if 'nota_fiscal' in df.columns: df = df.drop(columns=['nota_fiscal'])
+            if 'data_entrega' in df.columns: df = df.drop(columns=['data_entrega'])
+
+            arquivo_temporario = os.path.join(BASE_DIR, 'faturamento_conciliado_filtrado.xlsx')
+            df.to_excel(arquivo_temporario, index=False)
+            return send_file(arquivo_temporario, as_attachment=True, download_name='relatorio_faturamento_conciliado.xlsx')
+        except Exception as e: return f"Erro ao exportar: {str(e)}"
+    return "Erro: Planilha original não localizada."
+
+@app.route('/relatorio_expedicao', methods=['GET'])
+def relatorio_expedicao():
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    colunas, dados_lista, msg_erro = [], [], None
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23,minute=59,second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+            
+            if col_nf_real and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if col_cli_real and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+            if col_transp_real and filtro_transp: df = df[df[col_transp_real].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+                
+            df = df.fillna("")
+            colunas = df.columns.tolist()
+            dados_lista = df.to_dict(orient='records')
+        except Exception as e: msg_erro = f"Erro ao processar expedição: {str(e)}"
+    else: msg_erro = "Nenhum arquivo 'Notas_expedidas' localizado em Downloads."
+    
+    return render_template('relatorio_expedicao.html', dados=dados_lista, colunas=colunas, filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp, data_inicio=filtro_inicio, data_fim=filtro_fim, erro=msg_erro)
+
+@app.route('/exportar_expedicao_filtrada', methods=['GET'])
+def exportar_expedicao_filtrada():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_nf_real = 'Número da NF-e'
+            col_cli_real = 'Cliente'
+            
+            if col_data_real in df.columns:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23, minute=59, second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+                
+            if col_nf_real in df.columns: df[col_nf_real] = df[col_nf_real].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+            if col_cli_real in df.columns and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+
+            conn = sqlite3.connect(DB_FILE)
+            df_db_entregas = pd.read_sql_query("SELECT nota_fiscal, data_entrega FROM entregas_efetuadas", conn)
+            conn.close()
+            df_db_entregas['nota_fiscal'] = df_db_entregas['nota_fiscal'].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+
+            df_exp_min = pd.DataFrame(columns=['Nota', 'Emissão', 'Transportadora'])
+            if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+                df_exp = pd.read_excel(excel_expedicao_atual)
+                col_dt_exp = 'Emissão'
+                col_nf_exp = 'Nota'
+                col_transp_exp = 'Transportadora'
+                if col_nf_exp in df_exp.columns:
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].astype(str).str.split(',')
+                    df_exp = df_exp.explode(col_nf_exp)
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].str.strip().str.replace(r'\.0\$', '', regex=True)
+                    df_exp = df_exp[df_exp[col_nf_exp] != ""]
+                if col_dt_exp in df_exp.columns:
+                    df_exp[col_dt_exp] = df_exp[col_dt_exp].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                    df_exp[col_dt_exp] = pd.to_datetime(df_exp[col_dt_exp], errors='coerce').dt.strftime('%d/%m/%Y')
+                cols_b = [col_nf_exp]
+                if col_dt_exp in df_exp.columns: cols_b.append(col_dt_exp)
+                if col_transp_exp in df_exp.columns: cols_b.append(col_transp_exp)
+                df_exp_min = df_exp[cols_b].drop_duplicates(subset=[col_nf_exp])
+
+            df = pd.merge(df, df_db_entregas, left_on=col_nf_real, right_on='nota_fiscal', how='left')
+            if not df_exp_min.empty: df = pd.merge(df, df_exp_min, left_on=col_nf_real, right_on='Nota', how='left')
+
+            status_lista, data_lista, transp_lista = [], [], []
+            for _, r in df.iterrows():
+                if pd.notna(r.get('data_entrega')) and str(r['data_entrega']).strip() != "":
+                    status_lista.append('ENTREGUE')
+                    data_lista.append(str(r['data_entrega']))
+                    transp_lista.append(str(r.get('Transportadora_x', r.get('Transportadora', '---'))))
+                elif 'Nota' in df.columns and pd.notna(r.get('Nota')):
+                    status_lista.append('EXPEDIDO')
+                    data_lista.append(str(r.get('Emissão', '---')))
+                    transp_lista.append(str(r.get('Transportadora_y', '---')))
+                else:
+                    status_lista.append('NÃO EXPEDIDO')
+                    data_lista.append('---')
+                    transp_lista.append('---')
+
+            df['STATUS EXPEDIÇÃO'] = status_lista
+            df['DATA EXPEDIDO'] = data_lista
+            df['TRANSP. EXPEDIÇÃO'] = transp_lista
+
+            if col_nf_real in df.columns and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if 'TRANSP. EXPEDIÇÃO' in df.columns and filtro_transp: df = df[df['TRANSP. EXPEDIÇÃO'].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            if busca_status: df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+            
+            if 'Nota' in df.columns: df = df.drop(columns=['Nota'])
+            if 'Emissão' in df.columns: df = df.drop(columns=['Emissão'])
+            if 'nota_fiscal' in df.columns: df = df.drop(columns=['nota_fiscal'])
+            if 'data_entrega' in df.columns: df = df.drop(columns=['data_entrega'])
+
+            arquivo_temporario = os.path.join(BASE_DIR, 'faturamento_conciliado_filtrado.xlsx')
+            df.to_excel(arquivo_temporario, index=False)
+            return send_file(arquivo_temporario, as_attachment=True, download_name='relatorio_faturamento_conciliado.xlsx')
+        except Exception as e: return f"Erro ao exportar: {str(e)}"
+    return "Erro: Planilha original não localizada."
+
+@app.route('/relatorio_expedicao', methods=['GET'])
+def relatorio_expedicao():
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    colunas, dados_lista, msg_erro = [], [], None
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23,minute=59,second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+            
+            if col_nf_real and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if col_cli_real and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+            if col_transp_real and filtro_transp: df = df[df[col_transp_real].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+                
+            df = df.fillna("")
+            colunas = df.columns.tolist()
+            dados_lista = df.to_dict(orient='records')
+        except Exception as e: msg_erro = f"Erro ao processar expedição: {str(e)}"
+    else: msg_erro = "Nenhum arquivo 'Notas_expedidas' localizado em Downloads."
+    
+    return render_template('relatorio_expedicao.html', dados=dados_lista, colunas=colunas, filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp, data_inicio=filtro_inicio, data_fim=filtro_fim, erro=msg_erro)
+
+@app.route('/exportar_expedicao_filtrada', methods=['GET'])
+def exportar_expedicao_filtrada():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23, minute=59, second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+                
+            if col_nf_real in df.columns: df[col_nf_real] = df[col_nf_real].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+            if col_cli_real in df.columns and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+
+            conn = sqlite3.connect(DB_FILE)
+            df_db_entregas = pd.read_sql_query("SELECT nota_fiscal, data_entrega FROM entregas_efetuadas", conn)
+            conn.close()
+            df_db_entregas['nota_fiscal'] = df_db_entregas['nota_fiscal'].astype(str).str.strip().str.replace(r'\.0\$', '', regex=True)
+
+            df_exp_min = pd.DataFrame(columns=['Nota', 'Emissão', 'Transportadora'])
+            if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+                df_exp = pd.read_excel(excel_expedicao_atual)
+                col_dt_exp = 'Emissão'
+                col_nf_exp = 'Nota'
+                col_transp_exp = 'Transportadora'
+                if col_nf_exp in df_exp.columns:
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].astype(str).str.split(',')
+                    df_exp = df_exp.explode(col_nf_exp)
+                    df_exp[col_nf_exp] = df_exp[col_nf_exp].str.strip().str.replace(r'\.0\$', '', regex=True)
+                    df_exp = df_exp[df_exp[col_nf_exp] != ""]
+                if col_dt_exp in df_exp.columns:
+                    df_exp[col_dt_exp] = df_exp[col_dt_exp].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                    df_exp[col_dt_exp] = pd.to_datetime(df_exp[col_dt_exp], errors='coerce').dt.strftime('%d/%m/%Y')
+                cols_b = [col_nf_exp]
+                if col_dt_exp in df_exp.columns: cols_b.append(col_dt_exp)
+                if col_transp_exp in df_exp.columns: cols_b.append(col_transp_exp)
+                df_exp_min = df_exp[cols_b].drop_duplicates(subset=[col_nf_exp])
+
+            df = pd.merge(df, df_db_entregas, left_on=col_nf_real, right_on='nota_fiscal', how='left')
+            if not df_exp_min.empty: df = pd.merge(df, df_exp_min, left_on=col_nf_real, right_on='Nota', how='left')
+
+            status_lista, data_lista, transp_lista = [], [], []
+            for _, r in df.iterrows():
+                if pd.notna(r.get('data_entrega')) and str(r['data_entrega']).strip() != "":
+                    status_lista.append('ENTREGUE')
+                    data_lista.append(str(r['data_entrega']))
+                    transp_lista.append(str(r.get('Transportadora_x', r.get('Transportadora', '---'))))
+                elif 'Nota' in df.columns and pd.notna(r.get('Nota')):
+                    status_lista.append('EXPEDIDO')
+                    data_lista.append(str(r.get('Emissão', '---')))
+                    transp_lista.append(str(r.get('Transportadora_y', '---')))
+                else:
+                    status_lista.append('NÃO EXPEDIDO')
+                    data_lista.append('---')
+                    transp_lista.append('---')
+
+            df['STATUS EXPEDIÇÃO'] = status_lista
+            df['DATA EXPEDIDO'] = data_lista
+            df['TRANSP. EXPEDIÇÃO'] = transp_lista
+
+            if col_nf_real in df.columns and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if 'TRANSP. EXPEDIÇÃO' in df.columns and filtro_transp: df = df[df['TRANSP. EXPEDIÇÃO'].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            if busca_status: df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+            
+            if 'Nota' in df.columns: df = df.drop(columns=['Nota'])
+            if 'Emissão' in df.columns: df = df.drop(columns=['Emissão'])
+            if 'nota_fiscal' in df.columns: df = df.drop(columns=['nota_fiscal'])
+            if 'data_entrega' in df.columns: df = df.drop(columns=['data_entrega'])
+
+            arquivo_temporario = os.path.join(BASE_DIR, 'faturamento_conciliado_filtrado.xlsx')
+            df.to_excel(arquivo_temporario, index=False)
+            return send_file(arquivo_temporario, as_attachment=True, download_name='relatorio_faturamento_conciliado.xlsx')
+        except Exception as e: return f"Erro ao exportar: {str(e)}"
+    return "Erro: Planilha original não localizada."
+
+@app.route('/relatorio_expedicao', methods=['GET'])
+def relatorio_expedicao():
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    colunas, dados_lista, msg_erro = [], [], None
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23,minute=59,second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+            
+            if col_nf_real and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if col_cli_real and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+            if col_transp_real and filtro_transp: df = df[df[col_transp_real].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+                
+            df = df.fillna("")
+            colunas = df.columns.tolist()
+            dados_lista = df.to_dict(orient='records')
+        except Exception as e: msg_erro = f"Erro ao processar expedição: {str(e)}"
+    else: msg_erro = "Nenhum arquivo 'Notas_expedidas' localizado em Downloads."
+    
+    return render_template('relatorio_expedicao.html', dados=dados_lista, colunas=colunas, filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp, data_inicio=filtro_inicio, data_fim=filtro_fim, erro=msg_erro)
+
+@app.route('/exportar_expedicao_filtrada', methods=['GET'])
+def exportar_expedicao_filtrada():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23, minute=59, second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+            
+            if col_nf_real and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if col_nf_real and filtro_nf: 
+                df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if 'TRANSP. EXPEDIÇÃO' in df.columns and filtro_transp: 
+                df = df[df['TRANSP. EXPEDIÇÃO'].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            if busca_status: 
+                df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+            
+            if 'Nota' in df.columns: df = df.drop(columns=['Nota'])
+            if 'Emissão' in df.columns: df = df.drop(columns=['Emissão'])
+            if 'nota_fiscal' in df.columns: df = df.drop(columns=['nota_fiscal'])
+            if 'data_entrega' in df.columns: df = df.drop(columns=['data_entrega'])
+
+            arquivo_temporario = os.path.join(BASE_DIR, 'faturamento_conciliado_filtrado.xlsx')
+            df.to_excel(arquivo_temporario, index=False)
+            return send_file(arquivo_temporario, as_attachment=True, download_name='relatorio_faturamento_conciliado.xlsx')
+        except Exception as e: return f"Erro ao exportar: {str(e)}"
+    return "Erro: Planilha original não localizada."
+
+@app.route('/relatorio_expedicao', methods=['GET'])
+def relatorio_expedicao():
+    hoje_str = datetime.now().strftime('%Y-%m-%d')
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    colunas, dados_lista, msg_erro = [], [], None
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23,minute=59,second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+            
+            if col_nf_real and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if col_cli_real and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+            if col_transp_real and filtro_transp: df = df[df[col_transp_real].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+                
+            df = df.fillna("")
+            colunas = df.columns.tolist()
+            dados_lista = df.to_dict(orient='records')
+        except Exception as e: msg_erro = f"Erro ao processar expedição: {str(e)}"
+    else: msg_erro = "Nenhum arquivo 'Notas_expedidas' localizado em Downloads."
+    
+    return render_template('relatorio_expedicao.html', dados=dados_lista, colunas=colunas, filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp, data_inicio=filtro_inicio, data_fim=filtro_fim, erro=msg_erro)
+
+@app.route('/exportar_expedicao_filtrada', methods=['GET'])
+def exportar_expedicao_filtrada():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    
+    excel_expedicao_atual = buscar_ultima_expedicao()
+    if excel_expedicao_atual and os.path.exists(excel_expedicao_atual):
+        try:
+            df = pd.read_excel(excel_expedicao_atual)
+            col_data_real = next((c for c in df.columns if 'data' in c.lower() or 'emiss' in c.lower() or 'exped' in c.lower()), None)
+            col_nf_real = next((c for c in df.columns if 'nota' in c.lower() or 'nf' in c.lower() or 'num' in c.lower()), None)
+            col_cli_real = next((c for c in df.columns if 'cliente' in c.lower() or 'raz' in c.lower() or 'dest' in c.lower()), None)
+            col_transp_real = next((c for c in df.columns if 'transp' in c.lower() or 'entreg' in c.lower() or 'motor' in c.lower()), None)
+            
+            if col_nf_real:
+                df[col_nf_real] = df[col_nf_real].astype(str).str.split(',')
+                df = df.explode(col_nf_real)
+                df[col_nf_real] = df[col_nf_real].str.strip()
+                df = df[df[col_nf_real] != ""]
+            if col_data_real:
+                df[col_data_real] = df[col_data_real].replace(r'^\s*\$', pd.NA, regex=True).ffill()
+                df[col_data_real] = pd.to_datetime(df[col_data_real], errors='coerce')
+                if not filtro_nf and not filtro_cliente and filtro_inicio and filtro_fim:
+                    df = df[(df[col_data_real] >= pd.to_datetime(filtro_inicio).normalize()) & (df[col_data_real] <= pd.to_datetime(filtro_fim).replace(hour=23, minute=59, second=59))]
+                df[col_data_real] = df[col_data_real].dt.strftime('%d/%m/%Y')
+            
+            if col_nf_real and filtro_nf: df = df[df[col_nf_real].astype(str).str.contains(filtro_nf, case=False, na=False)]
+            if col_cli_real and filtro_cliente: df = df[df[col_cli_real].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+            if col_transp_real and filtro_transp: df = df[df[col_transp_real].astype(str).str.contains(filtro_transp, case=False, na=False)]
+            
+            for col in df.columns:
+                if df[col].dtype == 'datetime64[ns]': df[col] = df[col].dt.strftime('%d/%m/%Y')
+            df = df.fillna("")
+            
+            arquivo_temporario = os.path.join(BASE_DIR, 'expedicao_filtrada.xlsx')
+            df.to_excel(arquivo_temporario, index=False)
+            return send_file(arquivo_temporario, as_attachment=True, download_name='expedicao_filtrada_custom.xlsx')
+        except Exception as e: return f"Erro ao exportar: {str(e)}"
+    return "Erro: Planilha original não localizada."
+
+if __name__ == '__main__':
+    inicializar_banco()
+    app.run(debug=True)
+
+
+
+
+
+
+

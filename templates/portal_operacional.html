@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema Logístico Integrado — Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important;
+            height: 100vh;
+            width: 100vw;
+            background-color: var(--portal-bg);
+            color: var(--portal-text);
+            font-family: var(--portal-font);
+            display: flex;
+        }
+
+        .sidebar-esquerda {
+            background: var(--portal-surface);
+            width: 56px;
+            min-width: 56px;
+            max-width: 56px;
+            height: 100vh;
+            border-right: 1px solid var(--portal-border);
+            display: flex;
+            flex-direction: column;
+            transition: width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease;
+            overflow: hidden;
+            position: relative;
+            z-index: 2000;
+        }
+
+        .sidebar-esquerda.expandida,
+        .sidebar-esquerda:hover {
+            width: 280px;
+            min-width: 280px;
+            max-width: 280px;
+        }
+
+        .sidebar-topo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--portal-border);
+            min-height: 52px;
+        }
+
+        .btn-toggle-menu {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--portal-border);
+            background: var(--portal-bg);
+            color: var(--portal-accent);
+            border-radius: 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+        .btn-toggle-menu:hover { background: var(--portal-surface-2); }
+
+        .menu-titulo-logo {
+            font-weight: 700;
+            color: var(--portal-accent);
+            white-space: nowrap;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .sidebar-esquerda.expandida .menu-titulo-logo,
+        .sidebar-esquerda:hover .menu-titulo-logo { opacity: 1; }
+
+        .busca-menu-wrap {
+            padding: 10px 14px 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+        }
+        .sidebar-esquerda.expandida .busca-menu-wrap,
+        .sidebar-esquerda:hover .busca-menu-wrap {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .busca-menu {
+            width: 100%;
+            background: var(--portal-bg);
+            border: 1px solid var(--portal-border);
+            color: var(--portal-text);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.78rem;
+        }
+        .busca-menu:focus {
+            outline: none;
+            border-color: var(--portal-accent);
+        }
+
+        .bloco-scrolling-menu {
+            display: block;
+            width: 280px;
+            min-width: 280px;
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .bloco-scrolling-menu::-webkit-scrollbar { width: 4px; }
+        .bloco-scrolling-menu::-webkit-scrollbar-thumb { background: var(--portal-border); border-radius: 4px; }
+
+        .categoria-header {
+            padding: 14px 18px 6px;
+            font-size: 0.65rem;
+            color: var(--portal-dim);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+        }
+
+        .btn-link-lateral {
+            display: flex;
+            align-items: center;
+            padding: 10px 18px;
+            color: var(--portal-muted);
+            text-decoration: none;
+            font-size: 0.78rem;
+            font-weight: 600;
+            transition: all 0.15s;
+            white-space: nowrap;
+            border-left: 3px solid transparent;
+            width: 100%;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+        .btn-link-lateral:hover {
+            background: var(--portal-surface-2);
+            color: var(--portal-accent);
+            border-left-color: var(--portal-accent);
+        }
+        .btn-link-lateral.ativo-lateral {
+            background: rgba(56, 189, 248, 0.08);
+            color: var(--portal-accent);
+            border-left-color: var(--portal-accent);
+        }
+        .btn-link-lateral.oculto-busca { display: none !important; }
+
+        .icone-menu {
+            font-size: 1rem;
+            margin-right: 14px;
+            text-align: center;
+            width: 22px;
+            min-width: 22px;
+        }
+
+        .submenu-container { background: #151f32; padding-left: 6px; }
+
+        .sidebar-rodape {
+            width: 280px;
+            background: #151f32;
+            border-top: 1px solid var(--portal-border);
+            padding-bottom: 4px;
+        }
+        .info-operador {
+            font-size: 0.68rem;
+            color: var(--portal-dim);
+            padding: 10px 18px 4px;
+            white-space: nowrap;
+        }
+
+        .corpo-conteudo-direito {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            width: calc(100vw - 56px);
+            transition: width 0.2s ease;
+        }
+
+        body.sidebar-aberta .corpo-conteudo-direito {
+            width: calc(100vw - 280px);
+        }
+
+        .faixa-horizontal-topo {
+            background: var(--portal-bg);
+            border-bottom: 1px solid var(--portal-border);
+            min-height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 18px;
+            gap: 16px;
+        }
+
+        .titulo-pagina-atual {
+            min-width: 180px;
+            max-width: 280px;
+        }
+        .titulo-pagina-atual .label-contexto {
+            font-size: 0.62rem;
+            color: var(--portal-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 700;
+        }
+        .titulo-pagina-atual .nome-pagina {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--portal-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bloco-missao-central {
+            flex: 1;
+            text-align: center;
+            color: var(--portal-muted);
+            font-size: 0.76rem;
+            position: relative;
+            min-width: 0;
+        }
+        .txt-missao-viva {
+            color: #e2e8f0;
+            font-weight: 600;
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+        .btn-micro-editar-missao {
+            background: none;
+            border: none;
+            color: var(--portal-dim);
+            font-size: 0.72rem;
+            cursor: pointer;
+            margin-left: 4px;
+            padding: 2px;
+        }
+        .btn-micro-editar-missao:hover { color: var(--portal-accent); }
+
+        .box-edicao-missao-retratil {
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            border-radius: var(--portal-radius);
+            padding: 12px;
+            position: absolute;
+            top: 34px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(360px, 90vw);
+            z-index: 2200;
+            display: none;
+            box-shadow: var(--portal-shadow);
+        }
+
+        .faixa-topo-direita {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .chip-usuario {
+            font-size: 0.72rem;
+            color: var(--portal-muted);
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            border-radius: 999px;
+            padding: 5px 12px;
+            white-space: nowrap;
+        }
+        .chip-relogio {
+            font-family: var(--portal-mono);
+            font-size: 0.72rem;
+            color: var(--portal-accent);
+        }
+
+        .iframe-wrapper {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .conteudo-dinamico-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: var(--portal-bg);
+        }
+
+        .iframe-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.85);
+            color: var(--portal-accent);
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 5;
+            transition: opacity 0.2s;
+        }
+        .iframe-loading.oculto {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar-esquerda" id="barraLateralMenu">
+        <div class="sidebar-topo">
+            <button type="button" class="btn-toggle-menu" id="btnToggleMenu" title="Fixar menu">☰</button>
+            <span class="menu-titulo-logo">ERP Logístico</span>
+        </div>
+
+        <div class="busca-menu-wrap">
+            <input type="search" class="busca-menu" id="buscaMenu" placeholder="Buscar módulo..." autocomplete="off">
+        </div>
+
+        <div class="bloco-scrolling-menu" id="listaMenu">
+            <a href="#" class="btn-link-lateral ativo-lateral" data-url="/tela_boas_vindas" data-titulo="Catálogo de Módulos" onclick="navegarLateral(this); return false;"><span class="icone-menu">🏠</span> Catálogo / Início</a>
+            <div class="categoria-header">Operacional — dia a dia</div>
+            <a href="#" class="btn-link-lateral" data-url="/devolucao" data-titulo="Devoluções e Ocorrências" onclick="navegarLateral(this); return false;"><span class="icone-menu">📝</span> Devoluções / Ocorrências</a>
+            <a href="#" class="btn-link-lateral" data-url="/formulario" data-titulo="Central Coletas FOB" onclick="navegarLateral(this); return false;"><span class="icone-menu">🚛</span> Central Coletas FOB</a>
+            <a href="#" class="btn-link-lateral" data-url="/registrar_coleta" data-titulo="Registrar Coleta Rápida" onclick="navegarLateral(this); return false;"><span class="icone-menu">➕</span> Coleta Rápida</a>
+            <a href="#" class="btn-link-lateral" data-url="/baixa_entrega_mobile" data-titulo="Baixa Manual de Entrega" onclick="navegarLateral(this); return false;"><span class="icone-menu">📥</span> Baixa Manual</a>
+            <a href="#" class="btn-link-lateral" data-url="/gestor_emails" data-titulo="Triagem de E-mails" onclick="navegarLateral(this); return false;"><span class="icone-menu">📬</span> Triagem de E-mails</a>
+            <a href="#" class="btn-link-lateral" data-url="/gerenciar_motivos" data-titulo="Gerenciar Motivos" onclick="navegarLateral(this); return false;"><span class="icone-menu">⚙️</span> Motivos de Ocorrência</a>
+            <a href="#" class="btn-link-lateral" data-url="/validar_canhoto" data-titulo="Validar Canhotos" onclick="navegarLateral(this); return false;"><span class="icone-menu">📸</span> Validar Canhotos</a>
+            <a href="#" class="btn-link-lateral" data-url="/gerador_etiquetas" data-titulo="Gerador de Etiquetas" onclick="navegarLateral(this); return false;"><span class="icone-menu">🏷️</span> Gerador de Etiquetas</a>
+
+            <div class="categoria-header">Gestão à vista</div>
+            <a href="/monitor" target="_blank" class="btn-link-lateral" data-titulo="Painel TV Rotativo"><span class="icone-menu">🚀</span> Painel TV (nova aba)</a>
+            <a href="#" class="btn-link-lateral" data-url="/torre_controle" data-titulo="Torre de Controle" onclick="navegarLateral(this); return false;"><span class="icone-menu">🗼</span> Torre de Controle</a>
+            <a href="#" class="btn-link-lateral" data-url="/painel_indicadores" data-titulo="Indicadores Rotativos" onclick="navegarLateral(this); return false;"><span class="icone-menu">📊</span> Indicadores Rotativos</a>
+            <a href="#" class="btn-link-lateral" data-url="/auditoria_torre" data-titulo="Auditoria de Frota" onclick="navegarLateral(this); return false;"><span class="icone-menu">🕵️</span> Auditoria de Frota</a>
+            <a href="#" class="btn-link-lateral text-info" data-titulo="Renderizador TV" onclick="acionarRenderizador(); return false;"><span class="icone-menu">🖥️</span> Renderizador TV</a>
+
+            <div class="categoria-header">Relatórios e bases</div>
+            <div class="submenu-container">
+                <a href="#" class="btn-link-lateral" data-url="/relatorio" data-titulo="Base Coletas FOB" onclick="navegarLateral(this); return false;"><span class="icone-menu">🗃️</span> Base Coletas FOB</a>
+                <a href="#" class="btn-link-lateral" data-url="/relatorio_coletas" data-titulo="Coletas Pendentes" onclick="navegarLateral(this); return false;"><span class="icone-menu">🚚</span> Coletas Pendentes</a>
+                <a href="#" class="btn-link-lateral" data-url="/relatorio_faturamento" data-titulo="Faturamento Conciliado" onclick="navegarLateral(this); return false;"><span class="icone-menu">💸</span> Faturamento Conciliado</a>
+                <a href="#" class="btn-link-lateral" data-url="/custos_pessoais" data-titulo="Custos Pessoais" onclick="navegarLateral(this); return false;"><span class="icone-menu">R$</span> Custos Pessoais</a>
+                <a href="#" class="btn-link-lateral" data-url="/relatorio_expedicao" data-titulo="Notas Expedidas" onclick="navegarLateral(this); return false;"><span class="icone-menu">📦</span> Notas Expedidas</a>
+                <a href="#" class="btn-link-lateral" data-url="/canhotos_assinados" data-titulo="Canhotos Assinados" onclick="navegarLateral(this); return false;"><span class="icone-menu">📝</span> Canhotos WhatsApp</a>
+                <a href="#" class="btn-link-lateral" data-url="/relatorio_transportadoras" data-titulo="Lista de Transportadoras" onclick="navegarLateral(this); return false;"><span class="icone-menu">📋</span> Lista Transportadoras</a>
+            </div>
+
+            <div class="categoria-header">Roteirizador</div>
+            <div class="submenu-container">
+                <a href="#" class="btn-link-lateral" data-url="/roteirizador" data-titulo="Roteirizador — Início" onclick="navegarLateral(this); return false;"><span class="icone-menu">🗺️</span> Início</a>
+                <a href="#" class="btn-link-lateral" data-url="/roteirizador/cadastro" data-titulo="Cadastro de Rotas" onclick="navegarLateral(this); return false;"><span class="icone-menu">📋</span> Cadastro de rotas</a>
+                <a href="#" class="btn-link-lateral" data-url="/roteirizador/auditoria" data-titulo="Auditoria de Faixas CEP" onclick="navegarLateral(this); return false;"><span class="icone-menu">🔍</span> Auditoria faixas</a>
+                <a href="#" class="btn-link-lateral" data-url="/roteirizador/montagem" data-titulo="Montagem da Saída" onclick="navegarLateral(this); return false;"><span class="icone-menu">🚚</span> Montagem da saída</a>
+            </div>
+
+            <div class="categoria-header">Cadastros</div>
+            <a href="#" class="btn-link-lateral" data-url="/gerenciar_transportadoras" data-titulo="Transportadoras" onclick="navegarLateral(this); return false;"><span class="icone-menu">🚛</span> Transportadoras</a>
+            <a href="#" class="btn-link-lateral" data-url="/manual" data-titulo="Manual do Usuário" onclick="navegarLateral(this); return false;"><span class="icone-menu">📖</span> Manual do Usuário</a>
+            <a href="#" id="itemMenuAdmin" class="btn-link-lateral text-warning" style="display: none;" data-url="/gerenciar_usuarios" data-titulo="Configurações de Acesso" onclick="navegarLateral(this); return false;"><span class="icone-menu">🔐</span> Acessos e Usuários</a>
+        </div>
+
+        <div class="sidebar-rodape">
+            <div class="info-operador">Operador: <strong class="text-info">{{ session.get('usuario_nome', 'Operador') }}</strong></div>
+            <a href="/logout" class="btn-link-lateral text-danger"><span class="icone-menu">🔒</span> Encerrar sessão</a>
+        </div>
+    </aside>
+
+    <div class="corpo-conteudo-direito" id="painelConteudoDireito">
+        <header class="faixa-horizontal-topo">
+            <div class="titulo-pagina-atual">
+                <div class="label-contexto">Módulo ativo</div>
+                <div class="nome-pagina" id="tituloPaginaAtual">Início</div>
+            </div>
+
+            <div class="bloco-missao-central">
+                📢 <span class="txt-missao-viva" id="txtMissaoExibida">Carregando missão...</span>
+                <button type="button" class="btn-micro-editar-missao" onclick="abrirCaixaMissao()" title="Editar missão">✏️</button>
+                <div class="box-edicao-missao-retratil" id="boxRetratilMissao">
+                    <label class="form-label d-block text-start portal-label">Editar missão</label>
+                    <textarea id="inputNovaMissao" class="form-control w-100 portal-input" rows="2"></textarea>
+                    <div class="text-end mt-2 d-flex gap-2 justify-content-end">
+                        <button type="button" class="portal-btn portal-btn-secondary btn-sm" onclick="fecharCaixaMissao()">Cancelar</button>
+                        <button type="button" class="portal-btn portal-btn-success btn-sm" onclick="salvarNovaMissao()">Salvar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="faixa-topo-direita">
+                <span class="chip-relogio" id="chipRelogio">--:--</span>
+                <span class="chip-usuario">{{ session.get('usuario_nivel', 'SAC') }}</span>
+            </div>
+        </header>
+
+        <div class="iframe-wrapper">
+            <div class="iframe-loading" id="iframeLoading">Carregando módulo...</div>
+            <iframe id="espelhoTelasLogistica" class="conteudo-dinamico-iframe" title="Conteúdo operacional"></iframe>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const USER_NIVEL = "{{ session.get('usuario_nivel', 'SAC') }}";
+        const menu = document.getElementById('barraLateralMenu');
+        const iframe = document.getElementById('espelhoTelasLogistica');
+        const loadingEl = document.getElementById('iframeLoading');
+        const tituloPagina = document.getElementById('tituloPaginaAtual');
+        const STORAGE_ROTA = 'portal_ultima_rota';
+        const STORAGE_MENU_FIXO = 'portal_menu_fixo';
+        let menuFixo = localStorage.getItem(STORAGE_MENU_FIXO) === '1';
+
+        if (USER_NIVEL === 'ADMIN' || USER_NIVEL === 'DIRETOR') {
+            const itemAdmin = document.getElementById('itemMenuAdmin');
+            if (itemAdmin) itemAdmin.style.display = 'flex';
+        }
+
+        function aplicarEstadoMenu() {
+            document.body.classList.toggle('sidebar-aberta', menuFixo || menu.matches(':hover'));
+            menu.classList.toggle('expandida', menuFixo);
+            document.getElementById('btnToggleMenu').textContent = menuFixo ? '◀' : '☰';
+            document.getElementById('btnToggleMenu').title = menuFixo ? 'Recolher menu' : 'Fixar menu aberto';
+        }
+
+        document.getElementById('btnToggleMenu').addEventListener('click', () => {
+            menuFixo = !menuFixo;
+            localStorage.setItem(STORAGE_MENU_FIXO, menuFixo ? '1' : '0');
+            aplicarEstadoMenu();
+        });
+
+        menu.addEventListener('mouseenter', aplicarEstadoMenu);
+        menu.addEventListener('mouseleave', () => {
+            if (!menuFixo) document.body.classList.remove('sidebar-aberta');
+        });
+
+        function mostrarLoading(ativo) {
+            loadingEl.classList.toggle('oculto', !ativo);
+        }
+
+        function atualizarTitulo(texto) {
+            tituloPagina.textContent = texto || 'Início';
+        }
+
+        function marcarItemAtivo(elemento) {
+            document.querySelectorAll('.btn-link-lateral').forEach(el => el.classList.remove('ativo-lateral'));
+            if (elemento) elemento.classList.add('ativo-lateral');
+        }
+
+        function encontrarItemPorUrl(url) {
+            const path = url.split('?')[0];
+            return document.querySelector(`.btn-link-lateral[data-url="${path}"]`);
+        }
+
+        function navegarLateral(elemento, urlForcada) {
+            const urlBase = urlForcada || (elemento && elemento.dataset.url);
+            if (!urlBase) return;
+
+            const timestamp = Date.now();
+            const urlTratada = urlBase.includes('?') ? `${urlBase}&v=${timestamp}` : `${urlBase}?v=${timestamp}`;
+            const titulo = (elemento && elemento.dataset.titulo) || 'Módulo';
+
+            mostrarLoading(true);
+            iframe.src = urlTratada;
+            marcarItemAtivo(elemento || encontrarItemPorUrl(urlBase));
+            atualizarTitulo(titulo);
+            localStorage.setItem(STORAGE_ROTA, JSON.stringify({ url: urlBase, titulo }));
+        }
+
+        window.navegarPorUrl = function(url, titulo) {
+            const item = encontrarItemPorUrl(url);
+            navegarLateral(item, url);
+            if (titulo) atualizarTitulo(titulo);
+        };
+
+        iframe.addEventListener('load', () => mostrarLoading(false));
+
+        document.getElementById('buscaMenu').addEventListener('input', function() {
+            const termo = this.value.trim().toLowerCase();
+            document.querySelectorAll('#listaMenu .btn-link-lateral[data-url]').forEach(link => {
+                const texto = link.textContent.toLowerCase();
+                link.classList.toggle('oculto-busca', termo.length > 0 && !texto.includes(termo));
+            });
+        });
+
+        function acionarRenderizador() {
+            if (confirm('Deseja abrir o gerenciador de telas TV no servidor?')) {
+                fetch('/api/abrir_gerenciador_monitor', { method: 'POST' })
+                    .then(r => r.json())
+                    .then(res => alert(res.mensagem));
+            }
+        }
+
+        function carregarMissaoPainel() {
+            fetch('/api/obter_missao')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('txtMissaoExibida').innerText = data.missao;
+                    document.getElementById('inputNovaMissao').value = data.missao;
+                });
+        }
+
+        function abrirCaixaMissao() {
+            if (USER_NIVEL !== 'ADMIN' && USER_NIVEL !== 'DIRETOR') {
+                alert('Apenas administradores podem editar a missão.');
+                return;
+            }
+            document.getElementById('boxRetratilMissao').style.display = 'block';
+        }
+
+        function fecharCaixaMissao() {
+            document.getElementById('boxRetratilMissao').style.display = 'none';
+        }
+
+        function salvarNovaMissao() {
+            const novaFrase = document.getElementById('inputNovaMissao').value;
+            fetch('/api/salvar_missao', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ missao: novaFrase })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.status === 'sucesso') {
+                    fecharCaixaMissao();
+                    carregarMissaoPainel();
+                } else {
+                    alert(res.mensagem || 'Não foi possível salvar.');
+                }
+            });
+        }
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            document.getElementById('chipRelogio').textContent = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        aplicarEstadoMenu();
+        carregarMissaoPainel();
+        atualizarRelogio();
+        setInterval(atualizarRelogio, 30000);
+
+        const rotaSalva = localStorage.getItem(STORAGE_ROTA);
+        if (rotaSalva) {
+            try {
+                const dados = JSON.parse(rotaSalva);
+                navegarPorUrl(dados.url, dados.titulo);
+            } catch (e) {
+                navegarPorUrl('/tela_boas_vindas', 'Início');
+            }
+        } else {
+            navegarPorUrl('/tela_boas_vindas', 'Catálogo de Módulos');
+        }
+    </script>
+</body>
+</html>

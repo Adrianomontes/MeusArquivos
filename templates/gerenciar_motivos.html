@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>⚙️ Gerenciador de Motivos de Ocorrência</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin: 0; font-size: 22px; text-transform: uppercase; }
+        .card-form { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-label { color: #38bdf8; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        .form-control { background-color: #0f172a; border: 1px solid #475569; color: #fff; font-size: 12px; }
+        .form-control:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        
+        .btn-salvar { background: #10b981; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-salvar:hover { background: #059669; }
+        .btn-cancelar { background: #64748b; color: white; border: none; font-weight: bold; font-size: 12px; padding: 6px 15px; border-radius: 6px; display: none; cursor: pointer; }
+        
+        .tabela-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 12px; }
+        th { background-color: #0f172a; color: #38bdf8; font-weight: bold; }
+        tr:hover { background-color: #243249; }
+        
+        .btn-editar-grid { background: #3b82f6; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-editar-grid:hover { background: #2563eb; }
+        .btn-excluir-grid { background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+        .btn-excluir-grid:hover { background: #dc2626; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3">
+            <h1>⚙️ CADASTRO E GERENCIAMENTO DE MOTIVOS</h1>
+        </div>
+
+        <!-- FORMULÁRIO DE CADASTRO / EDIÇÃO -->
+        <div class="card-form">
+            <form id="formMotivo" class="row g-3 align-items-end">
+                <input type="hidden" id="id_motivo" value="">
+                
+                <div class="col-md-8">
+                    <label class="form-label">📝 DESCRIÇÃO DO MOTIVO DA OCORRÊNCIA (EX: 01 - MERCADORIA AVARIADA):</label>
+                    <input type="text" id="descricao_motivo" class="form-control fw-bold text-info" required placeholder="Digite o código e a descrição do motivo">
+                </div>
+                
+                <div class="col-md-4 text-end">
+                    <button type="button" id="btnCancelarEdicao" class="btn-cancelar me-2" onclick="resetarFormulario()">❌ Cancelar</button>
+                    <button type="submit" id="btnAcaoForm" class="btn-salvar">💾 Salvar Motivo</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- GRID DE DADOS NATIVO -->
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">ID INTERNO</th>
+                        <th style="width: 70%;">MOTIVO DIRETRIZ CORPORATIVA</th>
+                        <th style="width: 20%; text-align: center;">AÇÕES OPERACIONAIS</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoGridMotivos">
+                    <!-- Preenchido dinamicamente via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Carrega o Grid assim que a tela abre
+        document.addEventListener("DOMContentLoaded", carregarGridMotivos);
+
+        function carregarGridMotivos() {
+            fetch('/api/obter_motivos_gerenciador')
+                .then(r => r.json())
+                .then(dados => {
+                    const tbody = document.getElementById('corpoGridMotivos');
+                    tbody.innerHTML = "";
+
+                    if (dados.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-4">⚠️ Nenhum motivo cadastrado no banco de dados.</td></tr>`;
+                        return;
+                    }
+
+                    dados.forEach(item => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="text-muted"># ${item.id}</td>
+                                <td class="fw-bold text-white">${item.motivo}</td>
+                                <td style="text-align: center;">
+                                    <button type="button" class="btn-editar-grid" onclick='prepararEdicao(${JSON.stringify(item)})'>✏️ Editar</button>
+                                    <button type="button" class="btn-excluir-grid" onclick="excluirMotivo(${item.id}, '${item.motivo}')">❌ Remover</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                })
+                .catch(err => console.error("Erro ao carregar grid:", err));
+        }
+
+        document.getElementById('formMotivo').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const payload = {
+                id: document.getElementById('id_motivo').value,
+                motivo: document.getElementById('descricao_motivo').value
+            };
+
+            fetch('/api/salvar_motivo_gerenciador', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if (res.status === "sucesso") {
+                    resetarFormulario();
+                    carregarGridMotivos();
+                }
+            })
+            .catch(err => alert("Erro ao salvar: " + err));
+        });
+
+        function prepararEdicao(item) {
+            document.getElementById('id_motivo').value = item.id;
+            document.getElementById('descricao_motivo').value = item.motivo;
+
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#eab308";
+            btn.innerHTML = "🔄 Atualizar Motivo";
+            document.getElementById('btnCancelarEdicao').style.display = "inline-block";
+        }
+
+        function excluirMotivo(id, nome) {
+            if (!confirm(`🚨 EXCLUSÃO DE DIRETRIZ:\n\nDeseja realmente remover o motivo:\n"${nome}"?\n\nEsta ação atualizará as listas suspensas do sistema imediatamente.`)) {
+                return;
+            }
+
+            fetch('/api/excluir_motivo_gerenciador', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if (res.status === "sucesso") {
+                    resetarFormulario();
+                    carregarGridMotivos();
+                }
+            })
+            .catch(err => alert("Erro ao excluir: " + err));
+        }
+
+        function resetarFormulario() {
+            document.getElementById('id_motivo').value = "";
+            document.getElementById('formMotivo').reset();
+
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#10b981";
+            btn.innerHTML = "💾 Salvar Motivo";
+            document.getElementById('btnCancelarEdicao').style.display = "none";
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

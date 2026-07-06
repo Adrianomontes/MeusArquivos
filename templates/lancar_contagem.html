@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Pátio - Inventário Cíclico por Lote</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; padding: 15px; color: #0f172a; font-size: 11px; }
+        .card-mestre { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 1600px; margin: 0 auto; }
+        .header-modulo { border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; margin-bottom: 15px; }
+        .secao-cadastro { background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 15px; margin-bottom: 20px; }
+        .input-logistico { background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; font-weight: 600; font-size: 11px; }
+        .nav-tabs .nav-link { font-weight: bold; color: #64748b; border: 2px solid transparent; border-radius: 8px 8px 0 0; margin-right: 4px; padding: 8px 12px; font-size: 11px; }
+        .nav-tabs .nav-link.active { color: #2563eb; background-color: #ffffff; border-color: #cbd5e1 #cbd5e1 transparent; }
+        .table-inventario th { background-color: #1e293b; color: white; text-align: center; font-size: 10px; padding: 8px; text-transform: uppercase; }
+        .table-inventario td { text-align: center; font-size: 9.5px; font-weight: 600; padding: 6px; vertical-align: middle; }
+        .input-contagem { max-width: 80px; text-align: center; font-weight: 700; border: 2px solid #2563eb; border-radius: 6px; background-color: #eff6ff; font-size: 10.5px; padding: 4px; }
+        .input-lote { max-width: 110px; text-align: center; font-weight: 600; border: 2px solid #64748b; border-radius: 6px; font-size: 10px; padding: 4px; text-transform: uppercase; }
+        .btn-acao { font-weight: bold; padding: 8px 14px; border-radius: 6px; font-size: 11px; }
+        .btn-salvar { background-color: #059669; color: white; border: none; }
+        .btn-limpar { background-color: #94a3b8; color: white; border: none; }
+        .btn-imprimir { background-color: #0284c7; color: white; border: none; }
+        .btn-ciclo { background-color: #ea580c; color: white; border: none; }
+        .btn-add-lote { background-color: #2563eb; color: white; border: none; font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+        .btn-remover-lote { background-color: #ef4444; color: white; border: none; font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+        .linha-selecionada { background-color: #f0f9ff !important; }
+        .linha-clonada { background-color: #f8fafc !important; }
+        .linha-somatorio { background-color: #e2e8f0 !important; font-weight: bold; color: #1e293b; }
+        .visto-verde { color: #10b981; font-size: 14px; font-weight: bold; }
+        .card-progresso { background: #ffffff; border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px 15px; display: flex; align-items: center; gap: 15px; }
+        .barra-progresso-container { background-color: #e2e8f0; border-radius: 10px; width: 120px; height: 10px; overflow: hidden; }
+        .barra-progresso-preenchimento { background-color: #10b981; height: 100%; width: 0%; transition: width 0.4s; }
+
+        @media print {
+            .secao-cadastro, .nav-tabs, .btn-add-lote, .btn-remover-lote, #filtroCodigo, #filtroDesc, .btn-imprimir, .card-progresso, th:nth-child(1), td:nth-child(1), th:nth-child(2), td:nth-child(2), th:nth-child(7), td:nth-child(7), th:nth-child(8), td:nth-child(8), th:nth-child(9), td:nth-child(9), th:nth-child(10), td:nth-child(10) { display: none !important; }
+            .table-inventario th { background-color: #000000 !important; color: white !important; }
+            .table-inventario td { border: 1px solid #000000 !important; height: 32px; }
+            .input-contagem, .input-lote { border: none !important; background: transparent !important; color: transparent !important; }
+            .linha-somatorio { display: none !important; }
+            .table-inventario tbody tr:not(.linha-para-impressao) { display: none !important; }
+        }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="card-mestre">
+        <div class="header-modulo d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <a href="#" style="text-decoration: none; font-weight: bold; color: #0284c7; font-size: 10px;" onclick="window.location.href = window.location.origin + '/'; return false;">← Voltar ao Menu Principal</a>
+                <h1 class="m-0 mt-1" style="font-size: 18px; font-weight: 700;">🔄 Gestão de Inventário Cíclico por Lote</h1>
+            </div>
+            <div class="card-progresso">
+                <div>
+                    <span class="text-secondary fw-bold" style="font-size: 10px; text-transform: uppercase;">Progresso do Ciclo:</span>
+                    <div class="fw-bold text-dark" style="font-size: 13px;" id="textoContagemProgresso">0 / 0 Concluídos (0%)</div>
+                </div>
+                <div class="barra-progresso-container">
+                    <div class="barra-progresso-preenchimento" id="barraProgressoPreenchimento"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="card text-white border-danger shadow-sm" style="background-color: #1e293b; border-left: 5px solid #ef4444 !important;">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-danger fw-bold mb-0" style="font-size: 11px;">CURVA A (Alto Giro)</h6>
+                            <small class="text-secondary fw-bold">Itens Concluídos no Pátio</small>
+                        </div>
+                        <h3 id="cardCurvaA" class="fw-bold mb-0 text-white" style="font-size: 18px;">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white border-warning shadow-sm" style="background-color: #1e293b; border-left: 5px solid #eab308 !important;">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-warning fw-bold mb-0" style="font-size: 11px;">CURVA B (Giro Médio)</h6>
+                            <small class="text-secondary fw-bold">Itens Concluídos no Pátio</small>
+                        </div>
+                        <h3 id="cardCurvaB" class="fw-bold mb-0 text-white" style="font-size: 18px;">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white border-success shadow-sm" style="background-color: #1e293b; border-left: 5px solid #22c55e !important;">
+                    <div class="card-body p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-success fw-bold mb-0" style="font-size: 11px;">CURVA C (Baixo Giro)</h6>
+                            <small class="text-secondary fw-bold">Itens Concluídos no Pátio</small>
+                        </div>
+                        <h3 id="cardCurvaC" class="fw-bold mb-0 text-white" style="font-size: 18px;">-</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="secao-cadastro">
+            <div class="row g-2">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-secondary mb-1">🗓️ Data do Inventário:</label>
+                    <input type="date" id="dataContagem" class="form-control input-logistico" value="2026-06-16" onchange="carregarDadosModulo()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-secondary mb-1">👤 Responsável pela Contagem:</label>
+                    <input type="text" id="nomeContador" class="form-control input-logistico" placeholder="Nome do auditor...">
+                </div>
+                <div class="col-md-7 d-flex align-items-end gap-2 justify-content-end flex-wrap">
+                    <button class="btn btn-imprimir btn-acao shadow-sm px-3" onclick="imprimirListaDeTrabalhoCega()">🖨️ Imprimir Selecionados</button>
+                    <button class="btn btn-ciclo btn-acao shadow-sm" onclick="resetarCicloVistos()">🔄 Resetar Ciclo de Inventário</button>
+                    <button class="btn btn-limpar btn-acao shadow-sm" onclick="limparRegistrosGrade()">🗑️ Limpar Tela</button>
+                    <button class="btn btn-salvar btn-acao shadow-sm px-4" onclick="salvarInventarioCiclico()">💾 Salvar Registro Geral</button>
+                </div>
+            </div>
+        </div>
+
+        <ul class="nav nav-tabs mb-3" id="abasInventario" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="aba-busca-tab" data-bs-toggle="tab" data-bs-target="#aba-busca" type="button" role="tab" onclick="mudarAba('busca')">🔎 1. Separar Itens e Criar Lotes (Folha de Coleta)</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="aba-lancamento-tab" data-bs-toggle="tab" data-bs-target="#aba-lancamento" type="button" role="tab" onclick="mudarAba('lancamento')">📋 2. Tela de Lançamento (Registros Efetuados)</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="conteudoAbas">
+            <div class="tab-pane fade show active" id="aba-busca" role="tabpanel">
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3">
+                        <input type="text" id="filtroCodigo" class="form-control input-logistico" placeholder="🔎 Filtrar por Código..." oninput="filtrarGradeItens()">
+                    </div>
+                    <div class="col-md-9">
+                        <input type="text" id="filtroDesc" class="form-control input-logistico" placeholder="🔎 Filtrar por Descrição..." oninput="filtrarGradeItens()">
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="aba-lancamento" role="tabpanel">
+                <p class="text-primary fw-bold mb-2 small">💡 Esta tela exibe apenas os materiais com lançamentos ativos ou separados. Insira o valor "0" se não houver estoque físico.</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover align-middle table-inventario">
+                <thead>
+                    <tr>
+                        <th style="width: 4%;">Separar</th>
+                        <th style="width: 4%;">Impresso</th>
+                        <th style="width: 12%;">Código do Item</th>
+                        <th style="text-align: left; width: 32%;">Descrição Mestre do Material</th>
+                        <th style="width: 10%; background-color: #2563eb; color: white;">Qtd Contada</th>
+                        <th style="width: 12%; background-color: #475569; color: white;">Lote / Partição</th>
+                        <th style="width: 5%;">Add</th>
+                        <th style="width: 5%;">Exc</th>
+                        <th style="width: 8%;">Giro</th>
+                        <th style="width: 8%;">Saldo Ant</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaInventario">
+                    <tr><td colspan="10" class="text-muted text-center py-3">Buscando base de dados logísticos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let listaMaterMaterialsMestre = [];
+let linhasExibidasAtuais = [];
+let abaAtiva = "busca";
+
+window.onload = function() {
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('dataContagem').value = hoje;
+    carregarDadosModulo();
+    atualizarCardsResumoCurvas();
+};
+
+function atualizarCardsResumoCurvas() {
+    fetch('/api/logistica/resumo_curvas_inventario')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cardCurvaA').innerText = (data.A || 0) + " ITENS";
+            document.getElementById('cardCurvaB').innerText = (data.B || 0) + " ITENS";
+            document.getElementById('cardCurvaC').innerText = (data.C || 0) + " ITENS";
+        })
+        .catch(err => {
+            console.error("Erro ao carregar cards de curva:", err);
+        });
+}
+
+function carregarDadosModulo() {
+    const dataI = document.getElementById('dataContagem').value;
+    let vistosMemoria = JSON.parse(localStorage.getItem('vistos_ciclo_adriano') || '{}');
+
+    fetch(`/api/logistica/curva_abc?mes=2026-05&data_inventario=${dataI}`)
+        .then(r => r.json())
+        .then(dados => {
+            let baseTrabalho = [];
+            let nomeResponsavelDetectado = "";
+
+            if (!dados || dados.length === 0) {
+                document.getElementById('corpoTabelaInventario').innerHTML = `<tr><td colspan="10" class="text-muted py-3">Nenhum item faturado localizado no banco SQLite.</td></tr>`;
+                return;
+            }
+
+            dados.forEach(item => {
+                let temVistoPermanente = vistosMemoria[item.codigo_item] === true;
+                let v_segura = item.vendas || 0;
+                let s_seguro = item.saldo_sistema || 0;
+
+                if (item.lancamentos_historicos && item.lancamentos_historicos.length > 0) {
+                    item.lancamentos_historicos.forEach((lanc, idx) => {
+                        if (!nomeResponsavelDetectado) nomeResponsavelDetectado = lanc.responsavel;
+                        baseTrabalho.push({
+                            id_unico: generarIdAleatorio(),
+                            codigo_item: item.codigo_item,
+                            descricao: item.descricao,
+                            vendas: v_segura,
+                            saldo_sistema: s_seguro,
+                            selecionado: true,
+                            quantidade_contada: lanc.quantidade_real.toString(),
+                            lote: lanc.lote === "GERAL" ? "" : lanc.lote,
+                            eh_clone: idx > 0,
+                            impresso: true
+                        });
+                    });
+                } else {
+                    baseTrabalho.push({
+                        id_unico: generarIdAleatorio(),
+                        codigo_item: item.codigo_item,
+                        descricao: item.descricao,
+                        vendas: v_segura,
+                        saldo_sistema: s_seguro,
+                        selecionado: false,
+                        quantidade_contada: "",
+                        lote: "",
+                        eh_clone: false,
+                        impresso: temVistoPermanente
+                    });
+                }
+            });
+
+            if (nomeResponsavelDetectado) {
+                document.getElementById('nomeContador').value = nomeResponsavelDetectado;
+            }
+
+            listaMaterMaterialsMestre = baseTrabalho;
+            linhasExibidasAtuais = listaMaterMaterialsMestre.map(i => ({ ...i }));
+            
+            abaAtiva = "busca";
+            executarProcessamentoGrade();
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('corpoTabelaInventario').innerHTML = `<tr><td colspan="10" class="text-muted py-3">Aguardando resposta do servidor...</td></tr>`;
+        });
+}
+
+function generarIdAleatorio() {
+    return Math.random().toString(36).substring(2, 9).toUpperCase();
+}
+
+function mudarAba(aba) {
+    abaAtiva = aba;
+    executarProcessamentoGrade();
+}
+
+function atualizarCampoMemoria(idUnico, valor) {
+    const item = linhasExibidasAtuais.find(i => i.id_unico === idUnico);
+    if (item) {
+        item.quantidade_contada = valor;
+        item.selecionado = (valor.trim() !== "");
+    }
+}
+
+function atualizarLoteMemoria(idUnico, valor) {
+    const item = lines => linhasExibidasAtuais.find(i => i.id_unico === idUnico);
+    const target = linhasExibidasAtuais.find(i => i.id_unico === idUnico);
+    if (target) {
+        target.lote = valor;
+        if (valor.trim() !== "") target.selecionado = true;
+    }
+}
+
+function recalcularCardProgressoLogistico() {
+    const txtProgresso = document.getElementById('textoContagemProgresso');
+    const barProgresso = document.getElementById('barraProgressoPreenchimento');
+    if (!txtProgresso || !barProgresso) return;
+
+    const totalItensMestre = linhasExibidasAtuais.filter(i => !i.eh_clone).length;
+    if (totalItensMestre === 0) {
+        txtProgresso.innerText = "0 / 0 Concluídos (0%)";
+        barProgresso.style.width = "0%";
+        return;
+    }
+
+    const codigosComVisto = new Set();
+    linhasExibidasAtuais.forEach(item => {
+        if (item.impresso === true) {
+            codigosComVisto.add(item.codigo_item);
+        }
+    });
+    
+    const concluidosCiclo = codigosComVisto.size;
+    const percentual = Math.round((concluidosCiclo / totalItensMestre) * 100);
+    
+    txtProgresso.innerText = `${concluidosCiclo} / ${totalItensMestre} Concluídos (${percentual}%)`;
+    barProgresso.style.width = `${percentual}%`;
+}
+
+function executarProcessamentoGrade() {
+    const tbody = document.getElementById('corpoTabelaInventario');
+    if (!tbody) return;
+    
+    tbody.innerHTML = "";
+    let listaFiltradaVisual = [];
+
+    if (abaAtiva === "busca") {
+        const cod = document.getElementById('filtroCodigo').value.trim().toLowerCase();
+        const desc = document.getElementById('filtroDesc').value.trim().toUpperCase();
+        listaFiltradaVisual = linhasExibidasAtuais.filter(item => {
+            return item.codigo_item.toLowerCase().includes(cod) && item.descricao.toUpperCase().includes(desc);
+        });
+    } else {
+        listaFiltradaVisual = linhasExibidasAtuais.filter(item => {
+            return item.selecionado === true || item.quantidade_contada.trim() !== "";
+        });
+    }
+
+    if (listaFiltradaVisual.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-muted py-3">Nenhum registro localizado para os filtros ativos.</td></tr>`;
+        recalcularCardProgressoLogistico();
+        return;
+    }
+
+    listaFiltradaVisual.forEach((item) => {
+        const tr = document.createElement('tr');
+        if (item.selecionado) tr.classList.add('linha-selecionada');
+        if (item.eh_clone) tr.classList.add('linha-clonada');
+        if (item.selecionado) tr.classList.add('linha-para-impressao');
+
+        let v_num = Number(item.vendas) || 0;
+        let s_num = Number(item.saldo_sistema) || 0;
+
+        tr.innerHTML = `
+            <td>
+                <input type="checkbox" class="form-check-input" style="transform: scale(1.1);" ${item.selecionado ? 'checked' : ''} onchange="alternarCheckUnico('${item.id_unico}')">
+            </td>
+            <td>
+                <span class="visto-verde">${item.impresso ? '✔️' : ''}</span>
+            </td>
+            <td><span class="badge bg-dark font-monospace badge-codigo">${item.codigo_item}</span></td>
+            <td style="text-align: left;" class="text-uppercase">${item.descricao}</td>
+            <td>
+                <input type="text" class="form-control input-contagem mx-auto" value="${item.quantidade_contada}" placeholder="-" oninput="atualizarCampoMemoria('${item.id_unico}', this.value)">
+            </td>
+            <td>
+                <input type="text" class="form-control input-lote mx-auto" value="${item.lote}" placeholder="GERAL" oninput="atualizarLoteMemoria('${item.id_unico}', this.value)">
+            </td>
+            <td>
+                <button class="btn-add-lote" onclick="adicionarNovaLinhaLote('${item.id_unico}', '${item.codigo_item}')">＋</button>
+            </td>
+            <td>
+                <button class="btn-remover-lote" onclick="removerLinhaRegistro('${item.id_unico}', ${item.eh_clone}, '${item.codigo_item}')">🗑️</button>
+            </td>
+            <td class="text-muted font-monospace">${v_num.toLocaleString('pt-BR')}</td>
+            <td class="text-secondary font-monospace">${s_num.toLocaleString('pt-BR')}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    recalcularCardProgressoLogistico();
+}
+
+function alternarCheckUnico(idUnico) {
+    const item = linhasExibidasAtuais.find(i => i.id_unico === idUnico);
+    if (item) {
+        item.selecionado = !item.selecionado;
+    }
+    executarProcessamentoGrade();
+}
+
+function adicionarNovaLinhaLote(idUnicoPai, codigoItem) {
+    const original = linhasExibidasAtuais.find(i => i.id_unico === idUnicoPai);
+    if (!original) return;
+
+    const novoLoteClone = {
+        id_unico: generarIdAleatorio(),
+        codigo_item: original.codigo_item,
+        descricao: original.descricao,
+        vendas: original.vendas,
+        saldo_sistema: original.saldo_sistema,
+        selecionado: true,
+        quantidade_contada: "",
+        lote: "",
+        eh_clone: true,
+        impresso: original.impresso
+    };
+
+    const index = linhasExibidasAtuais.findIndex(i => i.id_unico === idUnicoPai);
+    linhasExibidasAtuais.splice(index + 1, 0, novoLoteClone);
+    executarProcessamentoGrade();
+}
+
+function removerLinhaRegistro(idUnico, ehClone, codigoItem) {
+    if (ehClone) {
+        linhasExibidasAtuais = linhasExibidasAtuais.filter(i => i.id_unico !== idUnico);
+    } else {
+        if (confirm(`Deseja remover o material [${codigoItem}] desta sessão?`)) {
+            linhasExibidasAtuais = linhasExibidasAtuais.filter(i => i.codigo_item !== codigoItem);
+        } else {
+            return;
+        }
+    }
+    executarProcessamentoGrade();
+}
+
+function filtrarGradeItens() {
+    if (abaAtiva === "busca") {
+        executarProcessamentoGrade();
+    }
+}
+
+function limparRegistrosGrade() {
+    if (confirm("⚠️ Deseja limpar a tela atual?")) {
+        window.location.reload();
+    }
+}
+
+function imprimirListaDeTrabalhoCega() {
+    const itensParaImprimir = linhasExibidasAtuais.filter(i => i.selecionado);
+    if (itensParaImprimir.length === 0) {
+        alert("⚠️ Marque a coluna 'Separar' dos itens que vai imprimir!");
+        return;
+    }
+    
+    let vistosMemoria = JSON.parse(localStorage.getItem('vistos_ciclo_adriano') || '{}');
+    
+    linhasExibidasAtuais.forEach(item => {
+        if (item.selecionado) {
+            item.impresso = true;
+            vistosMemoria[item.codigo_item] = true;
+        }
+    });
+    
+    localStorage.setItem('vistos_ciclo_adriano', JSON.stringify(vistosMemoria));
+    
+    executarProcessamentoGrade();
+    setTimeout(() => { window.print(); }, 300);
+}
+
+function resetarCicloVistos() {
+    if (confirm("🔄 Deseja apagar todos os vistos permanentes do Ciclo de Inventário?")) {
+        localStorage.removeItem('vistos_ciclo_adriano');
+        linhasExibidasAtuais.forEach(i => i.impresso = false);
+        executarProcessamentoGrade();
+    }
+}
+
+function salvarInventarioCiclico() {
+    const dataI = document.getElementById('dataContagem').value;
+    const auditor = document.getElementById('nomeContador').value.trim();
+
+    if (!auditor) {
+        alert("⚠️ Digite o Nome do Responsável!");
+        return;
+    }
+
+    const itensValidos = linhasExibidasAtuais.filter(i => i.quantidade_contada.trim() !== "");
+
+    if (itensValidos.length === 0) {
+        alert("⚠️ Nenhum valor foi preenchido na grade.");
+        return;
+    }
+
+    const payloadFinal = {
+        data: dataI,
+        responsavel: auditor,
+        movimentacoes: itensValidos.map(i => ({
+            codigo: i.codigo_item,
+            descricao: i.descricao,
+            quantidade_real: parseInt(i.quantidade_contada) || 0,
+            lote: i.lote.trim().toUpperCase() || "GERAL",
+            saldo_anterior: i.saldo_sistema
+        }))
+    };
+
+    fetch('/api/logistica/salvar_contagem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadFinal)
+    })
+    .then(r => r.json())
+    .then(res => {
+        alert("✅ Lançamento do Inventário Cíclico salvo com sucesso!");
+        atualizarCardsResumoCurvas(); 
+
+        document.getElementById('filtroCodigo').value = "";
+        document.getElementById('filtroDesc').value = "";
+        mudarAba('lancamento');
+        const triggerAba2 = document.getElementById('aba-lancamento-tab');
+        if (triggerAba2) {
+            const tabObj = new bootstrap.Tab(triggerAba2);
+            tabObj.show();
+        }
+    })
+    .catch(err => alert("❌ Erro ao salvar dados."));
+}
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

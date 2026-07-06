@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>🚚 Gestão Avançada de Notas de Devolução</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin: 0; font-size: 22px; text-transform: uppercase; }
+        .card-form { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-label { color: #38bdf8; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        .form-control, .form-select { background-color: #0f172a; border: 1px solid #475569; color: #fff; font-size: 12px; }
+        .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        
+        /* 🚨 CARDS DE VALIDAÇÃO DE CLIENTE EM TEMPO REAL */
+        .card-validador-cliente { background: #0369a1; border: 2px solid #0ea5e9; border-radius: 6px; padding: 12px 15px; margin-top: 8px; display: none; }
+        .card-validador-erro { background: #7f1d1d; border: 2px solid #ef4444; border-radius: 6px; padding: 12px 15px; margin-top: 8px; display: none; color: #fecaca; font-size: 11px; }
+
+        .btn-salvar { background: #10b981; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-salvar:hover { background: #059669; }
+        .btn-novo-registro { background: #2563eb; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-novo-registro:hover { background: #1d4ed8; }
+        .btn-cancelar { background: #64748b; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 15px; border-radius: 6px; display: none; cursor: pointer; }
+        
+        .barra-busca-dupla { background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; display: block !important; visibility: visible !important; }
+        .tabela-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 11px; vertical-align: top; }
+        th { background-color: #0f172a; color: #38bdf8; font-weight: bold; }
+        tr:hover { background-color: #243249; }
+        
+        .badge-tipo { background-color: #f59e0b; color: #000; font-weight: bold; padding: 2px 6px; border-radius: 4px; font-size: 10px; text-transform: uppercase; }
+        .box-detalhes { background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 6px 10px; margin-top: 4px; color: #94a3b8; font-size: 11px; word-break: break-all; white-space: normal; line-height: 14px; }
+        
+        /* BOTÕES DO GRID */
+        .btn-editar-grid { background: #3b82f6; color: white; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; }
+        .btn-editar-grid:hover { background: #2563eb; }
+        .btn-excluir-grid { background: #ef4444; color: white; border: none; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; margin-top: 4px; display: block; width: 100%; }
+        .btn-excluir-grid:hover { background: #dc2626; }
+
+        /* 📸 MINIATURAS DE IMAGEM */
+        .img-preview-grid { width: 45px; height: 45px; object-fit: cover; border-radius: 4px; border: 1px solid #475569; cursor: pointer; transition: transform 0.1s; }
+        .img-preview-grid:hover { transform: scale(1.1); }
+        .img-preview-form { width: 90px; height: 90px; object-fit: cover; border-radius: 6px; border: 2px solid #38bdf8; display: none; margin-top: 8px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3">
+            <h1>🚚 GESTÃO DE OCORRÊNCIAS E DEVOLUÇÕES</h1>
+            <button type="button" class="btn-novo-registro" onclick="resetarFormulario()">➕ Novo Lançamento / Limpar</button>
+        </div>
+
+        <div class="card-form" id="cardForm">
+            <form id="formDevolucao" class="row g-3">
+                <input type="hidden" id="id_devolucao" value="">
+                <input type="hidden" id="imagem_base64" value="">
+
+                <div class="col-md-3">
+                    <label class="form-label">📄 NÚMERO DA NF (ENTER PARA CONFERIR):</label>
+                    <input type="text" id="nota_fiscal" class="form-control fw-bold text-info" required placeholder="Digite a NF e aperte ENTER/TAB" onchange="verificarNotaFaturamento(this.value)">
+                    
+                    <div class="card-validador-cliente" id="boxClienteSucesso">
+                        <div style="font-size: 10px; color: #bae6fd; font-weight: bold;">✔️ DOCUMENTAÇÃO LOCALIZADA:</div>
+                        <div id="txtClienteNome" style="font-size: 12px; font-weight: bold; color: #fff; margin-top: 2px;">-</div>
+                        <div style="font-size: 9.5px; color: #e0f2fe; margin-top: 4px;">
+                            Pedido: <span id="txtClientePedido" class="fw-bold"></span> | Valor: <span id="txtClienteValor" class="fw-bold"></span>
+                        </div>
+                    </div>
+                    <div class="card-validador-erro" id="boxClienteErro">
+                        ❌ Nota Fiscal não localizada no faturamento corrente. Verifique o documento físico.
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">📅 DATA DA DEVOLUÇÃO:</label>
+                    <input type="date" id="data_devolucao" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🚛 TRANSPORTADORA RESPONSÁVEL:</label>
+                    <select id="transportadora" class="form-select">
+                        <option value="">Selecione...</option>
+                        {% for t in transportadoras %}
+                        <option value="{{ t }}">{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">⚠️ OCORRÊNCIA DE DEVOLUÇÃO:</label>
+                    <select id="ocorrencia" class="form-select" required>
+                        <option value="">Carregando motivos da base...</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">👤 NOME DO RECEBEDOR DA DEVOLUÇÃO:</label>
+                    <input type="text" id="nome_recebedor" class="form-control" placeholder="Quem assinou o recebimento">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">📑 NOTA DE DEVOLUÇÃO DO CLIENTE:</label>
+                    <input type="text" id="nota_devolucao_cliente" class="form-control" placeholder="NF-e emitida pelo cliente (se houver)">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🔢 N° DO CTE DE DEVOLUÇÃO:</label>
+                    <input type="text" id="cte_devolucao" class="form-control" placeholder="CT-e de retorno (Opcional)">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">👤 RESPONSÁVEL CONFERÊNCIA PÁTIO:</label>
+                    <input type="text" id="responsavel_recebimento" class="form-control" placeholder="Quem conferiu a carga física">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">📸 ANEXAR FOTO DA AVARIA / DOC:</label>
+                    <input type="file" id="input_foto" class="form-control" accept="image/*" onchange="converterFotoParaBase64(this)">
+                    <img id="previewForm" class="img-preview-form" src="" alt="Preview">
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">📝 DETALHES COMPLETOS DA REJEIÇÃO:</label>
+                    <textarea id="detalhes_livre" class="form-control" rows="4" placeholder="Insira o detalhamento minucioso do estado da carga ou motivo alegado..."></textarea>
+                </div>
+
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <div>
+                        <button type="button" id="btnCancelarEdicao" class="btn-cancelar" onclick="resetarFormulario()">❌ Cancelar Edição</button>
+                    </div>
+                    <button type="submit" id="btnAcaoForm" class="btn-salvar">💾 Salvar Registro de Devolução</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="barra-busca-dupla">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-4 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">📄 FILTRAR NOTA:</span>
+                    <input type="text" id="buscaNota" class="form-control form-control-sm" style="background:#0f172a; color:#fff; border:1px solid #475569;" placeholder="Buscar número da NF...">
+                </div>
+                <div class="col-md-5 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">👤 FILTRAR CLIENTE:</span>
+                    <input type="text" id="buscaCliente" class="form-control form-control-sm" style="background:#0f172a; color:#fff; border:1px solid #475569;" placeholder="Buscar razão social do cliente...">
+                </div>
+                <div class="col-md-3 text-end">
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3" onclick="exportarGridParaExcel()" style="background-color: #16a34a; border: none; font-size: 11px; padding: 6px 15px;">
+                        📊 Exportar Planilha Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 6%;">NF</th>
+                        <th style="width: 8%;">DATA DEV.</th>
+                        <th style="width: 18%;">CLIENTE EMISSOR</th>
+                        <th style="width: 14%;">TRANSPORTADORA</th>
+                        <th style="width: 14%;">TIPO OCORRÊNCIA</th>
+                        <th style="width: 16%;">DOCS / VÍNCULOS</th>
+                        <th style="width: 15%;">DETALHES DO LANÇAMENTO</th>
+                        <th style="width: 5%; text-align:center;">FOTO</th>
+                        <th style="width: 4%; text-align:center;">AÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoGridDevolucoes">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('data_devolucao').value = new Date().toISOString().split('T')[0];
+        document.getElementById('buscaNota').addEventListener('input', acionarFiltros);
+        document.getElementById('buscaCliente').addEventListener('input', acionarFiltros);
+
+        // ⚡ CARGA VIVA E SINCRONIZADA DE MOTIVOS DO BANCO DE DADOS 
+        // ⚡ CARGA VIVA E REAL DE MOTIVOS DO BANCO DE DADOS (CORRIGIDO)
+        function carregarMotivosSincronizados(valorSelecionado = "") {
+            const selectOcorrencia = document.getElementById('ocorrencia');
+            
+            // Consome a rota que acabamos de criar no Python
+            fetch('/api/obter_motivos_ocorrencias')
+                .then(r => r.json())
+                .then(motivos => {
+                    // Limpa a lista antiga deixando apenas a opção padrão
+                    selectOcorrencia.innerHTML = '<option value="">Escolha o motivo...</option>';
+                    
+                    if (!motivos || motivos.length === 0) {
+                        // Plano de contingência caso o banco falhe
+                        const padroes = ['RECUSADO PELO CLIENTE', 'ENDEREÇO NÃO LOCALIZADO', 'ESTABELECIMENTO FECHADO', 'AVARIA NO TRANSPORTE', 'ERRO DE PEDIDO/EMISSÃO'];
+                        padroes.forEach(m => {
+                            const option = document.createElement('option');
+                            option.value = m; option.textContent = m;
+                            if(valorSelecionado === m) option.selected = true;
+                            selectOcorrencia.appendChild(option);
+                        });
+                        return;
+                    }
+
+                    // POPULAÇÃO DINÂMICA: Alimenta com os dados REAIS do seu SQLite / Excel
+                    motivos.forEach(motivo => {
+                        const option = document.createElement('option');
+                        option.value = motivo;
+                        option.textContent = motivo;
+                        
+                        // Mantém o motivo selecionado se você estiver editando um registro existente do grid
+                        if(valorSelecionado === motivo) {
+                            option.selected = true;
+                        }
+                        selectOcorrencia.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error("Erro ao carregar motivos:", err);
+                    selectOcorrencia.innerHTML = '<option value="">Erro ao carregar motivos do banco...</option>';
+                });
+        }
+
+        // ⚡ CONFERÊNCIA AUTOMÁTICA EM TEMPO REAL COM O FATURAMENTO CORPORATIVO
+        function verificarNotaFaturamento(nf) {
+            const nfLimpa = nf.trim();
+            if(!nfLimpa) return;
+
+            fetch(`/buscar_nf?nf=${encodeURIComponent(nfLimpa)}`)
+                .then(r => r.json())
+                .then(res => {
+                    if(res.erro) {
+                        document.getElementById('boxClienteSucesso').style.display = "none";
+                        document.getElementById('boxClienteErro').style.display = "block";
+                    } else {
+                        document.getElementById('boxClienteErro').style.display = "none";
+                        document.getElementById('boxClienteSucesso').style.display = "block";
+                        document.getElementById('txtClienteNome').innerHTML = res.cliente;
+                        document.getElementById('txtClientePedido').innerHTML = res.pedido || '-';
+                        document.getElementById('txtClienteValor').innerHTML = res.valor_total_nf || 'R$ 0,00';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('boxClienteSucesso').style.display = "none";
+                    document.getElementById('boxClienteErro').style.display = "block";
+                });
+        }
+
+        // 📸 CONVERSOR COMPACTO DE FOTO PARA BASE64
+        function converterFotoParaBase64(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('imagem_base64').value = e.target.result;
+                    const prev = document.getElementById('previewForm');
+                    prev.src = e.target.result;
+                    prev.style.display = "block";
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function acionarFiltros() {
+            atualizarGridDevolucoes(document.getElementById('buscaNota').value, document.getElementById('buscaCliente').value);
+        }
+
+        function atualizarGridDevolucoes(nota = "", cliente = "") {
+            fetch(`/api/listar_devolucoes?nota=${encodeURIComponent(nota)}&cliente=${encodeURIComponent(cliente)}`)
+                .then(r => r.json())
+                .then(dados => {
+                    const tbody = document.getElementById('corpoGridDevolucoes');
+                    tbody.innerHTML = "";
+                    
+                    if (dados.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">⚠️ Nenhum lançamento de devolução localizado para as chaves buscadas.</td></tr>`;
+                        return;
+                    }
+
+                    dados.forEach(item => {
+                        let blocoFoto = '<span class="text-muted">-</span>';
+                        if(item.imagem_base64) {
+                            blocoFoto = `<img src="${item.imagem_base64}" class="img-preview-grid" onclick="abrirImagemMestre('${item.imagem_base64}')" title="Expandir Mídia">`;
+                        }
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${item.nota_fiscal}</strong></td>
+                                <td>${item.data_devolucao}</td>
+                                <td class="text-white-50" style="font-weight: bold;">${item.cliente_faturamento}</td>
+                                <td class="text-info font-weight-bold">${item.transportadora || '-'}</td>
+                                <td><span class="badge-tipo">${item.ocorrencia}</span></td>
+                                <td>
+                                    <div style="font-size: 10px; color: #38bdf8; font-weight: bold;">RECEB: ${item.nome_recebedor}</div>
+                                    <div style="font-size: 10px; color: #a7f3d0; font-weight: bold;">NF CLIENTE: ${item.nota_devolucao_cliente}</div>
+                                    <div style="font-size: 9.5px; color: #64748b;">CTE: ${item.cte_devolucao} | TRIA: ${item.responsavel_recebimento}</div>
+                                </td>
+                                <td><div class="box-detalhes">${item.detalhes_livre || '-'}</div></td>
+                                <td style="text-align:center; vertical-align:middle;">${blocoFoto}</td>
+                                <td style="text-align:center; vertical-align:middle; white-space: nowrap;">
+                                    <button type="button" class="btn-editar-grid" onclick='carregarParaEdicao(${JSON.stringify(item)})'>✏️ Editar</button>
+                                    <button type="button" class="btn-excluir-grid" onclick="excluirRegistroDevolucao(${item.id}, '${item.nota_fiscal}')">❌ Excluir</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        // ❌ NOVA FUNÇÃO ASSÍNCRONA PARA EXCLUSÃO COMPLETA DE REGISTRO
+        function excluirRegistroDevolucao(id, nf) {
+            if (!confirm(`🚨 ATENÇÃO OPERACIONAL:\n\nDeseja realmente APAGAR permanentemente a ocorrência de devolução da NF ${nf}?\nEsta ação removerá o registro e atualizará os painéis logísticos.`)) {
+                return;
+            }
+
+            fetch('/api/excluir_devolucao', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, nota_fiscal: nf })
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if (res.status === "sucesso") {
+                    resetarFormulario();
+                    acionarFiltros();
+                }
+            })
+            .catch(err => alert("Erro ao processar exclusão: " + err));
+        }
+
+        function abrirImagemMestre(base64) {
+            const win = window.open();
+            win.document.write(`<body style="background:#000; margin:0; display:flex; align-items:center; justify-content:center; height:100vh;"><img src="${base64}" style="max-width:100%; max-height:100vh; border-radius:4px;">    <script src="/static/js/portal-nav.js"></script>
+</body>`);
+        }
+
+        function carregarParaEdicao(item) {
+            document.getElementById('id_devolucao').value = item.id;
+            document.getElementById('nota_fiscal').value = item.nota_fiscal;
+            verificarNotaFaturamento(item.nota_fiscal);
+            
+            if(item.data_devolucao.includes('/')) {
+                const [d, m, a] = item.data_devolucao.split('/');
+                document.getElementById('data_devolucao').value = `${a}-${m}-${d}`;
+            } else {
+                document.getElementById('data_devolucao').value = item.data_devolucao;
+            }
+
+            document.getElementById('transportadora').value = item.transportadora;
+            
+            // Força a carga dos motivos e seleciona o correto da edição
+            carregarMotivosSincronizados(item.ocorrencia);
+
+            document.getElementById('cte_devolucao').value = item.cte_devolucao === '-' ? '' : item.cte_devolucao;
+            document.getElementById('responsavel_recebimento').value = item.responsavel_recebimento === '-' ? '' : item.responsavel_recebimento;
+            document.getElementById('detalhes_livre').value = item.detalhes_livre;
+            
+            document.getElementById('nome_recebedor').value = item.nome_recebedor === '-' ? '' : item.nome_recebedor;
+            document.getElementById('nota_devolucao_cliente').value = item.nota_devolucao_cliente === '-' ? '' : item.nota_devolucao_cliente;
+            document.getElementById('imagem_base64').value = item.imagem_base64;
+            
+            const prev = document.getElementById('previewForm');
+            if(item.imagem_base64) {
+                prev.src = item.imagem_base64;
+                prev.style.display = "block";
+            } else {
+                prev.style.display = "none";
+            }
+
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#eab308";
+            btn.innerHTML = "🔄 Atualizar Registro";
+            
+            document.getElementById('btnCancelarEdicao').style.display = "inline-block";
+            document.getElementById('cardForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetarFormulario() {
+            document.getElementById('id_devolucao').value = "";
+            document.getElementById('imagem_base64').value = "";
+            document.getElementById('formDevolucao').reset();
+            document.getElementById('data_devolucao').value = new Date().toISOString().split('T')[0];
+            document.getElementById('boxClienteSucesso').style.display = "none";
+            document.getElementById('boxClienteErro').style.display = "none";
+            document.getElementById('previewForm').style.display = "none";
+            
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#10b981";
+            btn.innerHTML = "💾 Salvar Registro de Devolução";
+            document.getElementById('btnCancelarEdicao').style.display = "none";
+            
+            // Recarrega os motivos limpos no boot/reset
+            carregarMotivosSincronizados();
+        }
+
+        document.getElementById('formDevolucao').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const payload = {
+                id: document.getElementById('id_devolucao').value,
+                nota_fiscal: document.getElementById('nota_fiscal').value,
+                data_devolucao: document.getElementById('data_devolucao').value,
+                transportadora: document.getElementById('transportadora').value,
+                ocorrencia: document.getElementById('ocorrencia').value,
+                cte_devolucao: document.getElementById('cte_devolucao').value,
+                responsavel_recebimento: document.getElementById('responsavel_recebimento').value,
+                detalhes_livre: document.getElementById('detalhes_livre').value,
+                nome_recebedor: document.getElementById('nome_recebedor').value,
+                nota_devolucao_cliente: document.getElementById('nota_devolucao_cliente').value,
+                imagem_base64: document.getElementById('imagem_base64').value
+            };
+
+            fetch('/api/salvar_devolucao', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if (res.status === "sucesso") {
+                    resetarFormulario();
+                    acionarFiltros();
+                }
+            });
+        });
+
+        function exportarGridParaExcel() {
+            const tabela = document.querySelector(".tabela-wrapper table");
+            const wb = XLSX.utils.table_to_book(tabela, { sheet: "Historico_Devolucoes" });
+            XLSX.writeFile(wb, `historico_devolucoes_auditoria.xlsx`);
+        }
+
+        // Chamada de boot unificada
+        carregarMotivosSincronizados();
+        atualizarGridDevolucoes();
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro concluído</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+</head>
+<body class="portal-page embedded">
+
+    <div class="portal-sucesso-box">
+        <h2>✅ Ocorrência registrada</h2>
+        <p>Dados salvos com sucesso. Copie o texto abaixo se precisar notificar alguém.</p>
+        <textarea id="textoNotificacao" class="portal-input" rows="8" readonly style="margin-bottom:14px;">{{ texto_notificacao }}</textarea>
+        <button type="button" class="portal-btn portal-btn-primary" style="width:100%; margin-bottom:8px;" onclick="copiarTexto()">Copiar texto</button>
+        <a href="#" class="portal-btn portal-btn-success" style="width:100%; margin-bottom:8px;" onclick="irModulo('/relatorio','Base Coletas FOB'); return false;">Abrir relatório</a>
+        <a href="#" class="portal-btn portal-btn-ghost" style="width:100%;" data-voltar-portal>Voltar ao início</a>
+    </div>
+
+    <script>
+        function copiarTexto() {
+            var el = document.getElementById('textoNotificacao');
+            el.select();
+            navigator.clipboard.writeText(el.value);
+            alert('Texto copiado.');
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

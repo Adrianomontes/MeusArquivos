@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>📖 Manual do Usuário - Sistema Logístico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; line-height: 1.6; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 25px; font-size: 24px; text-transform: uppercase; }
+        h2 { color: #10b981; font-size: 16px; margin-top: 30px; margin-bottom: 15px; text-transform: uppercase; border-left: 4px solid #10b981; padding-left: 10px; }
+        h3 { color: #eab308; font-size: 13px; margin-top: 20px; margin-bottom: 10px; }
+        .card-manual { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 25px; margin-bottom: 25px; }
+        .indice-link { color: #38bdf8; text-decoration: none; font-size: 12px; display: block; padding: 4px 0; }
+        .indice-link:hover { text-decoration: underline; color: #60a5fa; }
+        .box-alerta { background: #111827; border-left: 4px solid #ef4444; border-radius: 4px; padding: 12px; margin: 15px 0; font-size: 12px; color: #94a3b8; }
+        ul { padding-left: 20px; font-size: 12px; }
+        li { margin-bottom: 6px; }
+        code { color: #f43f5e; background-color: #111827; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-4">
+            <h1>📖 MANUAL DO USUÁRIO — ECOSSISTEMA LOGÍSTICO</h1>
+            <a href="/devolucoes" class="btn btn-secondary btn-sm fw-bold px-3" style="font-size:11px;">↩️ Voltar para Devoluções</a>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card-manual" style="position: sticky; top: 20px; padding: 15px;">
+                    <strong style="color: #38bdf8; font-size: 12px; display: block; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 5px;">📍 ÍNDICE DE SEÇÕES</strong>
+                    <a href="#sec-intro" class="indice-link">1. Introdução e Rede</a>
+                    <a href="#sec-dev" class="indice-link">2. Módulo de Devoluções</a>
+                    <a href="#sec-tv" class="indice-link">3. Cockpit da TV / Cockpit</a>
+                    <a href="#sec-mobile" class="indice-link">4. Mobile e Canhotos</a>
+                    <a href="#sec-transp" class="indice-link">5. Gestão de Transportadoras</a>
+                    <a href="#sec-aux" class="indice-link">6. Rotinas Auxiliares</a>
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <div class="card-manual">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 15px;">
+                        <strong>Versão:</strong> 3.0 (Calibrada e Atualizada) | <strong>Gestor Responsável:</strong> Adriano Montes
+                    </div>
+
+                    <div id="sec-intro">
+                        <h2>🗂️ 1. Introdução e Arquitetura de Rede</h2>
+                        <p style="font-size: 12px;">O sistema foi desenvolvido sob uma infraestrutura híbrida (Desktop e Mobile) utilizando <strong>Flask (Python)</strong> como motor lógico backend e <strong>SQLite3</strong> como banco de dados indexado de alta performance. O sistema opera de forma centralizada e distribui seus acessos através de conexões locais:</p>
+                        <ul>
+                            <li><strong>IP do Servidor Dedicado (Acesso Externo):</strong> <code>http://192.168.10.193:5000</code></li>
+                            <li><strong>Acesso Local Interno (TV/Painéis):</strong> <code>http://localhost:5000</code> ou <code>http://127.0.0.1:5000</code></li>
+                        </ul>
+                    </div>
+
+                    <div id="sec-dev">
+                        <h2>🚚 2. Módulo de Devoluções (Histórico Operacional)</h2>
+                        <p style="font-size: 12px;"><strong>URL de Acesso:</strong> <code>http://localhost:5000/devolucoes</code><br>
+                        Objetivo: Registrar as ocorrências de recusa ou retorno de mercadoria no pátio de forma sequencial, revertendo dinamicamente o status no faturamento executivo.</p>
+                        <h3>Funcionalidades Principais:</h3>
+                        <ul>
+                            <li><strong>Lançamento Sequencial Histórico:</strong> Permite que a mesma Nota Fiscal receba múltiplos registros de devolução em momentos distintos do tempo (como recusas parciais ou retornos em frotas diferentes), criando uma nova linha independente a cada gravação.</li>
+                            <li><strong>Validação de Inputs:</strong> Higienização compulsória no backend que remove zeros à esquerda e espaços extras no número do documento enviado.</li>
+                            <li><strong>Busca Cruzada em Tempo Real:</strong> A barra inferior permite filtrar o grid instantaneamente usando dois critérios independentes: por <em>Número da NF</em> ou por <em>Nome do Cliente</em> (usando sub-select leve com a tabela master de faturamento).</li>
+                            <li><strong>Exposição Completa de Detalhes:</strong> O grid renderiza o campo de texto livre de forma totalmente aberta por linha, suportando com folga o critério mínimo de 250 caracteres exigidos.</li>
+                            <li><strong>Exportação SheetJS:</strong> Gera um arquivo <code>.xlsx</code> limpo, formatado com colunas auto-ajustadas (inclusive o campo de texto longo), pronto para anexo e envio rápido de e-mails corporativos.</li>
+                        </ul>
+                    </div>
+
+                    <div id="sec-tv">
+                        <h2>📊 3. Cockpit da TV e Carrossel de Indicadores</h2>
+                        <p style="font-size: 12px;"><strong>URL de Acesso:</strong> <code>http://localhost:5000/monitor_tv</code><br>
+                        Objetivo: Exibir em tela cheia no monitor fixo do pátio/expedição os indicadores financeiros, metas e o andamento dos modais de carregamento.</p>
+                        <h3>Funcionalidades Principais:</h3>
+                        <ul>
+                            <li><strong>Trava Anti-Duplicidade de Valor Cheio:</strong> Motor lógico interno calibrado com a estrutura <code>nfs_processadas = set()</code>. Garante que se uma Nota Fiscal possuir múltiplos itens fracionados na planilha de faturamento, o valor total e cheio da nota seja somado apenas uma vez, impedindo estouros financeiros.</li>
+                            <li><strong>Painel de Modais:</strong> Classificação inteligente baseada no de-para do arquivo <code>MODAIS.csv</code>. Divide os volumes e valores diários em 5 árvores estritas: <em>NOSSO CARRO, FOB, CLIENTE RETIRA, CIF e OUTROS</em>.</li>
+                            <li><strong>Torre de Controle (Linha Temporal):</strong> Gráfico comparativo do faturamento diário real contra a <strong>Meta Diária Padrão (R$ 467.500,00)</strong>, calculando as porcentagens e os gaps financeiros restantes do mês corrente.</li>
+                        </ul>
+                    </div>
+
+                    <div id="sec-mobile">
+                        <h2>📱 4. Módulo Mobile e Portaria (Baixa de Canhotos)</h2>
+                        <p style="font-size: 12px;"><strong>URL de Acesso:</strong> <code>http://192.168.10.193:5000/canhoto_motorista</code><br>
+                        Objetivo: Permitir que a portaria e os motoristas efetuem a liquidação física da entrega direto pelo celular de forma integrada.</p>
+                        <h3>Funcionalidades Principais:</h3>
+                        <ul>
+                            <li><strong>Assinatura na Tela:</strong> Campo capacitivo digital onde o recebedor assina com o dedo diretamente na tela do smartphone, convertendo a imagem em string <code>Base64</code> de forma instantânea.</li>
+                            <li><strong>Integração WhatsApp:</strong> Permite capturar a imagem da foto do canhoto físico recebido via aplicativo e fazer o upload direto no sistema, amarrando à auditoria.</li>
+                            <li><strong>Engenharia Reversa (Estorno Universal):</strong> Permite reverter baixas incorretas ou erros de digitação. Ao acionar o estorno, o Python deleta a linha de baixa em entregas, limpa o rastro de canhotos digitais e redefine a nota fiscal de volta ao seu status e transportadora originais de faturamento.</li>
+                        </ul>
+                    </div>
+
+                    <div id="sec-transp">
+                        <h2>🚛 5. Gerenciador de Transportadoras (Cadastro Mestre)</h2>
+                        <p style="font-size: 12px;"><strong>URL de Acesso:</strong> <code>http://localhost:5000/gerenciar_transportadoras</code><br>
+                        Objetivo: Administrar as empresas de transporte parceiras habilitadas a coletar e realizar fretes no sistema.</p>
+                        <h3>Funcionalidades Principais:</h3>
+                        <ul>
+                            <li><strong>Cadastro Unificado:</strong> Salva o Nome da Transportadora, Telefone de Contato e Responsável pela Operação diretamente no banco central.</li>
+                            <li style="color: #38bdf8; font-weight: bold;">Blindagem de Injeção de Colunas: Possui rotina preventiva que verifica a integridade do arquivo .db. Se o banco de dados local do PC for antigo e não possuir as colunas "telephone" ou "responsavel", o próprio script injeta as colunas na tabela em tempo real (ALTER TABLE), eliminando os erros de parada de banco (Erro 500 / no such column).</li>
+                            <li><strong>Ações Diretas no Grid:</strong> Cada linha exibe o botão <em>Editar</em> (que joga os dados de volta para o formulário topo) e <em>Excluir</em> (que remove instantaneamente a transportadora de todas as listas suspensas de devolução e coletas).</li>
+                        </ul>
+                    </div>
+
+                    <div id="sec-aux">
+                        <h2>📋 6. Rotinas Auxiliares e Conexão Automática</h2>
+                        <ul>
+                            <li><strong>Sincronização Física Inteligente:</strong> O script de boot lê o timestamp do arquivo <code>MODAIS.csv</code>. Se o arquivo não sofreu modificações desde a última carga, o sistema pula a leitura pesada do CSV e ativa os índices SQLite locais, reduzindo o tempo de inicialização do sistema para instantâneo.</li>
+                            <li><strong>Modo Executável Compactado (<code>sys.frozen</code>):</strong> O backend detecta se o app está rodando via código fonte <code>.py</code> ou via binário compilado <code>.exe</code>, ajustando os caminhos internos dinamicamente para permitir mover a pasta do sistema para qualquer computador da rede sem quebrar os acessos.</li>
+                        </ul>
+                    </div>
+
+                    <div class="box-alerta">
+                        ⚠️ <strong>AVISO LOGÍSTICO RESTRITO:</strong> Este manual reflete as regras de negócio consolidadas de ponta a ponta na aplicação. Qualquer alteração ou acoplamento de rotas no arquivo <code>app.py</code> deve ser homologada e documentada nesta central para manter o alinhamento da equipe operacional e da expedição.
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>Resumo do Gerenciador de Transportadoras</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 20px; font-size: 22px; text-transform: uppercase; }
+        .card-form { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-label { color: #38bdf8; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        .form-control { background-color: #0f172a; border: 1px solid #475569; color: #fff; font-size: 12px; }
+        .form-control:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        
+        .btn-salvar { background: #10b981; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-salvar:hover { background: #059669; }
+        .btn-cancelar { background: #64748b; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 15px; border-radius: 6px; display: none; cursor: pointer; }
+        
+        .barra-pesquisa { background: #111827; padding: 12px 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; }
+        .tabela-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 11px; vertical-align: middle; }
+        th { background-color: #0f172a; color: #38bdf8; font-weight: bold; }
+        tr:hover { background-color: #243249; }
+        
+        .btn-editar-grid { background: #3b82f6; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-editar-grid:hover { background: #2563eb; }
+        .btn-excluir-grid { background: #ef4444; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 5px; }
+        .btn-excluir-grid:hover { background: #dc2626; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3">
+            <h1>?? CADASTRO E CONTROLE MESTRE DE TRANSPORTADORAS</h1>
+            <a href="#" class="btn btn-secondary btn-sm fw-bold px-3" style="font-size:11px;" onclick="irModulo('/devolucao','Devoluções'); return false;">← Voltar</a>
+        </div>
+
+        <div class="card-form" id="cardForm">
+            <form id="formTransportadora" class="row g-3">
+                <input type="hidden" id="id_transportadora" value="">
+
+                <div class="col-md-4">
+                    <label class="form-label">?? NOME DA TRANSPORTADORA:</label>
+                    <input type="text" id="nome_transportadora" class="form-control" required placeholder="Ex: ALFA TRANSPORTES LTDA">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">?? TELEFONE DE CONTATO:</label>
+                    <input type="text" id="telefone_transportadora" class="form-control" placeholder="Ex: (11) 99999-9999">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">?? RESPONSÁVEL / OPERAÇÃO:</label>
+                    <input type="text" id="responsavel_transportadora" class="form-control" placeholder="Ex: Fulano de Tal">
+                </div>
+                <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                    <div>
+                        <button type="button" id="btnCancelarEdicao" class="btn-cancelar" onclick="resetarFormulario()">?? Cancelar</button>
+                    </div>
+                    <button type="submit" id="btnAcaoForm" class="btn-salvar">?? Salvar Transportadora</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="barra-pesquisa">
+            <div class="d-flex align-items-center gap-3">
+                <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">?? FILTRAR TRANSPORTADORA:</span>
+                <input type="text" id="campoPesquisa" class="form-control form-control-sm" placeholder="Digite o nome para pesquisar na base corrente...">
+            </div>
+        </div>
+
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">ID INTERNO</th>
+                        <th style="width: 40%;">NOME DA TRANSPORTADORA (VAI PARA O CAMPO DE SELEÇÃO)</th>
+                        <th style="width: 25%;">TELEFONE</th>
+                        <th style="width: 15%;">RESPONSÁVEL</th>
+                        <th style="width: 10%; text-align:center;">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoGridTransportadoras">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('campoPesquisa').addEventListener('input', function(e) {
+            atualizarGrid(e.target.value);
+        });
+
+        function atualizarGrid(busca = "") {
+            fetch(`/api/listar_transportadoras_gerenciador?busca=${encodeURIComponent(busca)}`)
+                .then(r => r.json())
+                .then(dados => {
+                    const tbody = document.getElementById('corpoGridTransportadoras');
+                    tbody.innerHTML = "";
+
+                    if (dados.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Nenhuma transportadora ativa encontrada.</td></tr>`;
+                        return;
+                    }
+
+                    dados.forEach(t => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><code>#${t.id}</code></td>
+                                <td style="color: #38bdf8; font-weight: bold;">${t.name}</td>
+                                <td>${t.telephone || '-'}</td>
+                                <td>${t.responsavel || '-'}</td>
+                                <td style="text-align:center; white-space: nowrap;">
+                                    <button type="button" class="btn-editar-grid" onclick='carregarParaEdicao(${JSON.stringify(t)})'>✏️ Editar</button>
+                                    <button type="button" class="btn-excluir-grid" onclick="excluirTransportadora(${t.id}, '${t.name}')">❌ Excluir</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        function carregarParaEdicao(t) {
+            document.getElementById('id_transportadora').value = t.id;
+            document.getElementById('nome_transportadora').value = t.name;
+            document.getElementById('telefone_transportadora').value = t.telephone || '';
+            document.getElementById('responsavel_transportadora').value = t.responsavel || '';
+
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#eab308";
+            btn.innerHTML = "🔄 Atualizar Transportadora";
+            document.getElementById('btnCancelarEdicao').style.display = "inline-block";
+        }
+
+        function resetarFormulario() {
+            document.getElementById('id_transportadora').value = "";
+            document.getElementById('formTransportadora').reset();
+            
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#10b981";
+            btn.innerHTML = "💾 Salvar Transportadora";
+            document.getElementById('btnCancelarEdicao').style.display = "none";
+        }
+
+        document.getElementById('formTransportadora').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const payload = {
+                id: document.getElementById('id_transportadora').value,
+                name: document.getElementById('nome_transportadora').value,
+                telephone: document.getElementById('telefone_transportadora').value,
+                responsavel: document.getElementById('responsavel_transportadora').value
+            };
+
+            fetch('/api/salvar_transportadora_gerenciador', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if (res.status === "sucesso") {
+                    resetarFormulario();
+                    atualizarGrid();
+                }
+            });
+        });
+
+        function excluirTransportadora(id, nome) {
+            if (!confirm(`?? ATENÇÃO OPERACIONAL:\n\nTem certeza que deseja excluir a transportadora "${nome}"?\nEla sairá imediatamente de todas as listas de seleção do sistema.`)) {
+                return;
+            }
+
+            fetch('/api/excluir_transportadora_gerenciador', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                atualizarGrid();
+            });
+        }
+
+        // Carga inicial do Grid
+        atualizarGrid();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

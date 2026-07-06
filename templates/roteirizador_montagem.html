@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <title>Montagem da Saída</title>
+    <style>
+        body{margin:0;padding:14px;background:#0f172a;color:#e2e8f0;font-family:var(--portal-font,'Segoe UI',sans-serif);font-size:12px;}
+        .wrap{max-width:1680px;margin:0 auto;}
+        h1{margin:0;font-size:18px;color:#38bdf8;}
+        .nav a{color:#38bdf8;margin-right:12px;}
+        .box{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px;}
+        label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:600;}
+        input,select{width:100%;box-sizing:border-box;padding:7px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#fff;}
+        .btn{border:none;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:12px;margin:4px 6px 4px 0;}
+        .btn-p{background:#2563eb;color:#fff;}.btn-g{background:#059669;color:#fff;}.btn-s{background:#475569;color:#fff;}
+        .btn-w{background:#b45309;color:#fff;}.btn-d{background:#7f1d1d;color:#fff;}
+        .filtros{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-items:end;}
+        .filtros .span2{grid-column:span 2;}
+        .filtros .acoes{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-top:4px;}
+        .badge{font-size:10px;padding:3px 8px;border-radius:999px;background:#1e3a5f;color:#7dd3fc;}
+        .kpis{display:flex;flex-wrap:wrap;gap:10px;}
+        .kpi{flex:1;min-width:130px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px;}
+        .kpi .v{font-size:18px;font-weight:800;color:#38bdf8;}
+        .kpi .l{font-size:10px;color:#94a3b8;}
+        .kanban{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;min-height:260px;}
+        .col{min-width:270px;max-width:320px;background:#0f172a;border:1px solid #334155;border-radius:8px;display:flex;flex-direction:column;}
+        .col-h{padding:10px;border-bottom:1px solid #334155;background:#1e293b;border-radius:8px 8px 0 0;}
+        .col-h h3{margin:0 0 4px;font-size:13px;color:#38bdf8;}
+        .col-meta{font-size:10px;color:#94a3b8;line-height:1.4;}
+        .col-totais{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+        .chip{font-size:10px;padding:2px 6px;border-radius:4px;background:#1e3a5f;color:#7dd3fc;}
+        .col-body{flex:1;padding:8px;min-height:100px;max-height:400px;overflow-y:auto;}
+        .col-body.drag-over{outline:2px dashed #38bdf8;background:#172554;}
+        .nota-card{display:flex;gap:6px;align-items:flex-start;background:#1e293b;border:1px solid #475569;border-radius:6px;padding:6px 8px;margin-bottom:6px;font-size:11px;}
+        .nota-card .body{flex:1;cursor:grab;}
+        .nota-card .body:active{cursor:grabbing;}
+        .nota-card b{color:#f8fafc;}
+        .nota-card .sub{color:#94a3b8;font-size:10px;}
+        .nota-card input[type=checkbox]{width:auto;margin-top:2px;cursor:pointer;accent-color:#38bdf8;}
+        .col-sem{border-color:#7f1d1d;}
+        .col-sem .col-h{background:#450a0a;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{border:1px solid #334155;padding:5px 7px;text-align:left;}
+        th{background:#1e293b;color:#38bdf8;}
+        tr:nth-child(even) td{background:#141c2b;}
+        tr.sel td{background:#172554;}
+        .tbl-wrap{max-height:320px;overflow:auto;}
+        .msg{padding:8px;border-radius:6px;margin-top:8px;font-size:11px;display:none;}
+        .msg.ok{background:#064e3b;color:#6ee7b7;display:block;}
+        .msg.err{background:#450a0a;color:#fca5a5;display:block;}
+        .bar-acoes{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;}
+        .bar-acoes select{max-width:280px;}
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <p class="nav"><a href="/roteirizador">← Roteirizador</a> · <a href="/roteirizador/cadastro">Cadastro</a> · <a href="/roteirizador/auditoria">Auditoria</a></p>
+    <h1>🚚 Montagem da saída do dia</h1>
+    <p style="color:#94a3b8;margin:6px 0 12px">Somente notas <strong>Não Expedidas</strong> (ausentes na planilha de expedição e sem entrega confirmada).</p>
+
+    <div class="box">
+        <div class="filtros">
+            <div><label>Data emissão — início</label><input type="date" id="filtDataIni"></div>
+            <div><label>Data emissão — fim</label><input type="date" id="filtDataFim"></div>
+            <div><label>UF</label><select id="filtUf"><option value="">Todas</option></select></div>
+            <div class="span2"><label>Município (contém ou vários separados por vírgula)</label><input type="text" id="filtMun" placeholder="Ex: Campinas, Paulínia"></div>
+            <div><label>Mesorregião</label><select id="filtMeso"><option value="">Todas</option></select></div>
+            <div><label>Transportadora(s)</label><input type="text" id="filtTransp" placeholder="Vírgula para várias"></div>
+            <div><label>CEP início</label><input type="text" id="filtCepIni" placeholder="00000000" maxlength="8"></div>
+            <div><label>CEP fim</label><input type="text" id="filtCepFim" placeholder="99999999" maxlength="8"></div>
+            <div><label>Cabeça CEP (3 díg.)</label><input type="text" id="filtPrefixo" placeholder="013" maxlength="3"></div>
+            <div><label>Peso mín. (kg)</label><input type="number" id="filtPesoMin" step="0.1" min="0"></div>
+            <div><label>Peso máx. (kg)</label><input type="number" id="filtPesoMax" step="0.1" min="0"></div>
+            <div><label>Valor mín. (R$)</label><input type="number" id="filtValorMin" step="0.01" min="0"></div>
+            <div><label>Valor máx. (R$)</label><input type="number" id="filtValorMax" step="0.01" min="0"></div>
+            <div><label>NF</label><input type="text" id="filtNf" placeholder="Opcional"></div>
+            <div class="acoes">
+                <button type="button" class="btn btn-s" id="btnFiltrar">🔍 Listar não expedidas</button>
+                <button type="button" class="btn btn-p" id="btnMontar">⚙️ Montar rotas automáticas</button>
+                <button type="button" class="btn btn-g" id="btnSalvar">💾 Salvar saída</button>
+                <button type="button" class="btn btn-s" id="btnCarregar">↻ Carregar salva hoje</button>
+                <span class="badge" id="badgePool">0 notas elegíveis</span>
+            </div>
+        </div>
+        <div id="msg" class="msg"></div>
+    </div>
+
+    <div class="box kpis" id="kpis">
+        <div class="kpi"><div class="l">Notas na montagem</div><div class="v" id="kNotas">0</div></div>
+        <div class="kpi"><div class="l">Valor total</div><div class="v" id="kValor">R$ 0</div></div>
+        <div class="kpi"><div class="l">Volumes</div><div class="v" id="kVol">0</div></div>
+        <div class="kpi"><div class="l">Peso (kg)</div><div class="v" id="kPeso">0</div></div>
+        <div class="kpi"><div class="l">Rotas / Sem rota</div><div class="v" id="kRotas">0 / 0</div></div>
+    </div>
+
+    <div class="box">
+        <div class="bar-acoes">
+            <label style="margin:0;display:flex;align-items:center;gap:6px;color:#94a3b8">
+                <input type="checkbox" id="chkTodosSem" style="width:auto"> Selecionar todas sem rota
+            </label>
+            <select id="selRotaDestino"><option value="">— Incluir selecionadas na rota —</option></select>
+            <button type="button" class="btn btn-w" id="btnIncluir">➕ Incluir na rota</button>
+            <button type="button" class="btn btn-d" id="btnRemover">➖ Remover das rotas</button>
+        </div>
+        <p style="margin:0 0 8px;color:#94a3b8">Arraste ou use os checkboxes para montar rotas livremente. A base de faturamento não é alterada.</p>
+        <div class="kanban" id="kanban"></div>
+    </div>
+
+    <div class="box">
+        <h2 style="margin:0 0 8px;color:#38bdf8;font-size:13px">Notas não expedidas — sem rota definida</h2>
+        <div class="tbl-wrap">
+            <table>
+                <thead><tr>
+                    <th style="width:28px"><input type="checkbox" id="chkTodosTbl" title="Selecionar todas"></th>
+                    <th>NF</th><th>Emissão</th><th>Cliente</th><th>Município</th><th>UF</th>
+                    <th>CEP</th><th>Mesorregião</th><th>Transp.</th><th>Vol.</th><th>Peso</th><th>Valor</th>
+                </tr></thead>
+                <tbody id="corpoSemRota"><tr><td colspan="12">Use «Listar não expedidas» ou «Montar rotas».</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+let estado={colunas:[],sem_rota:[],selecionadas:new Set()};
+let dragNf=null, dragFrom=null;
+
+function hojeISO(){const d=new Date();return d.toISOString().slice(0,10);}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+async function api(u,m,b){const r=await fetch(u,{method:m||'GET',headers:b?{'Content-Type':'application/json'}:{},credentials:'same-origin',body:b?JSON.stringify(b):undefined});return r.json();}
+function brl(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});}
+function showMsg(t,ok){const el=document.getElementById('msg');el.className='msg '+(ok?'ok':'err');el.textContent=t;}
+
+function filtrosPayload(){
+    return{
+        data_inicio:document.getElementById('filtDataIni').value,
+        data_fim:document.getElementById('filtDataFim').value,
+        uf:document.getElementById('filtUf').value,
+        municipio:document.getElementById('filtMun').value,
+        mesoregiao:document.getElementById('filtMeso').value,
+        transportadoras:document.getElementById('filtTransp').value,
+        cep_inicio:document.getElementById('filtCepIni').value.replace(/\D/g,''),
+        cep_fim:document.getElementById('filtCepFim').value.replace(/\D/g,''),
+        prefixo_cep:document.getElementById('filtPrefixo').value.replace(/\D/g,'').slice(0,3),
+        peso_min:document.getElementById('filtPesoMin').value,
+        peso_max:document.getElementById('filtPesoMax').value,
+        valor_min:document.getElementById('filtValorMin').value,
+        valor_max:document.getElementById('filtValorMax').value,
+        nf:document.getElementById('filtNf').value,
+    };
+}
+
+function totaisCol(notas){
+    return{
+        valor:Math.round(notas.reduce((a,n)=>a+(n.valor||0),0)*100)/100,
+        volumes:notas.reduce((a,n)=>a+(n.volumes||0),0),
+        peso:Math.round(notas.reduce((a,n)=>a+(n.peso||0),0)*100)/100,
+        qtd_notas:notas.length,
+    };
+}
+function atualizarKpis(){
+    const todas=[...estado.colunas.flatMap(c=>c.notas),...estado.sem_rota];
+    const tg=totaisCol(todas);
+    document.getElementById('kNotas').textContent=tg.qtd_notas;
+    document.getElementById('kValor').textContent=brl(tg.valor);
+    document.getElementById('kVol').textContent=tg.volumes;
+    document.getElementById('kPeso').textContent=tg.peso.toLocaleString('pt-BR');
+    document.getElementById('kRotas').textContent=estado.colunas.length+' / '+estado.sem_rota.length;
+    estado.colunas.forEach(c=>c.totais=totaisCol(c.notas));
+    atualizarSelectRotas();
+}
+
+function atualizarSelectRotas(){
+    const sel=document.getElementById('selRotaDestino');
+    const v=sel.value;
+    sel.innerHTML='<option value="">— Incluir selecionadas na rota —</option>';
+    estado.colunas.forEach(c=>sel.innerHTML+=`<option value="${esc(c.id)}">${esc(c.nome)}</option>`);
+    if(v) sel.value=v;
+}
+
+function cardHtml(n, area){
+    const chk=estado.selecionadas.has(n.nf)?'checked':'';
+    return `<div class="nota-card" data-nf="${esc(n.nf)}" data-area="${area}">
+        <input type="checkbox" class="chk-nota" data-nf="${esc(n.nf)}" ${chk}>
+        <div class="body" draggable="true" data-nf="${esc(n.nf)}">
+            <b>NF ${esc(n.nf)}</b> · ${esc(n.municipio||'—')}/${esc(n.uf||'')}<br>
+            <span class="sub">${esc(n.mesoregiao||'—')} · CEP ${esc(n.cep||'—')} · ${n.volumes||0} vol · ${(n.peso||0).toFixed(1)} kg · ${brl(n.valor)}</span>
+        </div>
+    </div>`;
+}
+
+function bindDrag(){
+    document.querySelectorAll('.nota-card .body').forEach(el=>{
+        el.addEventListener('dragstart',e=>{
+            dragNf=el.dataset.nf;
+            dragFrom=el.closest('.col-body')?.dataset.colId||'sem';
+            e.dataTransfer.effectAllowed='move';
+        });
+    });
+    document.querySelectorAll('.col-body').forEach(zone=>{
+        zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
+        zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+        zone.addEventListener('drop',e=>{
+            e.preventDefault();zone.classList.remove('drag-over');
+            if(!dragNf)return;
+            moverNota(dragNf, dragFrom, zone.dataset.colId);
+            dragNf=null;
+        });
+    });
+    document.querySelectorAll('.chk-nota').forEach(chk=>{
+        chk.addEventListener('change',()=>{
+            if(chk.checked) estado.selecionadas.add(chk.dataset.nf);
+            else estado.selecionadas.delete(chk.dataset.nf);
+            renderTabelaSemRota();
+        });
+    });
+}
+
+function acharNota(nf){
+    for(const c of estado.colunas){const i=c.notas.findIndex(n=>n.nf===nf);if(i>=0)return{lista:c.notas,idx:i};}
+    const i=estado.sem_rota.findIndex(n=>n.nf===nf);
+    if(i>=0)return{lista:estado.sem_rota,idx:i};
+    return null;
+}
+
+function moverNota(nf, fromId, toId){
+    if(fromId===toId)return;
+    const ach=acharNota(nf);
+    if(!ach)return;
+    const [nota]=ach.lista.splice(ach.idx,1);
+    if(toId==='sem') estado.sem_rota.push(nota);
+    else{
+        const col=estado.colunas.find(c=>c.id===toId);
+        if(col) col.notas.push(nota);
+        else estado.sem_rota.push(nota);
+    }
+    renderKanban();
+    renderTabelaSemRota();
+}
+
+function moverSelecionadasPara(colId){
+    const nfs=[...estado.selecionadas];
+    if(!nfs.length){showMsg('Selecione ao menos uma nota.',false);return;}
+    if(colId!=='sem' && !estado.colunas.find(c=>c.id===colId)){
+        showMsg('Selecione uma rota de destino.',false);return;
+    }
+    nfs.forEach(nf=>{
+        let fromId='sem';
+        for(const c of estado.colunas){
+            if(c.notas.some(n=>n.nf===nf)){fromId=c.id;break;}
+        }
+        moverNota(nf, fromId, colId);
+    });
+    estado.selecionadas.clear();
+    renderKanban();
+    renderTabelaSemRota();
+    showMsg(`${nfs.length} nota(s) movida(s).`,true);
+}
+
+function removerSelecionadasDasRotas(){
+    const nfs=[...estado.selecionadas];
+    let n=0;
+    nfs.forEach(nf=>{
+        const ach=acharNota(nf);
+        if(!ach)return;
+        if(ach.lista===estado.sem_rota)return;
+        const [nota]=ach.lista.splice(ach.idx,1);
+        estado.sem_rota.push(nota);
+        n++;
+    });
+    estado.selecionadas.clear();
+    renderKanban();
+    renderTabelaSemRota();
+    showMsg(n?`${n} nota(s) removida(s) para «Sem rota».`:'Nenhuma nota em rota selecionada.',!!n);
+}
+
+function renderKanban(){
+    const kb=document.getElementById('kanban');
+    let html='';
+    estado.colunas.forEach(col=>{
+        const t=col.totais||totaisCol(col.notas);
+        const veic=col.veiculo_sugerido||{};
+        html+=`<div class="col"><div class="col-h">
+            <h3>${esc(col.nome)}</h3>
+            <div class="col-meta">🚛 ${esc(col.transportadora||'—')}<br>${esc(col.criterios_resumo||'')}</div>
+            <div class="col-totais">
+                <span class="chip">${t.qtd_notas} NFs</span>
+                <span class="chip">${brl(t.valor)}</span>
+                <span class="chip">${t.volumes} vol</span>
+                <span class="chip">${t.peso} kg</span>
+                ${veic.modelo?`<span class="chip">🚗 ${esc(veic.modelo)}</span>`:''}
+            </div>
+        </div><div class="col-body" data-col-id="${esc(col.id)}">${col.notas.map(n=>cardHtml(n,'rota')).join('')||'<span style="color:#64748b">Vazio</span>'}</div></div>`;
+    });
+    html+=`<div class="col col-sem"><div class="col-h"><h3>Sem rota</h3><div class="col-meta">Não expedidas — livres para alocação manual</div></div>
+        <div class="col-body" data-col-id="sem">${estado.sem_rota.map(n=>cardHtml(n,'sem')).join('')||'<span style="color:#64748b">Nenhuma</span>'}</div></div>`;
+    kb.innerHTML=html;
+    atualizarKpis();
+    bindDrag();
+}
+
+function renderTabelaSemRota(){
+    const tb=document.getElementById('corpoSemRota');
+    if(!estado.sem_rota.length){
+        tb.innerHTML='<tr><td colspan="12">Nenhuma nota sem rota no pool atual.</td></tr>';
+        return;
+    }
+    tb.innerHTML=estado.sem_rota.map(n=>{
+        const sel=estado.selecionadas.has(n.nf)?'sel':'';
+        const chk=estado.selecionadas.has(n.nf)?'checked':'';
+        return `<tr class="${sel}" data-nf="${esc(n.nf)}">
+            <td><input type="checkbox" class="chk-tbl" data-nf="${esc(n.nf)}" ${chk}></td>
+            <td><b>${esc(n.nf)}</b></td>
+            <td>${esc(n.emissao||n.emissao_iso||'—')}</td>
+            <td>${esc(n.cliente||'—')}</td>
+            <td>${esc(n.municipio||'—')}</td>
+            <td>${esc(n.uf||'')}</td>
+            <td>${esc(n.cep||'—')}</td>
+            <td>${esc(n.mesoregiao||'—')}</td>
+            <td>${esc(n.transportadora_faturamento||'—')}</td>
+            <td>${n.volumes||0}</td>
+            <td>${(n.peso||0).toFixed(1)}</td>
+            <td>${brl(n.valor)}</td>
+        </tr>`;
+    }).join('');
+    document.querySelectorAll('.chk-tbl').forEach(chk=>{
+        chk.addEventListener('change',()=>{
+            if(chk.checked) estado.selecionadas.add(chk.dataset.nf);
+            else estado.selecionadas.delete(chk.dataset.nf);
+            renderTabelaSemRota();
+            renderKanban();
+        });
+    });
+    document.getElementById('badgePool').textContent=estado.sem_rota.length+' sem rota · '+estado.selecionadas.size+' selecionada(s)';
+}
+
+async function carregarPool(){
+    const f=filtrosPayload();
+    let url='/api/roteirizador/faturamento?';
+    Object.entries(f).forEach(([k,v])=>{if(v) url+=encodeURIComponent(k)+'='+encodeURIComponent(v)+'&';});
+    const r=await api(url);
+    const notas=r.notas||[];
+    document.getElementById('badgePool').textContent=(r.total||notas.length)+' não expedidas';
+    if(!estado.colunas.length){
+        estado.sem_rota=notas;
+        renderKanban();
+    }
+    renderTabelaSemRota();
+    showMsg(`Pool: ${r.total||notas.length} nota(s) não expedida(s) (${r.nfs_expedidas_planilha||0} já na planilha de expedição).`,true);
+    return notas;
+}
+
+document.getElementById('btnFiltrar').onclick=()=>carregarPool();
+
+document.getElementById('btnMontar').onclick=async()=>{
+    showMsg('Montando rotas (somente não expedidas)…',true);
+    const r=await api('/api/roteirizador/montar_saida','POST',filtrosPayload());
+    if(r.status!=='sucesso'){showMsg(r.mensagem||'Erro ao montar',false);return;}
+    estado.colunas=r.colunas||[];
+    estado.sem_rota=r.sem_rota||[];
+    estado.selecionadas.clear();
+    renderKanban();
+    renderTabelaSemRota();
+    const tg=r.total_geral||{};
+    showMsg(`Montagem: ${tg.qtd_colunas||0} rota(s), ${tg.sem_rota||0} sem rota, ${tg.pool_nao_expedidas||0} elegíveis no filtro.`,true);
+};
+
+document.getElementById('btnIncluir').onclick=()=>{
+    const colId=document.getElementById('selRotaDestino').value;
+    if(!colId){showMsg('Escolha a rota de destino.',false);return;}
+    moverSelecionadasPara(colId);
+};
+
+document.getElementById('btnRemover').onclick=()=>removerSelecionadasDasRotas();
+
+document.getElementById('chkTodosSem').onchange=document.getElementById('chkTodosTbl').onchange=function(){
+    const on=this.checked;
+    estado.sem_rota.forEach(n=>{if(on) estado.selecionadas.add(n.nf); else estado.selecionadas.delete(n.nf);});
+    renderKanban();
+    renderTabelaSemRota();
+};
+
+document.getElementById('btnSalvar').onclick=async()=>{
+    const r=await api('/api/roteirizador/salvar_saida_dia','POST',{
+        colunas:estado.colunas, sem_rota:estado.sem_rota, filtros:filtrosPayload(),
+        salvo_em:new Date().toISOString(),
+    });
+    showMsg(r.mensagem||'Erro',r.status==='sucesso');
+};
+
+document.getElementById('btnCarregar').onclick=async()=>{
+    const r=await api('/api/roteirizador/saida_dia');
+    if(r.status==='vazio'){showMsg('Nenhuma saída salva hoje.',false);return;}
+    const data=r.rotas||{};
+    estado.colunas=data.colunas||[];
+    estado.sem_rota=data.sem_rota||[];
+    estado.selecionadas.clear();
+    if(data.filtros){
+        const f=data.filtros;
+        if(f.data_inicio) document.getElementById('filtDataIni').value=f.data_inicio;
+        if(f.data_fim) document.getElementById('filtDataFim').value=f.data_fim;
+        if(f.uf) document.getElementById('filtUf').value=f.uf;
+        if(f.municipio) document.getElementById('filtMun').value=f.municipio;
+        if(f.mesoregiao) document.getElementById('filtMeso').value=f.mesoregiao;
+    }
+    renderKanban();
+    renderTabelaSemRota();
+    showMsg('Saída do dia carregada ('+(r.criado_em||'')+').',true);
+};
+
+async function carregarMeso(uf){
+    const url=uf?'/api/roteirizador/mesoregioes?uf='+encodeURIComponent(uf):'/api/roteirizador/mesoregioes';
+    const m=await api(url);
+    const s=document.getElementById('filtMeso');
+    s.innerHTML='<option value="">Todas</option>';
+    m.forEach(x=>s.innerHTML+=`<option value="${esc(x.mesoregiao)}">${esc(x.mesoregiao)} (${esc(x.uf)})</option>`);
+}
+
+(async()=>{
+    document.getElementById('filtDataIni').value=hojeISO();
+    document.getElementById('filtDataFim').value=hojeISO();
+    const ufs=await api('/api/roteirizador/ufs');
+    const s=document.getElementById('filtUf');
+    ufs.forEach(u=>s.innerHTML+=`<option value="${u}">${u}</option>`);
+    s.onchange=()=>carregarMeso(s.value);
+    await carregarMeso('');
+    const saved=await api('/api/roteirizador/saida_dia');
+    if(saved.status==='sucesso'&&(saved.rotas?.colunas?.length||saved.rotas?.sem_rota?.length)){
+        estado.colunas=saved.rotas.colunas||[];
+        estado.sem_rota=saved.rotas.sem_rota||[];
+        renderKanban();
+        renderTabelaSemRota();
+    } else {
+        await carregarPool();
+    }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>🚛 Central de Solicitação de Coletas FOB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: monospace; padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin: 0; font-size: 22px; text-transform: uppercase; }
+        .card-form { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-label { color: #38bdf8; font-weight: bold; font-size: 11px; margin-bottom: 4px; }
+        .form-control, .form-select { background-color: #0f172a; border: 1px solid #475569; color: #fff; font-size: 12px; }
+        .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        
+        .card-validador-cliente { background: #0369a1; border: 2px solid #0ea5e9; border-radius: 6px; padding: 10px 15px; margin-top: 8px; display: none; }
+        .card-validador-erro { background: #7f1d1d; border: 2px solid #ef4444; border-radius: 6px; padding: 10px 15px; margin-top: 8px; display: none; color: #fecaca; font-size: 11px; }
+
+        .btn-salvar { background: #10b981; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-salvar:hover { background: #059669; }
+        .btn-cancelar { background: #64748b; color: white; border: none; font-weight: bold; font-size: 12px; padding: 6px 15px; border-radius: 6px; display: none; cursor: pointer; }
+        
+        /* 🚨 CALIBRAÇÃO DA BARRA DE FILTROS E BOTÕES */
+        .barra-busca-dupla { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-top: 25px; margin-bottom: 15px; }
+        .tabela-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 11.5px; vertical-align: middle; }
+        th { background-color: #0f172a; color: #38bdf8; font-weight: bold; }
+        
+        .linha-normal:hover { background-color: #243249 !important; }
+        .linha-atrasada { background-color: #451a03 !important; border-left: 5px solid #ef4444; }
+        .linha-atrasada:hover { background-color: #7c2d12 !important; }
+
+        .badge-farol { font-weight: bold; padding: 3px 8px; border-radius: 4px; font-size: 10px; display: inline-block; text-transform: uppercase; }
+        .farol-ok { background-color: #10b981; color: #fff; }
+        .farol-alerta { background-color: #ef4444; color: #fff; animation: blinker 1.5s linear infinite; }
+
+        .btn-editar-grid { background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-email-grid { background: #f59e0b; color: #000; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; margin-left: 4px; }
+
+        .box-minuta-email { background: #0f172a; border: 1px solid #eab308; border-radius: 8px; padding: 15px; margin-top: 15px; display: none; }
+
+        @keyframes blinker { 50% { opacity: 0.4; } }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3">
+            <h1><b>🚛 CENTRAL DE AGENDAMENTO E COLETAS REVERSAS (MODAL FOB)</b></h1>
+            <button type="button" class="btn btn-primary btn-sm fw-bold px-3" onclick="resetarFormulario()" style="background-color: #2563eb; border: none; font-size: 12px; padding: 7px 15px;">➕ Nova Solicitação FOB / Limpar</button>
+        </div>
+
+        <div class="card-form">
+            <form id="formColeta" class="row g-3">
+                <input type="hidden" id="id_coleta" value="">
+
+                <div class="col-md-2">
+                    <label class="form-label">📄 NÚMERO DA NF FOB:</label>
+                    <input type="text" id="nota_fiscal" class="form-control fw-bold text-info" required placeholder="Digite a NF e aperte TAB" onchange="verificarNotaFaturamento(this.value)">
+                    <div class="card-validador-cliente" id="boxClienteSucesso">
+                        <div style="font-size: 9px; color: #bae6fd; font-weight: bold;">✔️ CLIENTE IDENTIFICADO:</div>
+                        <div id="txtClienteNome" style="font-size: 11px; font-weight: bold; color: #fff;">-</div>
+                    </div>
+                    <div class="card-validador-erro" id="boxClienteErro">❌ NF não localizada.</div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">👤 RAZÃO SOCIAL DO CLIENTE EMISSOR:</label>
+                    <input type="text" id="cliente" class="form-control" required placeholder="Preenchido via Faturamento ou manual">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">🚛 TRANSP. CONTRATADA PELO CLIENTE (FOB):</label>
+                    <input type="text" id="transp_coleta" class="form-control fw-bold text-warning" required placeholder="Qual transportadora virá coletar?">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">⚠️ MOTIVO DA DEVOLUÇÃO / REVERSA:</label>
+                    <select id="motivo_ocorrencia" class="form-select" required>
+                        <option value="">Carregando motivos...</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">📅 DATA DE LIBERAÇÃO:</label>
+                    <input type="date" id="data_ocorrencia" class="form-control" required>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">📅 PRAZO LIMITE COLETA:</label>
+                    <input type="date" id="prazo_coleta" class="form-control" required>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">📞 CELULAR / WHATSAPP CONTATO:</label>
+                    <input type="text" id="contato_celular" class="form-control" placeholder="(00) 00000-0000">
+                </div>
+
+                <div class="col-md-5">
+                    <label class="form-label">📬 E-MAIL PARA DISPARO DE AGENDA:</label>
+                    <input type="email" id="contato_email" class="form-control" placeholder="coletas@transportadora.com.br">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">📝 INSTRUÇÕES DE CARGA / DETALHES DE PESO E VOLUME:</label>
+                    <input type="text" id="tratativa" class="form-control" placeholder="Ex: Carga paletizada pesando 340kg disponível na doca 03 das 08h às 17h.">
+                </div>
+
+                <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                    <button type="button" id="btnCancelarEdicao" class="btn-cancelar" onclick="resetarFormulario()">❌ Cancelar Edição</button>
+                    <button type="submit" id="btnAcaoForm" class="btn-salvar">💾 Salvar Solicitação de Coleta</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="box-minuta-email" id="boxMinutaEmail">
+            <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-1 mb-2">
+                <span style="color: #eab308; font-weight: bold; font-size: 13px;">📬 MINUTA DE ACIONAMENTO DE COLETA REVERSA AUTOMÁTICA</span>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="document.getElementById('boxMinutaEmail').style.display='none'" style="font-size: 10px; padding: 2px 8px;">Fechar</button>
+            </div>
+            <div class="mb-2">
+                <label class="text-white-50 small font-weight-bold">Para:</label>
+                <input type="text" id="emailPara" class="form-control form-control-sm text-info" readonly>
+            </div>
+            <div class="mb-2">
+                <label class="text-white-50 small font-weight-bold">Assunto:</label>
+                <input type="text" id="emailAssunto" class="form-control form-control-sm text-info" readonly>
+            </div>
+            <div>
+                <label class="text-white-50 small font-weight-bold">Corpo do E-mail:</label>
+                <textarea id="emailCorpo" class="form-control form-control-sm text-white bg-dark" rows="6" readonly style="font-size: 11px;"></textarea>
+            </div>
+            <div class="text-end mt-2">
+                <button type="button" class="btn btn-warning btn-sm fw-bold" onclick="copiarTextoEmail()">📋 Copiar Texto Completo</button>
+            </div>
+        </div>
+
+        <div class="barra-busca-dupla">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-3 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">📄 NOTA:</span>
+                    <input type="text" id="buscaNotaColeta" class="form-control form-control-sm" placeholder="Filtrar por NF...">
+                </div>
+                <div class="col-md-4 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">👤 CLIENTE:</span>
+                    <input type="text" id="buscaClienteColeta" class="form-control form-control-sm" placeholder="Filtrar por razão social...">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-secondary btn-sm fw-bold w-100" onclick="limparFiltrosColeta()" style="background-color: #475569; border: none; font-size: 11px; padding: 6px 10px;">
+                        🧹 Limpar Filtros
+                    </button>
+                </div>
+                <div class="col-md-3 text-end">
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3 w-100" onclick="exportarColetasParaExcel()" style="background-color: #16a34a; border: none; font-size: 11px; padding: 6px 15px;">
+                        📊 Exportar para Excel (.xlsx)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabela-wrapper">
+            <div style="background-color: #0f172a; padding: 8px 12px; font-size: 12px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #334155;">
+                📊 PAINEL DE MONITORAMENTO DE COLETAS AGENDADAS (FOB)
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 13%; text-align: center;">FAROL TEMPORAL</th>
+                        <th style="width: 5%;">NF</th>
+                        <th style="width: 18%;">CLIENTE EMISSOR</th>
+                        <th style="width: 15%;">TRANSPORTADORA FOB</th>
+                        <th style="width: 8%;">LIBERAÇÃO</th>
+                        <th style="width: 8%;">PRAZO LIMIT.</th>
+                        <th style="width: 13%;">MOTIVO REVERSA</th>
+                        <th style="width: 12%;">INSTRUÇÕES / CONTATO</th>
+                        <th style="width: 8%; text-align: center;">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoGridColetas">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('data_ocorrencia').value = new Date().toISOString().split('T')[0];
+
+        document.addEventListener("DOMContentLoaded", function() {
+            carregarListaMotivos();
+            carregarGridColetas();
+            
+            // Ativa ouvintes dinâmicos para filtragem local instantânea
+            document.getElementById('buscaNotaColeta').addEventListener('input', filtrarGridColetasLocal);
+            document.getElementById('buscaClienteColeta').addEventListener('input', filtrarGridColetasLocal);
+        });
+
+        function carregarListaMotivos(valorSelecionado = "") {
+            const select = document.getElementById('motivo_ocorrencia');
+            fetch('/api/obter_motivos_ocorrencias')
+                .then(r => r.json())
+                .then(dados => {
+                    select.innerHTML = '<option value="">Escolha o motivo...</option>';
+                    dados.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m; opt.textContent = m;
+                        if(valorSelecionado === m) opt.selected = true;
+                        select.appendChild(opt);
+                    });
+                });
+        }
+
+        function verificarNotaFaturamento(nf) {
+            if(!nf.trim()) return;
+            fetch(`/buscar_nf?nf=${encodeURIComponent(nf.trim())}`)
+                .then(r => r.json())
+                .then(res => {
+                    if(res.erro) {
+                        document.getElementById('boxClienteSucesso').style.display = "none";
+                        document.getElementById('boxClienteErro').style.display = "block";
+                    } else {
+                        document.getElementById('boxClienteErro').style.display = "none";
+                        document.getElementById('boxClienteSucesso').style.display = "block";
+                        document.getElementById('cliente').value = res.cliente;
+                        document.getElementById('txtClienteNome').innerHTML = res.cliente;
+                    }
+                });
+        }
+
+        function carregarGridColetas() {
+            fetch('/api/listar_coletas_fob_grid')
+                .then(r => r.json())
+                .then(dados => {
+                    const tbody = document.getElementById('corpoGridColetas');
+                    tbody.innerHTML = "";
+
+                    if(dados.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">⚠️ Nenhuma solicitação de coleta FOB em andamento.</td></tr>`;
+                        return;
+                    }
+
+                    const hoje = new Date();
+                    hoje.setHours(0,0,0,0);
+
+                    dados.forEach(item => {
+                        let diasPassados = 0;
+                        if(item.data) {
+                            const partes = item.data.split('/');
+                            const dataReg = new Date(partes[2], partes[1] - 1, partes[0]);
+                            dataReg.setHours(0,0,0,0);
+                            diasPassados = Math.floor((hoje - dataReg) / (1000 * 60 * 60 * 24));
+                            if(diasPassados < 0) diasPassados = 0;
+                        }
+
+                        let isAtrasado = false;
+                        if(item.prazo_coleta) {
+                            const partesP = item.prazo_coleta.split('/');
+                            const dataPrazo = new Date(partesP[2], partesP[1] - 1, partesP[0]);
+                            dataPrazo.setHours(0,0,0,0);
+                            if(hoje > dataPrazo) isAtrasado = true;
+                        }
+
+                        const classeLinha = isAtrasado ? 'linha-atrasada' : 'linha-normal';
+                        const badgeFarol = isAtrasado 
+                            ? `<span class="badge-farol farol-alerta">🚨 ATRASADO (${diasPassados}d)</span>`
+                            : `<span class="badge-farol farol-ok">🟢 NO PRAZO (${diasPassados}d)</span>`;
+
+                        tbody.innerHTML += `
+                            <tr class="${classeLinha}">
+                                <td style="text-align: center;">${badgeFarol}</td>
+                                <td><strong>${item.nota_fiscal}</strong></td>
+                                <td class="text-white fw-bold">${item.cliente}</td>
+                                <td class="text-warning fw-bold">${item.transp_coleta}</td>
+                                <td>${item.data}</td>
+                                <td style="color: #f59e0b; font-weight: bold;">${item.prazo_coleta || '-'}</td>
+                                <td style="color: #38bdf8;">${item.motivo}</td>
+                                <td>
+                                    <div style="font-size:10px; color:#94a3b8;">${item.tratativa}</div>
+                                    <div style="font-size:9.5px; color:#bae6fd; margin-top:2px;">📞 ${item.contato_celular || '-'} | 📬 ${item.contato_email || '-'}</div>
+                                </td>
+                                <td style="text-align: center; white-space: nowrap;">
+                                    <button type="button" class="btn-editar-grid" onclick='prepararEdicao(${JSON.stringify(item)})' title="Editar">✏️</button>
+                                    <button type="button" class="btn-email-grid" onclick='gerarMinutaEmail(${JSON.stringify(item)})' title="Gerar E-mail">📬</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        // 🧹 ENGINE DE FILTRAGEM DINÂMICA DO GRID LOCAL
+        function filtrarGridColetasLocal() {
+            const notaBusca = document.getElementById('buscaNotaColeta').value.toLowerCase().trim();
+            const clienteBusca = document.getElementById('buscaClienteColeta').value.toLowerCase().trim();
+            const linhas = document.querySelectorAll('#corpoGridColetas tr');
+
+            linhas.forEach(linha => {
+                if (linha.cells.length < 2) return; 
+
+                const textoValueNF = linha.cells[1].textContent.toLowerCase();
+                const textoValueCliente = linha.cells[2].textContent.toLowerCase();
+
+                const bateNota = notaBusca === "" || textoValueNF.includes(notaBusca);
+                const bateCliente = clienteBusca === "" || textoValueCliente.includes(clienteBusca);
+
+                if (bateNota && bateCliente) {
+                    linha.style.display = "";
+                } else {
+                    linha.style.display = "none";
+                }
+            });
+        }
+
+        // 🧹 RESET DE FILTROS NA MESA OPERACIONAL
+        function limparFiltrosColeta() {
+            document.getElementById('buscaNotaColeta').value = "";
+            document.getElementById('buscaClienteColeta').value = "";
+            carregarGridColetas();
+        }
+
+        document.getElementById('formColeta').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const payload = {
+                id: document.getElementById('id_coleta').value,
+                nota_fiscal: document.getElementById('nota_fiscal').value,
+                cliente: document.getElementById('cliente').value,
+                data: document.getElementById('data_ocorrencia').value,
+                prazo_coleta: document.getElementById('prazo_coleta').value,
+                motivo: document.getElementById('motivo_ocorrencia').value,
+                tratativa: document.getElementById('tratativa').value,
+                transp_coleta: document.getElementById('transp_coleta').value,
+                contato_celular: document.getElementById('contato_celular').value,
+                contato_email: document.getElementById('contato_email').value
+            };
+
+            fetch('/api/salvar_coleta_fob_grid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if(res.status === "sucesso") {
+                    resetarFormulario();
+                    carregarGridColetas();
+                }
+            });
+        });
+
+        function gerarMinutaEmail(item) {
+            document.getElementById('emailPara').value = item.contato_email || 'operacional@transportadora.com.br';
+            document.getElementById('emailAssunto').value = `SOLICITAÇÃO DE COLETA REVERSA (FOB) - NF-e ${item.nota_fiscal} - ${item.cliente}`;
+            
+            const corpo = `Prezada Equipe Operacional da ${item.transp_coleta},\n\n` +
+                          `Informamos que a mercadoria vinculada à NF-e número ${item.nota_fiscal}, emitida para o cliente ${item.cliente}, está liberada e aguardando a coleta em nosso pátio logístico sob a modalidade FOB.\n\n` +
+                          `Diretriz / Motivo da Reversa: ${item.motivo}\n` +
+                          `Prazo Acordado para Retirada: ${item.prazo_coleta}\n` +
+                          `Instruções Físicas de Carga: ${item.tratativa || 'Material disponível na doca de expedição padrão.'}\n\n` +
+                          `Solicitamos a gentileza de nos responder este e-mail confirmando a data e o horário agendados para a entrada do veículo de coleta.\n\n` +
+                          `Atenciosamente,\n` +
+                          `Central Operacional de Logística Mestre`;
+            
+            document.getElementById('emailCorpo').value = corpo;
+            const box = document.getElementById('boxMinutaEmail');
+            box.style.display = "block";
+            box.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copiarTextoEmail() {
+            const txt = document.getElementById('emailCorpo');
+            txt.select();
+            document.execCommand('copy');
+            alert("📋 Minuta de e-mail copiada com sucesso para a sua área de transferência!");
+        }
+
+        function prepararEdicao(item) {
+            document.getElementById('id_coleta').value = item.id;
+            document.getElementById('nota_fiscal').value = item.nota_fiscal;
+            document.getElementById('cliente').value = item.cliente;
+            document.getElementById('transp_coleta').value = item.transp_coleta;
+            document.getElementById('contato_celular').value = item.contato_celular;
+            document.getElementById('contato_email').value = item.contato_email;
+            document.getElementById('tratativa').value = item.tratativa;
+            
+            if(item.data && item.data.includes('/')) {
+                const [d, m, a] = item.data.split('/');
+                document.getElementById('data_ocorrencia').value = `${a}-${m}-${d}`;
+            }
+            if(item.prazo_coleta && item.prazo_coleta.includes('/')) {
+                const [d, m, a] = item.prazo_coleta.split('/');
+                document.getElementById('prazo_coleta').value = `${a}-${m}-${d}`;
+            }
+
+            carregarListaMotivos(item.motivo);
+            document.getElementById('boxClienteSucesso').style.display = "block";
+            document.getElementById('txtClienteNome').innerHTML = item.cliente;
+
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#eab308";
+            btn.innerHTML = "🔄 Atualizar Coleta FOB";
+            document.getElementById('btnCancelarEdicao').style.display = "inline-block";
+        }
+
+        function resetarFormulario() {
+            document.getElementById('id_coleta').value = "";
+            document.getElementById('formColeta').reset();
+            document.getElementById('data_ocorrencia').value = new Date().toISOString().split('T')[0];
+            document.getElementById('boxClienteSucesso').style.display = "none";
+            document.getElementById('boxClienteErro').style.display = "none";
+            
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#10b981";
+            btn.innerHTML = "💾 Salvar Solicitação de Coleta";
+            document.getElementById('btnCancelarEdicao').style.display = "none";
+            carregarListaMotivos();
+        }
+
+        function exportarColetasParaExcel() {
+            const tabela = document.querySelector(".tabela-wrapper table");
+            const wb = XLSX.utils.table_to_book(tabela, { sheet: "Coletas_FOB" });
+            XLSX.writeFile(wb, `solicitacoes_coleta_fob.xlsx`);
+        }
+    </script>
+</body>
+</html>

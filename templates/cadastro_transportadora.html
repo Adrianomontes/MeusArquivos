@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Ocorrências</title>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; height: 100vh; font-family: Arial, sans-serif; background-color: #f4f7f6; overflow: hidden; }
+        body { display: flex; justify-content: center; align-items: center; box-sizing: border-box; padding: 10px; }
+        .container { width: 100%; height: 96vh; background: white; padding: 20px 40px; border-radius: 12px; box-shadow: 0px 0px 25px rgba(0,0,0,0.15); box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        
+        /* Cabeçalho alinhado com o botão voltar */
+        .cabecalho-container { display: flex; align-items: center; justify-content: center; position: relative; margin: 5px 0 15px 0; flex-shrink: 0; }
+        h2 { margin: 0; color: #333; text-align: center; font-size: 26px; font-weight: bold; }
+        
+        /* Estilo elegante para o botão voltar no topo */
+        .btn-voltar-topo { position: absolute; left: 0; top: 50%; transform: translateY(-50%); text-decoration: none; color: #007bff; font-weight: bold; font-size: 15px; display: flex; align-items: center; transition: color 0.2s; }
+        .btn-voltar-topo:hover { color: #0056b3; text-decoration: underline; }
+
+        form { display: flex; flex-direction: column; justify-content: space-between; flex-grow: 1; margin-bottom: 15px; gap: 5px; }
+        .campo-grupo { display: flex; flex-direction: column; justify-content: center; flex-grow: 1; }
+        .linha-input { display: flex; gap: 10px; width: 100%; }
+        label { font-weight: bold; color: #333; font-size: 15px; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px 12px; border: 2px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; background-color: #fff; transition: border-color 0.2s; }
+        input:focus, select:focus { border-color: #007bff; outline: none; box-shadow: 0 0 6px rgba(0,123,255,0.2); }
+        .btn-limpar-campo { background-color: #6c757d; color: white; border: none; border-radius: 6px; padding: 0 15px; font-size: 14px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+        .btn-limpar-campo:hover { background-color: #5a6268; }
+        
+        .botoes-grupo { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; flex-shrink: 0; }
+        button { padding: 12px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; box-sizing: border-box; }
+        .btn-salvar { width: 100%; background-color: #28a745; color: white; }
+        .btn-salvar:hover { background-color: #218838; }
+        .btn-fechar { width: 100%; background-color: #dc3545; color: white; }
+        .btn-fechar:hover { background-color: #bd2130; }
+    </style>
+</head>
+<body class="portal-page embedded">
+    <div class="container">
+        <!-- CABEÇALHO COM O BOTÃO VOLTAR NO CANTO ESQUERDO -->
+        <div class="cabecalho-container">
+            <a href="#" class="btn-voltar-topo" onclick="window.location.href = window.location.origin + '/'; return false;">← Voltar ao Painel</a>
+            <h2>📝 Registro de Ocorrência</h2>
+        </div>
+        
+        <form action="/salvar" method="POST">
+            <div class="campo-grupo">
+                <label for="cliente">Nome do Cliente:</label>
+                <input type="text" id="cliente" name="cliente" placeholder="Digite o nome do cliente" required>
+            </div>
+            
+            <div class="campo-grupo">
+                <label for="nota_fiscal">Número da Nota Fiscal:</label>
+                <input type="text" id="nota_fiscal" name="nota_fiscal" placeholder="Digite a Nota Fiscal" required>
+            </div>
+            
+            <div class="campo-grupo">
+                <label for="data">Data da Ocorrência:</label>
+                <input type="date" id="data" name="data" required>
+            </div>
+            
+            <div class="campo-grupo">
+                <label for="tratativa">Área da Tratativa:</label>
+                <div class="linha-input">
+                    <select name="tratativa" id="tratativa" required>
+                        <option value="" disabled selected hidden>Selecione a área responsável...</option>
+                        <option value="Comercial">Comercial</option>
+                        <option value="SAC">SAC</option>
+                        <option value="Expedição">Expedição</option>
+                        <option value="Gerência">Gerência</option>
+                    </select>
+                    <button type="button" class="btn-limpar-campo" onclick="limparSelecao('tratativa')">🔄 Limpar</button>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="item_word">Motivo / Tipo de Ocorrência:</label>
+                <div class="linha-input">
+                    <select name="item_word" id="item_word" required>
+                        <option value="" disabled selected hidden>Selecione o motivo da ocorrência...</option>
+                        {% for item in itens_word %}
+                        <option value="{{ item }}">{{ item }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn-limpar-campo" onclick="limparSelecao('item_word')">🔄 Limpar</button>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-salvar">💾 Salvar e Gerar Texto</button>
+        </form>
+        
+        <div class="botoes-grupo">
+            <button class="btn-fechar" onclick="fecharJanela()">❌ Fechar Tela</button>
+        </div>
+    </div>
+
+    <script>
+        function limparSelecao(idCampo) { document.getElementById(idCampo).value = ""; }
+        function fecharJanela() {
+            if (window.opener != null || window.history.length == 1) { window.close(); } 
+            else { if (confirm("Deseja limpar o formulário e fechar o atendimento?")) { window.location.reload(); } }
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

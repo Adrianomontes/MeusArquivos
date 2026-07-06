@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Coleta Rápida</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+</head>
+<body class="portal-page embedded">
+
+    <header class="portal-page-header">
+        <div>
+            <h1>Coleta Rápida</h1>
+            <p class="subtitle">Formulário simplificado para agendamento. Para coletas FOB completas, use a Central Coletas FOB.</p>
+        </div>
+        <button type="button" class="portal-btn portal-btn-ghost" onclick="irCentralFob()">Ir para Central FOB</button>
+    </header>
+
+    <div class="portal-card" style="max-width: 520px;">
+        <form action="/salvar_coleta" method="POST">
+            <div class="mb-3">
+                <label class="portal-label" for="cliente">Cliente</label>
+                <input type="text" id="cliente" name="cliente" class="portal-input" placeholder="Ex: Logística Brasil LTDA" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="portal-label" for="nota_fiscal">Nota fiscal</label>
+                <input type="text" id="nota_fiscal" name="nota_fiscal" class="portal-input" placeholder="Ex: 15432" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="portal-label" for="transportadora">Transportadora</label>
+                <input type="text" id="transportadora" name="transportadora" class="portal-input" list="listaTransportadorasForm" placeholder="Ex: Braspress" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="portal-label" for="data">Data programada</label>
+                <input type="date" id="data" name="data" class="portal-input" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="portal-label" for="status">Status inicial</label>
+                <select id="status" name="status" class="portal-select" required>
+                    <option value="Pendente" selected>Pendente (aguardando retirada)</option>
+                    <option value="Efetuada">Efetuada (coletado)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="portal-btn portal-btn-success" style="width: 100%;">Gravar coleta</button>
+        </form>
+    </div>
+
+    <datalist id="listaTransportadorasForm">
+        {% for t in lista_transportadoras %}
+        <option value="{{ t }}"></option>
+        {% endfor %}
+    </datalist>
+
+    <script>
+        function irCentralFob() {
+            if (window.parent && typeof window.parent.navegarPorUrl === 'function') {
+                window.parent.navegarPorUrl('/formulario', 'Central Coletas FOB');
+            } else {
+                window.location.href = '/formulario';
+            }
+        }
+
+        document.getElementById('data').valueAsDate = new Date();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

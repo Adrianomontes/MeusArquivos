@@ -1,0 +1,424 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+  <title>Torre de Controle — Painel de Rotação</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #0f172a;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #10b981;
+      --red: #ef4444;
+      --yellow: #f59e0b;
+      --radius: 10px;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 18px; font-weight: 800; color: var(--accent); letter-spacing: -0.3px; }
+    .header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px;
+    }
+    .badge-status {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      padding: 5px 14px; border-radius: 99px; font-size: 12px; font-weight: 600;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .dot.playing { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.paused { background: var(--yellow); }
+
+    .grid-top { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 18px;
+    }
+    .card-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+
+    .url-row { display: flex; align-items: center; gap: 8px; }
+    .url-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    input[type="text"], input[type="number"] {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 6px 10px;
+      font-size: 13px; font-family: var(--portal-font); width: 100%; outline: none;
+    }
+    input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); }
+
+    .interval-row { display: flex; align-items: center; gap: 10px; }
+    input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .interval-val { font-size: 15px; font-weight: 700; color: var(--accent); min-width: 26px; text-align: right; }
+
+    .progress-wrap { height: 3px; background: var(--border); border-radius: 99px; margin-top: 10px; overflow: hidden; }
+    .progress-bar { height: 100%; background: var(--accent); border-radius: 99px; width: 0%; transition: width 0.4s linear; }
+
+    .now-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+    .now-name { font-size: 14px; font-weight: 700; color: var(--text); }
+    .now-sub { font-size: 11px; color: var(--muted); }
+
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .btn-sm-link { font-size: 11px; color: var(--accent); background: none; border: none; cursor: pointer; font-weight: 600; padding: 0; }
+    .btn-sm-link:hover { text-decoration: underline; }
+
+    .tmpl-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+    .tmpl-row {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface2); border: 1px solid transparent;
+      border-radius: 8px; padding: 9px 12px;
+      cursor: grab; user-select: none; transition: border-color 0.15s, background 0.15s;
+    }
+    .tmpl-row:hover { background: var(--surface); border-color: var(--border); }
+    .tmpl-row.is-active { border-color: var(--accent); background: rgba(56,189,248,0.06); }
+    .tmpl-row.dragging { opacity: 0.35; }
+    .tmpl-row.drag-over { border-color: var(--muted); }
+
+    .tmpl-grip { color: var(--border); font-size: 14px; flex-shrink: 0; cursor: grab; }
+    .tmpl-check { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .tmpl-info { flex: 1; min-width: 0; }
+    .tmpl-name { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tmpl-route { font-size: 11px; color: var(--muted); font-family: var(--portal-font); }
+    .tmpl-pill {
+      font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+      flex-shrink: 0;
+    }
+    .tmpl-pill.on { background: rgba(16,185,129,0.12); color: var(--green); border-color: rgba(16,185,129,0.3); }
+    .tmpl-open {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px; padding: 4px 9px;
+      font-size: 11px; cursor: pointer; flex-shrink: 0; transition: color 0.12s;
+    }
+    .tmpl-open:hover { color: var(--accent); border-color: var(--accent); }
+
+    .ctrl-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 8px 16px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: background 0.12s, transform 0.1s;
+    }
+    .btn:hover { background: var(--surface); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+    .btn.green { background: rgba(16,185,129,0.12); color: var(--green); border-color: rgba(16,185,129,0.3); }
+    .btn.green:hover { background: rgba(16,185,129,0.2); }
+    .btn.red { background: rgba(239,68,68,0.1); color: var(--red); border-color: rgba(239,68,68,0.25); }
+    .btn.red:hover { background: rgba(239,68,68,0.18); }
+    .btn.blue { background: rgba(56,189,248,0.1); color: var(--accent); border-color: rgba(56,189,248,0.25); }
+    .btn.blue:hover { background: rgba(56,189,248,0.18); }
+    .btn.full { width: 100%; justify-content: center; }
+
+    .quick-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .quick-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 8px; padding: 7px 14px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .quick-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    .sep { height: 1px; background: var(--border); margin: 16px 0; }
+    .note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    .icon { display: inline-block; }
+  </style>
+</head>
+<body class="portal-page embedded">
+
+<div class="header">
+  <h1>📺 Torre de Controle — Rotação de Telas</h1>
+  <div class="badge-status">
+    <div class="dot" id="dot"></div>
+    <span id="status-label">Parado</span>
+  </div>
+</div>
+
+<!-- Servidor + intervalo -->
+<div class="grid-top">
+  <div class="card">
+    <div class="card-label">Endereço do servidor Flask</div>
+    <div class="url-row">
+      <input type="text" id="base-url" value="http://localhost:5000" />
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-label">Intervalo de rotação</div>
+    <div class="interval-row">
+      <input type="range" id="slider" min="3" max="120" step="1" value="15"
+             oninput="document.getElementById('iv').textContent=this.value" />
+      <span class="interval-val" id="iv">15</span>
+      <span style="font-size:12px;color:var(--muted)">seg</span>
+    </div>
+  </div>
+</div>
+
+<!-- Status atual -->
+<div class="card" style="margin-bottom:18px">
+  <div class="card-label">Exibindo agora</div>
+  <div class="now-row">
+    <div class="dot" id="dot2" style="width:10px;height:10px;"></div>
+    <div>
+      <div class="now-name" id="now-name">—</div>
+      <div class="now-sub" id="now-sub">Nenhuma rotação ativa</div>
+    </div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="prog"></div></div>
+</div>
+
+<!-- Lista de templates -->
+<div class="section-header">
+  <span class="section-label">Telas — arraste para reordenar</span>
+  <div style="display:flex;gap:12px">
+    <button class="btn-sm-link" onclick="toggleAll(true)">Ativar todas</button>
+    <button class="btn-sm-link" onclick="toggleAll(false)">Desativar todas</button>
+  </div>
+</div>
+<div class="tmpl-list" id="tmpl-list"></div>
+
+<!-- Controles principais -->
+<div class="ctrl-row">
+  <button class="btn green" id="btn-play" onclick="play()">▶ Iniciar</button>
+  <button class="btn" id="btn-pause" onclick="togglePause()" disabled>⏸ Pausar</button>
+  <button class="btn red" id="btn-stop" onclick="stop()" disabled>■ Parar</button>
+  <button class="btn" onclick="prev()">⏮ Anterior</button>
+  <button class="btn" onclick="next()">⏭ Próximo</button>
+  <button class="btn blue full" onclick="openViewer()">↗ Abrir janela do monitor</button>
+</div>
+
+<!-- Acesso rápido -->
+<div class="sep"></div>
+<div class="section-label" style="margin-bottom:10px">Abertura direta por tela</div>
+<div class="quick-grid" id="quick-grid"></div>
+
+<p class="note" style="margin-top:18px">
+  💡 A janela do monitor abre em 1280×800 — arraste para o segundo monitor e maximize. O painel permanece aqui para controle.
+</p>
+
+<script>
+const TELAS = [
+  { nome: 'Torre de Controle — Meta vs Realizado', rota: '/torre_controle',        ativo: true  },
+  { nome: 'KPIs Mestre — Expedição Mensal',        rota: '/painel_indicadores', ativo: true  },
+  { nome: 'IP do Servidor',                        rota: '/template_ip', ativo: true  },
+  { nome: '📡 Suporte de Pátio — IP do Servidor',  rota: '/tv_manual_ip',       ativo: true  }, // 🟢 ADICIONADO
+  { nome: '📱 Triagem Digital — Canhotos WhatsApp', rota: '/tv_canhotos_whatsapp',ativo: true  }, // 🟢 ADICIONADO
+  { nome: 'Central de Coletas FOB',                rota: '/tv_coletas_fob',     ativo: true  },
+  { nome: 'Praças de Atendimento',                 rota: '/tv_pracas',          ativo: true  },
+  { nome: 'Relatório de Faturamento',              rota: '/relatorio_faturamento', ativo: false },
+  { nome: 'Relatório de Expedição',                rota: '/relatorio_expedicao',   ativo: false },
+  { nome: 'Relatório de Ocorrências',              rota: '/relatorio',             ativo: false },
+  { nome: 'Relatório de Coletas',                  rota: '/relatorio_coletas',     ativo: false },
+  { nome: 'Sistema de Canhotos',                   rota: '/sistema_canhotos',      ativo: false },
+  { nome: 'Sistema de Canhotos',                   rota: '/canhoto_campo',      ativo: true },
+  { nome: 'Sistema de Canhotos Assinados',         rota: '/canhotos_assinados',      ativo: true },
+  { nome: 'Transportadoras',                       rota: '/relatorio_transportadoras', ativo: false },
+];
+
+let ordem = TELAS.map((_, i) => i);
+let estado = 'stopped'; // playing | paused | stopped
+let idx = 0;
+let timer = null;
+let progTimer = null;
+let progStart = 0;
+let viewer = null;
+
+const getBase = () => document.getElementById('base-url').value.replace(/\/$/, '');
+const getAtivas = () => ordem.filter(i => TELAS[i].ativo);
+const getSeg = () => parseInt(document.getElementById('slider').value);
+
+function renderList() {
+  const list = document.getElementById('tmpl-list');
+  list.innerHTML = '';
+  ordem.forEach((ti, pos) => {
+    const t = TELAS[ti];
+    const ativas = getAtivas();
+    const isNow = estado !== 'stopped' && ativas.length > 0 && ativas[idx] === ti;
+    const row = document.createElement('div');
+    row.className = 'tmpl-row' + (isNow ? ' is-active' : '');
+    row.draggable = true;
+    row.dataset.pos = pos;
+    row.innerHTML = `
+      <span class="tmpl-grip">⠿</span>
+      <input type="checkbox" class="tmpl-check" ${t.ativo ? 'checked' : ''}
+             onchange="TELAS[${ti}].ativo=this.checked;renderList();renderQuick();"
+             aria-label="Ativar ${t.nome}" />
+      <div class="tmpl-info">
+        <div class="tmpl-name">${t.nome}</div>
+        <div class="tmpl-route">${t.rota}</div>
+      </div>
+      <span class="tmpl-pill ${t.ativo ? 'on' : ''}">${t.ativo ? 'ativa' : 'inativa'}</span>
+      <button class="tmpl-open" onclick="abrirDireta(${ti})" aria-label="Abrir ${t.nome}">↗</button>
+    `;
+    row.addEventListener('dragstart', e => { e.dataTransfer.setData('pos', pos); row.classList.add('dragging'); });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      const from = +e.dataTransfer.getData('pos'), to = +row.dataset.pos;
+      if (from !== to) { const x = ordem[from]; ordem.splice(from,1); ordem.splice(to,0,x); renderList(); renderQuick(); }
+    });
+    list.appendChild(row);
+  });
+}
+
+function renderQuick() {
+  const g = document.getElementById('quick-grid');
+  g.innerHTML = '';
+  ordem.forEach(ti => {
+    const t = TELAS[ti];
+    const b = document.createElement('button');
+    b.className = 'quick-btn';
+    b.textContent = t.nome;
+    b.onclick = () => abrirDireta(ti);
+    g.appendChild(b);
+  });
+}
+
+function toggleAll(v) { TELAS.forEach(t => t.ativo = v); renderList(); renderQuick(); }
+
+function abrirDireta(ti) {
+  const url = getBase() + TELAS[ti].rota;
+  if (viewer && !viewer.closed) viewer.location.href = url;
+  else viewer = window.open(url, 'tv_monitor', 'width=1280,height=800');
+}
+
+function openViewer() {
+  const ativas = getAtivas();
+  if (!ativas.length) return;
+  abrirDireta(ativas[idx] ?? ativas[0]);
+}
+
+function setStatus(state, name, sub) {
+  const dot  = document.getElementById('dot');
+  const dot2 = document.getElementById('dot2');
+  const lbl  = document.getElementById('status-label');
+  const nn   = document.getElementById('now-name');
+  const ns   = document.getElementById('now-sub');
+  const colors = { playing: 'var(--green)', paused: 'var(--yellow)', stopped: 'var(--muted)' };
+  const c = colors[state] || 'var(--muted)';
+  dot.style.background = c; dot.style.boxShadow = state === 'playing' ? `0 0 6px ${c}` : 'none';
+  dot2.style.background = c;
+  lbl.textContent = state === 'playing' ? 'Transmitindo' : state === 'paused' ? 'Pausado' : 'Parado';
+  nn.textContent = name || '—';
+  ns.textContent = sub || 'Nenhuma rotação ativa';
+}
+
+function startProg() {
+  clearInterval(progTimer);
+  progStart = Date.now();
+  const dur = getSeg() * 1000;
+  const bar = document.getElementById('prog');
+  bar.style.width = '0%';
+  progTimer = setInterval(() => {
+    const pct = Math.min(100, ((Date.now() - progStart) / dur) * 100);
+    bar.style.width = pct + '%';
+    if (pct >= 100) clearInterval(progTimer);
+  }, 200);
+}
+
+function mostrarSlide() {
+  const ativas = getAtivas();
+  if (!ativas.length) return;
+  if (idx >= ativas.length) idx = 0;
+  const ti = ativas[idx];
+  const url = getBase() + TELAS[ti].rota;
+  if (!viewer || viewer.closed) viewer = window.open(url, 'tv_monitor', 'width=1280,height=800');
+  else viewer.location.href = url;
+  renderList();
+  const seg = getSeg();
+  setStatus('playing', TELAS[ti].nome, `${idx + 1} / ${ativas.length} · próxima em ${seg}s`);
+  startProg();
+}
+
+function agendarProxima() {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    if (estado !== 'playing') return;
+    const ativas = getAtivas();
+    idx = (idx + 1) % (ativas.length || 1);
+    mostrarSlide();
+    agendarProxima();
+  }, getSeg() * 1000);
+}
+
+function play() {
+  const ativas = getAtivas();
+  if (!ativas.length) return;
+  estado = 'playing';
+  if (idx >= ativas.length) idx = 0;
+  document.getElementById('btn-play').disabled = true;
+  document.getElementById('btn-pause').disabled = false;
+  document.getElementById('btn-stop').disabled = false;
+  mostrarSlide();
+  agendarProxima();
+}
+
+function togglePause() {
+  if (estado === 'playing') {
+    estado = 'paused';
+    clearTimeout(timer); clearInterval(progTimer);
+    document.getElementById('btn-play').disabled = false;
+    document.getElementById('btn-pause').textContent = '▶ Retomar';
+    const ativas = getAtivas();
+    setStatus('paused', ativas.length ? TELAS[ativas[idx]].nome : '—', 'Pausado');
+  } else if (estado === 'paused') {
+    estado = 'playing';
+    document.getElementById('btn-play').disabled = true;
+    document.getElementById('btn-pause').textContent = '⏸ Pausar';
+    mostrarSlide(); agendarProxima();
+  }
+}
+
+function stop() {
+  estado = 'stopped';
+  clearTimeout(timer); clearInterval(progTimer);
+  idx = 0;
+  document.getElementById('prog').style.width = '0%';
+  document.getElementById('btn-play').disabled = false;
+  document.getElementById('btn-pause').disabled = true;
+  document.getElementById('btn-pause').textContent = '⏸ Pausar';
+  document.getElementById('btn-stop').disabled = true;
+  renderList();
+  setStatus('stopped', '—', 'Nenhuma rotação ativa');
+}
+
+function next() {
+  const ativas = getAtivas();
+  if (!ativas.length) return;
+  idx = (idx + 1) % ativas.length;
+  if (estado === 'playing') { clearTimeout(timer); mostrarSlide(); agendarProxima(); }
+  else { mostrarSlide(); }
+}
+
+function prev() {
+  const ativas = getAtivas();
+  if (!ativas.length) return;
+  idx = (idx - 1 + ativas.length) % ativas.length;
+  if (estado === 'playing') { clearTimeout(timer); mostrarSlide(); agendarProxima(); }
+  else { mostrarSlide(); }
+}
+
+renderList();
+renderQuick();
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

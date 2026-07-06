@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aplicativo de Canhotos - Modo Offline Real</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --border: #334155;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+        
+        .card-assinatura { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; width: 100%; max-width: 480px; margin: 0 auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .card-assinatura h2 { font-size: 20px; font-weight: 800; text-align: center; margin-bottom: 18px; color: #fff; letter-spacing: -0.5px; }
+
+        .secao-divisor { border-top: 1px dashed var(--border); margin: 18px 0; padding-top: 14px; }
+        .titulo-secao { font-size: 13px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
+
+        .painel-offline { background: #0f172a; border: 1px solid var(--warning); border-radius: 10px; padding: 10px; margin-bottom: 14px; text-align: center; }
+        .painel-offline p { font-size: 11px; color: var(--muted); font-weight: bold; }
+        .painel-offline span { font-size: 14px; color: var(--warning); font-weight: 800; }
+
+        .form-grupo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+        .form-grupo label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-grupo input { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 12px; border-radius: 10px; font-size: 15px; outline: none; transition: border-color 0.2s; width: 100%; box-sizing: border-box; }
+        .form-grupo input:focus { border-color: var(--primary); }
+
+        .zona-upload { border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center; background: rgba(15, 23, 42, 0.4); cursor: pointer; margin-bottom: 12px; position: relative; }
+        .zona-upload p { font-size: 12px; color: var(--muted); font-weight: 500; margin-top: 4px; }
+        .zona-upload b { color: #fff; display: block; font-size: 14px; }
+        .zona-upload input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        .preview-captura { display: none; width: 100%; max-height: 140px; object-fit: contain; margin-top: 8px; border-radius: 8px; border: 1px solid var(--border); background: #000; }
+
+        .btn-adicionar-lote { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+        .container-lote-canhotos { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; max-height: 180px; overflow-y: auto; padding-right: 4px; }
+        .item-canhoto-lote { background: #0f172a; border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .info-canhoto-lote { display: flex; align-items: center; gap: 10px; }
+        .info-canhoto-lote img { width: 45px; height: 35px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); }
+        .info-canhoto-lote span { font-weight: 700; font-size: 14px; color: var(--warning); }
+        .btn-remover-lote { background: transparent; border: none; color: var(--danger); font-size: 20px; cursor: pointer; padding: 0 6px; }
+
+        .btn-enviar-tudo { background: var(--success); color: white; border: none; width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+        .btn-enviar-tudo:disabled { background: #34495e; color: var(--muted); cursor: not-allowed; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="card-assinatura">
+        <h2>📸 Coletor de Canhotos Portátil</h2>
+        
+        <div class="painel-offline">
+            <p>📦 MEMÓRIA INTERNA DO TELEFONE</p>
+            <span id="contadorLocal">0 Notas gravadas localmente</span>
+        </div>
+
+        <div class="form-grupo">
+            <label>Nome do Motorista:</label>
+            <input type="text" id="motoristaNome" placeholder="Seu nome completo">
+        </div>
+
+        <div class="form-grupo">
+            <label>RG / Documento:</label>
+            <input type="text" id="motoristaRg" placeholder="Seu documento">
+        </div>
+
+        <div class="form-grupo">
+            <label>Transportadora / Empresa:</label>
+            <input type="text" id="transportadoraNome" placeholder="Ex: BRASPRESS">
+        </div>
+
+        <div class="secao-divisor">
+            <div class="titulo-secao">📸 Fotografar Próximo Canhoto</div>
+            
+            <div class="form-grupo">
+                <label>Foto do Canhoto Físico:</label>
+                <div class="zona-upload">
+                    <div id="textoUpload">
+                        <b>📷 Abrir Câmera do Celular</b>
+                        <p>Toque para registrar o papel da entrega</p>
+                    </div>
+                    <input type="file" id="arquivoCanhoto" accept="image/png, image/jpeg, image/jpg" capture="environment" onchange="processarFotoCapturada(this)">
+                    <img id="previewImg" class="preview-captura" alt="Preview">
+                </div>
+            </div>
+
+            <div class="form-grupo">
+                <label>Número da Nota Fiscal:</label>
+                <input type="number" id="inputNotaFiscal" placeholder="Digite a NF desta foto" inputmode="numeric">
+            </div>
+
+            <button type="button" class="btn-adicionar-lote" onclick="adicionarCanhotoAoLoteLocal()">➕ Reter Entrega no Celular</button>
+        </div>
+
+        <div class="secao-divisor" id="secaoLote" style="display: none;">
+            <div class="titulo-secao">📦 Lote Salvo no Aparelho (<span id="contadorLote">0</span>)</div>
+            <div class="container-lote-canhotos" id="listaLoteCanhotos"></div>
+        </div>
+
+        <div class="form-grupo" id="blocoConfigIP" style="margin-top: 15px;">
+            <label style="color:#38bdf8;">🖥️ IP do Computador da Empresa (Portaria):</label>
+            <input type="text" id="ipServidorEmpresa" value="192.168.1.37" placeholder="Ex: 192.168.1.37">
+        </div>
+
+        <button type="button" class="btn-enviar-tudo" id="btnSalvarLote" onclick="descarregarLoteNoServidorWiFI()" disabled>🔄 Sincronizar Lote com Faturamento</button>
+    </div>
+
+    <script>
+        let fotoAtualBase64 = "";
+
+        function obterLoteLocal() {
+            return JSON.parse(localStorage.getItem('lote_canhotos_portatil')) || [];
+        }
+
+        function salvarLoteLocal(lista) {
+            localStorage.setItem('lote_canhotos_portatil', JSON.stringify(lista));
+            atualizarVisualInterface();
+        }
+
+        function processarFotoCapturada(input) {
+            const preview = document.getElementById('previewImg');
+            const texto = document.getElementById('textoUpload');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    fotoAtualBase64 = e.target.result;
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    texto.style.display = 'none';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function adicionarCanhotoAoLoteLocal() {
+            const inputNota = document.getElementById('inputNotaFiscal');
+            const notaValue = inputNota.value.trim();
+
+            if (!fotoAtualBase64) {
+                alert("⚠️ Por favor, bata a foto do canhoto antes de adicionar!");
+                return;
+            }
+            if (!notaValue) {
+                alert("⚠️ Por favor, informe o número da Nota Fiscal!");
+                return;
+            }
+            
+            let loteCanhotos = obterLoteLocal();
+            if (loteCanhotos.some(c => c.nota === notaValue)) {
+                alert("⚠️ Esta Nota Fiscal já foi armazenada no lote!");
+                return;
+            }
+
+            loteCanhotos.push({ nota: notaValue, preview: fotoAtualBase64 });
+            salvarLoteLocal(loteCanhotos);
+
+            inputNota.value = "";
+            document.getElementById('arquivoCanhoto').value = "";
+            document.getElementById('previewImg').style.display = 'none';
+            document.getElementById('textoUpload').style.display = 'block';
+            fotoAtualBase64 = "";
+        }
+
+        function removerCanhotoDoLoteLocal(index) {
+            let loteCanhotos = obterLoteLocal();
+            loteCanhotos.splice(index, 1);
+            salvarLoteLocal(loteCanhotos);
+        }
+
+        function atualizarVisualInterface() {
+            const loteCanhotos = obterLoteLocal();
+            const secao = document.getElementById('secaoLote');
+            const container = document.getElementById('listaLoteCanhotos');
+            const contadorLote = document.getElementById('contadorLote');
+            const contadorLocal = document.getElementById('contadorLocal');
+            const btnEnviar = document.getElementById('btnSalvarLote');
+
+            container.innerHTML = "";
+            contadorLote.innerText = loteCanhotos.length;
+            contadorLocal.innerText = `${loteCanhotos.length} Notas prontas para descarregar`;
+
+            if (loteCanhotos.length === 0) {
+                secao.style.display = "none";
+                btnEnviar.disabled = true;
+                return;
+            }
+
+            secao.style.display = "block";
+            btnEnviar.disabled = false;
+
+            loteCanhotos.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "item-canhoto-lote";
+                div.innerHTML = `
+                    <div class="info-canhoto-lote">
+                        <img src="${item.preview}">
+                        <span>🧾 NF: ${item.nota}</span>
+                    </div>
+                    <button class="btn-remover-lote" onclick="removerCanhotoDoLoteLocal(${index})">×</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function descarregarLoteNoServidorWiFI() {
+            const mot = document.getElementById('motoristaNome').value.trim();
+            const rg = document.getElementById('motoristaRg').value.trim();
+            const transp = document.getElementById('transportadoraNome').value.trim();
+            const ipServidor = document.getElementById('ipServidorEmpresa').value.trim();
+            const btn = document.getElementById('btnSalvarLote');
+            const loteCanhotos = obterLoteLocal();
+
+            if (!mot || !transp || !ipServidor) {
+                alert("⚠️ O nome, transportadora e IP da empresa são obrigatórios para descarregar!");
+                return;
+            }
+
+            btn.disabled = true;
+            let erros = 0;
+            const urlDestino = `http://${ipServidor}:5000/api/importar_canhoto_whatsapp`;
+
+            for (let i = 0; i < loteCanhotos.length; i++) {
+                btn.innerText = `⏳ Descarregando (${i + 1}/${loteCanhotos.length})...`;
+                
+                const base64Resposta = await fetch(loteCanhotos[i].preview);
+                const blobImagem = await base64Resposta.blob();
+
+                const formData = new FormData();
+                formData.append('motorista', mot);
+                formData.append('rg', rg);
+                formData.append('nota_fiscal', loteCanhotos[i].nota);
+                formData.append('transportadora', transp);
+                formData.append('file', blobImagem, `canhoto_${loteCanhotos[i].nota}.jpg`);
+
+                try {
+                    const res = await fetch(urlDestino, { method: 'POST', body: formData });
+                    const r = await res.json();
+                    if (r.status !== "sucesso") erros++;
+                } catch (e) {
+                    erros++;
+                }
+            }
+
+            if (erros === 0) {
+                alert(`🚀 Lote descarregado com sucesso! ${loteCanhotos.length} notas foram conciliadas no painel.`);
+                localStorage.removeItem('lote_canhotos_portatil');
+                atualizarVisualInterface();
+            } else {
+                alert(`⚠️ Falha de rede. O celular não conseguiu achar o computador no IP http://${ipServidor}:5000. Certifique-se de estar conectado ao Wi-Fi corporativo.`);
+            }
+
+            btn.innerHTML = "🔄 Sincronizar Lote com Faturamento";
+            btn.disabled = false;
+        }
+
+        atualizarVisualInterface();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

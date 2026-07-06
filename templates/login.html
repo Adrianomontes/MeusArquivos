@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login — Sistema Logístico Integrado</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background:
+                radial-gradient(circle at top right, rgba(56, 189, 248, 0.12), transparent 40%),
+                var(--portal-bg);
+            color: var(--portal-text);
+            font-family: var(--portal-font);
+        }
+
+        .login-layout {
+            width: 100%;
+            max-width: 880px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border: 1px solid var(--portal-border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--portal-shadow);
+        }
+
+        .login-brand {
+            background: var(--portal-surface);
+            padding: 40px 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-right: 1px solid var(--portal-border);
+        }
+
+        .login-brand h1 {
+            margin: 0 0 8px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--portal-text);
+            letter-spacing: -0.03em;
+        }
+
+        .login-brand p {
+            margin: 0;
+            font-size: 0.88rem;
+            color: var(--portal-muted);
+            line-height: 1.5;
+        }
+
+        .login-brand ul {
+            margin: 24px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .login-brand li {
+            font-size: 0.78rem;
+            color: var(--portal-dim);
+            padding: 6px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-login {
+            background: #151f32;
+            padding: 40px 32px;
+        }
+
+        .card-login h2 {
+            margin: 0 0 24px;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--portal-accent);
+        }
+
+        .msg-erro {
+            color: var(--portal-danger);
+            font-size: 0.78rem;
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .btn-entrar {
+            width: 100%;
+            margin-top: 8px;
+            padding: 11px;
+            font-size: 0.88rem;
+        }
+
+        .btn-entrar:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
+        @media (max-width: 720px) {
+            .login-layout { grid-template-columns: 1fr; }
+            .login-brand { border-right: none; border-bottom: 1px solid var(--portal-border); padding: 28px 24px; }
+            .card-login { padding: 28px 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-layout">
+        <div class="login-brand">
+            <h1>Sistema Logístico Integrado</h1>
+            <p>Portal unificado para ocorrências, coletas, faturamento e gestão à vista.</p>
+            <ul>
+                <li>✓ Devoluções e ocorrências no pátio</li>
+                <li>✓ Coletas FOB com controle de prazo</li>
+                <li>✓ Relatórios e conciliação de documentos</li>
+            </ul>
+        </div>
+
+        <div class="card-login">
+            <h2>Entrar no sistema</h2>
+            <form id="formLogin">
+                <div class="mb-3">
+                    <label class="portal-label" for="login_user">Usuário</label>
+                    <input type="text" id="login_user" class="portal-input" required placeholder="Seu login operacional" autocomplete="username">
+                </div>
+                <div class="mb-3">
+                    <label class="portal-label" for="senha_user">Senha</label>
+                    <input type="password" id="senha_user" class="portal-input" required placeholder="Sua senha" autocomplete="current-password">
+                </div>
+                <button type="submit" class="portal-btn portal-btn-primary btn-entrar" id="btnEntrar">Validar e entrar</button>
+                <div class="msg-erro" id="blocoErro"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('formLogin').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const erroDiv = document.getElementById('blocoErro');
+            const btn = document.getElementById('btnEntrar');
+            erroDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = 'Validando...';
+
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    login: document.getElementById('login_user').value,
+                    senha: document.getElementById('senha_user').value
+                })
+            })
+            .then(async r => {
+                const isJson = r.headers.get('content-type')?.includes('application/json');
+                const data = isJson ? await r.json() : null;
+
+                if (r.ok) {
+                    window.location.href = '/portal_operacional';
+                } else {
+                    erroDiv.textContent = data ? data.mensagem : 'Erro ' + r.status + ' no servidor.';
+                    erroDiv.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Validar e entrar';
+                }
+            })
+            .catch(() => {
+                erroDiv.textContent = 'Não foi possível conectar ao servidor. Verifique se o sistema está em execução.';
+                erroDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Validar e entrar';
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Auditoria - Cadastro De-Para EAN</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #1e293b; padding: 20px; }
+        .painel-mestre { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 1100px; margin: 0 auto; }
+        .header-painel { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 20px; }
+        .table-cadastro th { background-color: #0f172a; color: white; font-weight: 600; }
+        .input-busca { max-width: 400px; }
+        .card-formulario { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 20px; display: none; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="painel-mestre">
+        <div class="header-painel">
+            <div>
+                <a href="/" style="text-decoration: none; font-weight: bold; color: #0284c7;">← Voltar ao Painel Inicial</a>
+                <h1 class="m-0 mt-1" style="font-size: 24px; color: #0f172a;">📊 Auditoria e Cadastro de Códigos EAN</h1>
+            </div>
+            <button class="btn btn-success fw-bold" onclick="abrirFormularioNovo()">➕ Cadastrar Novo Código</button>
+        </div>
+
+        <div class="card-formulario" id="areaFormulario">
+            <h5 class="fw-bold text-dark mb-3" id="tituloFormulario">Inserir Novo Registro De-Para</h5>
+            <input type="hidden" id="txtId">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small">CÓDIGO INTERNO ITEM:</label>
+                    <input type="text" id="txtCodigoItem" class="form-control form-control-sm" placeholder="Ex: 100983">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-bold small">DESCRIÇÃO DO PRODUTO (OPCIONAL):</label>
+                    <input type="text" id="txtDescricao" class="form-control form-control-sm" placeholder="Ex: LUVA VOLK NITRILICA G">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">CÓDIGO DE BARRAS EAN (13 DÍGITOS):</label>
+                    <input type="text" id="txtCodigoEan" class="form-control form-control-sm" placeholder="Ex: 7891023456789">
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2 justify-content-end">
+                <button class="btn btn-secondary btn-sm" onclick="fecharFormulario()">Cancelar</button>
+                <button class="btn btn-primary btn-sm fw-bold" onclick="salvarRegistro()">💾 Gravar Dados no Banco</button>
+            </div>
+        </div>
+
+        <div class="d-flex mb-3 justify-content-between align-items-center">
+            <input type="text" id="txtBusca" class="form-control input-busca" placeholder="🔍 Buscar por item, descrição ou EAN..." oninput="carregarEANs()">
+            <span class="badge bg-dark p-2" style="font-size: 13px;">Total Localizado: <span id="lblTotalRegistros">0</span></span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped table-hover border align-middle text-center table-cadastro">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Código Item</th>
+                        <th style="text-align: left; width: 45%;">Descrição do Produto</th>
+                        <th style="width: 25%;">Código de Barras EAN</th>
+                        <th style="width: 15%;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                    <tr>
+                        <td colspan="4" class="text-muted py-4">Carregando registros do banco de dados...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Função executada ao carregar a página
+        window.onload = function() {
+            carregarEANs();
+        };
+
+        // Lista os registros via API com suporte a filtros
+        function carregarEANs() {
+            const busca = document.getElementById('txtBusca').value.trim();
+            fetch(`/api/ean?busca=${encodeURIComponent(busca)}`)
+                .then(r => r.json())
+                .then(lista => {
+                    document.getElementById('lblTotalRegistros').innerText = lista.length;
+                    const tbody = document.getElementById('corpoTabela');
+                    tbody.innerHTML = "";
+
+                    if(lista.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-muted py-4">Nenhum registro de EAN localizado para esta busca.</td></tr>`;
+                        return;
+                    }
+
+                    lista.forEach(reg => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><span class="badge bg-secondary px-2 py-1 fw-bold">${reg.codigo_item}</span></td>
+                            <td style="text-align: left;" class="fw-bold text-uppercase">${reg.descricao || '<span class="text-muted">- SEM DESCRIÇÃO -</span>'}</td>
+                            <td class="font-monospace fw-bold text-success" style="letter-spacing: 1px;">${reg.codigo_ean}</td>
+                            <td>
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button class="btn btn-warning btn-sm p-1 px-2 fw-bold text-dark" onclick='abrirFormularioEditar(${JSON.stringify(reg)})'>✏️ Editar</button>
+                                    <button class="btn btn-danger btn-sm p-1 px-2 fw-bold" onclick='excluirRegistro(${JSON.stringify(reg)})'>🗑️ Excluir</button>
+                                </div>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                })
+                .catch(() => {
+                    document.getElementById('corpoTabela').innerHTML = `<tr><td colspan="4" class="text-danger py-4">Erro ao estabelecer comunicação com o servidor Flask.</td></tr>`;
+                });
+        }
+
+        function abrirFormularioNovo() {
+            document.getElementById('txtId').value = "";
+            document.getElementById('txtCodigoItem').value = "";
+            document.getElementById('txtDescricao').value = "";
+            document.getElementById('txtCodigoEan').value = "";
+            document.getElementById('txtCodigoItem').disabled = false;
+            document.getElementById('tituloFormulario').innerText = "➕ Inserir Novo Registro De-Para";
+            document.getElementById('areaFormulario').style.display = 'block';
+            document.getElementById('txtCodigoItem').focus();
+        }
+
+        function abrirFormularioEditar(reg) {
+            document.getElementById('txtId').value = reg.id;
+            document.getElementById('txtCodigoItem').value = reg.codigo_item;
+            document.getElementById('txtDescricao').value = reg.descricao;
+            document.getElementById('txtCodigoEan').value = reg.codigo_ean;
+            document.getElementById('txtCodigoItem').disabled = true; // Trava chave mestre
+            document.getElementById('tituloFormulario').innerText = `✏️ Editando Vínculo do Item: ${reg.codigo_item}`;
+            document.getElementById('areaFormulario').style.display = 'block';
+            document.getElementById('txtCodigoEan').focus();
+        }
+
+        function fecharFormulario() {
+            document.getElementById('areaFormulario').style.display = 'none';
+        }
+
+        function salvarRegistro() {
+            const id = document.getElementById('txtId').value;
+            const codigo_item = document.getElementById('txtCodigoItem').value.trim();
+            const descricao = document.getElementById('txtDescricao').value.trim();
+            const codigo_ean = document.getElementById('txtCodigoEan').value.trim();
+
+            if(!codigo_item || !codigo_ean) {
+                alert("⚠️ Preencha os campos obrigatórios (Código do Item e Código EAN)!");
+                return;
+            }
+
+            fetch('/api/ean/salvar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, codigo_item: codigo_item, descricao: descricao, codigo_ean: codigo_ean })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if(res.status === "sucesso") {
+                    fecharFormulario();
+                    carregarEANs();
+                } else {
+                    alert("❌ Erro: " + res.mensagem);
+                }
+            })
+            .catch(() => alert("❌ Erro de comunicação com o servidor."));
+        }
+
+        function excluirRegistro(reg) {
+            if(!confirm(`⚠️ ATENÇÃO, ADRIANO!\n\nDeseja realmente apagar o código EAN do produto [${reg.codigo_item} - ${reg.descricao}]?\n\nIsso removerá as barras EAN mantendo apenas o código do item.`)) return;
+
+            // Envia o código do item para limpar o campo EAN no banco
+            fetch(`/api/ean/excluir/${encodeURIComponent(reg.codigo_item)}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(res => {
+                    if(res.status === "sucesso") {
+                        carregarEANs();
+                    } else {
+                        alert("❌ Erro ao excluir: " + res.mensagem);
+                    }
+                })
+                .catch(() => alert("❌ Erro de comunicação com o servidor."));
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

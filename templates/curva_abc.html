@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Logístico - Análise de Giro Curva ABC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; padding: 20px; color: #0f172a; }
+        .card-mestre { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 1200px; margin: 0 auto; }
+        .header-logistico { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #cbd5e1; padding-bottom: 15px; margin-bottom: 20px; }
+        
+        /* Badges de destaque da Curva */
+        .badge-classe-A { background-color: #ef4444; color: white; font-weight: bold; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+        .badge-classe-B { background-color: #f59e0b; color: #0f172a; font-weight: bold; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+        .badge-classe-C { background-color: #10b981; color: white; font-weight: bold; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+        
+        .table-abc th { background-color: #1e293b; color: white; text-align: center; font-size: 13px; }
+        .table-abc td { text-align: center; font-size: 14px; font-weight: 500; }
+        
+        .filtro-card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .chk-flag { transform: scale(1.3); cursor: pointer; }
+        
+        .btn-excel { background-color: #107c41; color: white; font-weight: bold; border: none; }
+        .btn-excel:hover { background-color: #0a5c30; color: white; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="card-mestre">
+        <div class="header-logistico">
+            <div>
+                <a href="#" style="text-decoration: none; font-weight: bold; color: #0284c7;" onclick="window.location.href = window.location.origin + '/'; return false;">← Voltar ao Painel Inicial</a>
+                <h1 class="m-0 mt-1" style="font-size: 24px; font-weight: 700;">📊 Matriz de Giro Logístico - Curva ABC</h1>
+            </div>
+            <button class="btn btn-excel d-flex align-items-center gap-2 px-3 py-2 fs-6 shadow-sm" onclick="exportarPlanilhaInventario()">
+                📄 📥 Exportar Planilha de Conferência (Excel)
+            </button>
+        </div>
+
+        <div class="filtro-card">
+            <h6 class="fw-bold text-secondary mb-2">Filtros Avançados por Classe Logística:</h6>
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+                <button class="btn btn-outline-danger fw-bold active" id="btnFiltroA" onclick="alternarFiltroClasse('A')">🔴 Classe A (Alto Giro: 50%)</button>
+                <button class="btn btn-outline-warning fw-bold active text-dark" id="btnFiltroB" onclick="alternarFiltroClasse('B')">🟡 Classe B (Médio Giro: 30%)</button>
+                <button class="btn btn-outline-success fw-bold active" id="btnFiltroC" onclick="alternarFiltroClasse('C')">🟢 Classe C (Baixo Giro: Remanescente)</button>
+                
+                <div class="ms-auto d-flex gap-2">
+                    <button class="btn btn-sm btn-secondary" onclick="marcarTodasFlags(true)">Marcar Todas Flags</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="marcarTodasFlags(false)">Desmarcar Todas</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover align-middle table-abc">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">Flag</th>
+                        <th style="width: 12%;">Código Item</th>
+                        <th style="text-align: left; width: 38%;">Descrição Mestre do Material</th>
+                        <th style="width: 12%; background-color: #f8fafc; color: #475569;">Saldo (Em Nosso Poder)</th>
+                        <th style="width: 10%;">Vol. Vendas (Giro)</th>
+                        <th style="width: 8%;">Classe</th>
+                        <th style="width: 15%; background-color: #2563eb; color: white;">Contagem Física (A Mão)</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaABC">
+                    <tr>
+                        <td colspan="7" class="text-muted py-4">Buscando dados e cruzando saldos da pasta Downloads...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+let dadosAbcCompletos = [];
+let classesAtivas = { "A": true, "B": true, "C": true };
+
+// 🎯 ACIONAMENTO AUTOMÁTICO AO ABRIR A TELA
+window.onload = function() {
+    carregarDadosCurvaABC();
+};
+
+function carregarDadosCurvaABC() {
+    fetch('/api/logistica/curva_abc')
+        .then(r => r.json())
+        .then(dados => {
+            if (dados.status === "erro") {
+                document.getElementById('corpoTabelaABC').innerHTML = `<tr><td colspan="7" class="text-danger py-4 fw-bold">⚠️ ${dados.mensagem}</td></tr>`;
+                return;
+            }
+            dadosAbcCompletos = dados;
+            renderizarTabela();
+        })
+        .catch(() => {
+            document.getElementById('corpoTabelaABC').innerHTML = `<tr><td colspan="7" class="text-danger py-4">Erro de comunicação com o servidor Flask.</td></tr>`;
+        });
+}
+
+function alternarFiltroClasse(classe) {
+    classesAtivas[classe] = !classesAtivas[classe];
+    const btn = document.getElementById(`btnFiltro${classe}`);
+    if (classesAtivas[classe]) { btn.classList.add('active'); } else { btn.classList.remove('active'); }
+    renderizarTabela();
+}
+
+function marcarTodasFlags(status) {
+    const checkboxes = document.querySelectorAll('.chk-flag');
+    checkboxes.forEach(chk => chk.checked = status);
+}
+
+function renderizarTabela() {
+    const tbody = document.getElementById('corpoTabelaABC');
+    tbody.innerHTML = "";
+
+    const dadosFiltrados = dadosAbcCompletos.filter(item => classesAtivas[item.classe]);
+
+    if (dadosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-muted py-4">Nenhum item para exibir com os filtros ativos.</td></tr>`;
+        return;
+    }
+
+    dadosFiltrados.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="checkbox" class="form-check-input chk-flag" value="${item.codigo_item}"></td>
+            <td><span class="badge bg-dark px-2 py-1 font-monospace" style="font-size:12px;">${item.codigo_item}</span></td>
+            <td style="text-align: left;" class="fw-bold text-uppercase">${item.descricao}</td>
+            <td class="text-secondary fw-bold">${item.saldo_sistema} UN</td>
+            <td class="fw-bold text-primary">${item.vendas} UN</td>
+            <td><span class="badge badge-classe-${item.classe}">Classe ${item.classe}</span></td>
+            <td style="background-color: #fff; border: 2px dashed #cbd5e1; height: 40px;"></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// 🎯 FUNÇÃO DE EXPORTAÇÃO CEGA RIGOROSA
+function exportarPlanilhaInventario() {
+    const checkboxesMarcados = document.querySelectorAll('.chk-flag:checked');
+    let itensParaExportar = [];
+
+    if (checkboxesMarcados.length > 0) {
+        checkboxesMarcados.forEach(chk => {
+            const itemOriginal = dadosAbcCompletos.find(i => i.codigo_item === chk.value);
+            if (itemOriginal) itensParaExportar.push(itemOriginal);
+        });
+    } else {
+        itensParaExportar = dadosAbcCompletos.filter(item => classesAtivas[item.classe]);
+    }
+
+    if (itensParaExportar.length === 0) {
+        alert("⚠️ Não há itens para exportar.");
+        return;
+    }
+
+    const inputLimite = prompt(`📊 Localizados ${itensParaExportar.length} itens.\n\nQuantas linhas deseja gerar na planilha de contagem cega? (Deixe em branco para todas):`, "30");
+    if (inputLimite === null) return;
+
+    const limite = parseInt(inputLimite.trim());
+    if (!isNaN(limite) && limite > 0) {
+        itensParaExportar = itensParaExportar.slice(0, limite);
+    }
+
+    let htmlExcel = `
+        <meta charset="utf-8">
+        <table border="1">
+            <tr style="background-color: #0f172a; color: #ffffff; font-weight: bold; text-align: center;">
+                <th style="padding: 10px; width: 140px; height: 30px;">CÓDIGO DO ITEM</th>
+                <th style="padding: 10px; width: 450px; text-align: left;">DESCRIÇÃO DO MATERIAL</th>
+                <th style="padding: 10px; width: 110px;">CURVA ABC</th>
+                <th style="padding: 10px; width: 220px; background-color: #2563eb; color: #ffffff;">CONTAGEM REALIZADA (A MÃO)</th>
+            </tr>
+    `;
+
+    itensParaExportar.forEach(item => {
+        htmlExcel += `
+            <tr>
+                <td style="text-align: center; font-family: var(--portal-font); height: 40px; vertical-align: middle;">&nbsp;${item.codigo_item}</td>
+                <td style="text-align: left; font-weight: bold; text-transform: uppercase; vertical-align: middle;">${item.descricao}</td>
+                <td style="text-align: center; font-weight: bold; vertical-align: middle;">Classe ${item.classe}</td>
+                <td style="background-color: #ffffff; height: 40px;"></td>
+            </tr>
+        `;
+    });
+
+    htmlExcel += `</table>`;
+
+    const blob = new Blob([htmlExcel], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Folha_Contagem_Cega_ABC_${new Date().toISOString().slice(0,10)}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

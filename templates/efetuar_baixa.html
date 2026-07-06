@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Efetuar Baixa de Entrega</title>
+    <style>
+        :root { 
+            --bg: #0f172a; 
+            --card: #1e293b; 
+            --text: #f8fafc; 
+            --muted: #94a3b8;
+            --border: #334155;
+            --radius: 14px;
+            --primary: #3b82f6; 
+            --success: #10b981; 
+            --warning: #f59e0b;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            padding: 40px 24px; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container { 
+            background: var(--card); 
+            padding: 30px; 
+            border-radius: var(--radius); 
+            border: 1px solid var(--border);
+            max-width: 500px; 
+            width: 100%;
+        }
+        
+        h2 { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; }
+        
+        .btn-voltar { 
+            display: inline-flex; 
+            align-items: center;
+            margin-bottom: 20px; 
+            color: var(--primary); 
+            text-decoration: none; 
+            font-weight: 600; 
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            outline: none;
+        }
+        .btn-voltar:hover { color: #60a5fa; }
+        
+        .info-nota { 
+            background-color: #0f172a; 
+            padding: 14px; 
+            border-radius: 8px; 
+            border: 1px solid var(--border); 
+            margin-bottom: 20px; 
+            font-size: 13px; 
+            color: #e2e8f0; 
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .info-nota strong { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        .form-group label { font-size: 13px; font-weight: 600; color: #fff; }
+        .form-group input { 
+            padding: 10px 12px; 
+            background: #0f172a;
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            font-size: 14px; 
+            color: #fff;
+            width: 100%; 
+            outline: none;
+        }
+        .form-group input:focus { border-color: var(--primary); }
+        .form-group input::placeholder { color: #475569; }
+        
+        .btn-salvar { 
+            background-color: var(--success); 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            cursor: pointer; 
+            border-radius: 8px; 
+            font-size: 14px; 
+            font-weight: 700; 
+            width: 100%; 
+            margin-top: 10px; 
+            transition: background 0.2s;
+        }
+        .btn-salvar:hover { background-color: #059669; }
+    </style>
+</head>
+<body class="portal-page embedded">
+    <div class="container">
+        <button class="btn-voltar" onclick="window.location.href='/torre_controle';">← Cancelar e Voltar</button>
+
+        <h2>📥 Confirmar Baixa do Canhoto</h2>
+        
+        <div class="info-nota">
+            <p><strong>Nota Fiscal</strong> {{ nota['nf'] }}</p>
+            <p><strong>Cliente</strong> {{ nota['cliente'] }}</p>
+            <p><strong>Transportadora</strong> {{ nota['transportadora'] }}</p>
+        </div>
+
+        <form action="/salvar_baixa_entrega" method="POST">
+            <input type="hidden" name="nota_fiscal" value="{{ nota['nf'] }}">
+            
+            <div class="form-group">
+                <label for="recebedor">Nome do Recebedor:</label>
+                <input type="text" id="recebedor" name="recebedor" value="{% if nota.ja_entregue %}{{ nota.recebedor }}{% endif %}" placeholder="Ex: João da Silva (Almoxarifado)" required>
+            </div>
+
+            <div class="form-group">
+                <label for="assinatura">Documento / RG / Assinatura / Obs:</label>
+                <input type="text" id="assinatura" name="assinatura" value="{% if nota.ja_entregue %}{{ nota.assinatura }}{% endif %}" placeholder="Ex: RG 12.345.678-9" required>
+            </div>
+
+            <div class="form-group">
+                <label for="data_entrega">Data Física da Entrega:</label>
+                <input type="date" id="data_entrega" name="data_entrega" required>
+            </div>
+
+            <button type="submit" class="btn-salvar">💾 Gravar Baixa Operacional</button>
+        </form>
+    </div>
+
+    <script>
+        // Preenche com a data atual se não houver uma gravada
+        {% if nota.ja_entregue and nota.data_entrega %}
+            // Converte DD/MM/AAAA para AAAA-MM-DD para o input HTML
+            var partes = "{{ nota.data_entrega }}".split("/");
+            if(partes.length === 3) {
+                document.getElementById('data_entrega').value = partes[2] + "-" + partes[1] + "-" + partes[0];
+            }
+        {% else %}
+            document.getElementById('data_entrega').valueAsDate = new Date();
+        {% endif %}
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

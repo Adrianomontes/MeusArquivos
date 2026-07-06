@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle de Operações - CORES</title>
+    <style>
+        :root {
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #475569;
+            --border: #e2e8f0;
+            --shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 8px -1px rgba(15, 23, 42, 0.04);
+            --radius: 16px;
+            --nav-bg: #0f172a;
+
+            /* Cores de Identidade dos Módulos */
+            --decor-ocorrencias: #3b82f6;
+            --decor-coletas: #f59e0b;
+            --decor-transp: #10b981;
+            --decor-canhotos: #8b5cf6;
+            --decor-faturamento: #0284c7;
+            --decor-expedicao: #e11d48;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+        html, body { width: 100%; height: 100vh; background-color: var(--bg); overflow: hidden; }
+        body { display: flex; justify-content: center; align-items: center; padding: 20px; }
+        
+        .box {
+            width: 100%;
+            max-width: 1300px; 
+            height: 95vh;
+            background: var(--card);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .topo-painel { 
+            text-align: center; 
+            flex-shrink: 0; 
+            padding-bottom: 20px; 
+            border-bottom: 1px solid var(--border);
+        }
+        h2 { color: var(--nav-bg); margin-bottom: 6px; font-size: 28px; font-weight: 800; letter-spacing: -0.8px; }
+        .sub { color: var(--muted); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex-grow: 1;
+            min-height: 0;
+            justify-content: center;
+        }
+
+        .grid-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .secao-operacional {
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .secao-operacional:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px -2px rgba(15, 23, 42, 0.04);
+        }
+
+        .secao-titulo {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--nav-bg);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 4px;
+        }
+
+        .sec-oco { border-left: 4px solid var(--decor-ocorrencias); }
+        .sec-col { border-left: 4px solid var(--decor-coletas); }
+        .sec-tra { border-left: 4px solid var(--decor-transp); }
+        .sec-can { border-left: 4px solid var(--decor-canhotos); }
+        .sec-fat { border-left: 4px solid var(--decor-faturamento); }
+        .sec-exp { border-left: 4px solid var(--decor-expedicao); }
+
+        .menu-horizontal { 
+            display: flex; 
+            gap: 10px; 
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: 1px solid #cbd5e1;
+            padding: 11px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 140px;
+            text-decoration: none;
+            background-color: #ffffff;
+            color: #334155;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .btn:hover { 
+            background-color: #f1f5f9;
+            color: var(--nav-bg);
+            border-color: #64748b;
+        }
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-primary-action { background-color: var(--nav-bg); color: #ffffff; border: none; }
+        .btn-primary-action:hover { background-color: #1e293b; color: #ffffff; }
+
+        .btn-download { background-color: #e2e8f0; color: #475569; border: none; }
+        .btn-download:hover { background-color: #cbd5e1; color: var(--nav-bg); }
+
+        .btn-canhotos-assinados { background-color: #8b5cf6; color: white; border: none; }
+        .btn-canhotos-assinados:hover { background-color: #7c3aed; color: white; }
+        
+        .btn-auditoria { background-color: #6d28d9; color: white; border: none; }
+        .btn-auditoria:hover { background-color: #5b21b6; color: white; }
+        
+        .btn-etiquetas { background-color: #0284c7; color: white; border: none; }
+        .btn-etiquetas:hover { background-color: #0369a1; color: white; }
+        
+        .btn-torre-view { background-color: #1e1b4b; color: #f8fafc; border: none; }
+        .btn-torre-view:hover { background-color: #312e81; color: #f8fafc; }
+
+        /* 👑 BARRA DE RODAPÉ UNIFICADA, SIMÉTRICA E HIGH-TECH */
+        .master-footer-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            margin-top: 5px;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .rodape-bloco-alinhado { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .rodape-bloco-alinhado span { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        
+        /* Select de escolha de tela customizado */
+        .select-tela-tv {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 7px 10px;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+            height: 34px;
+            flex-shrink: 0;
+        }
+
+        /* Containers unificados e idênticos para os inputs */
+        .input-link-wrapper { display: inline-flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #1e293b; height: 34px; flex-shrink: 0; }
+        
+        /* Larguras dos inputs calibradas de forma inteligente */
+        #linkCanhotoMobile { width: 240px; background: transparent; border: none; color: #38bdf8; font-family: var(--portal-font); font-size: 13px; font-weight: 700; outline: none; text-align: center; }
+        #inputLocalhostCentral { width: 210px; background: transparent; border: none; color: #38bdf8; font-family: var(--portal-font); font-size: 13px; font-weight: 700; outline: none; text-align: center; }
+        
+        /* Botões de Cópia e Configuração Padronizados */
+        .btn-copiar-link { background: #2563eb; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.2s; white-space: nowrap; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-copiar-link:hover { background: #1d4ed8; }
+        
+        .btn-tv-flags { background: #10b981; color: white; border: none; font-size: 12px; font-weight: 700; padding: 0 14px; border-radius: 6px; cursor: pointer; transition: background 0.2s; white-space: nowrap; height: 34px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .btn-tv-flags:hover { background: #059669; }
+
+        @media (max-width: 1200px) {
+            .master-footer-container { flex-direction: column; gap: 15px; align-items: center; }
+            .box { height: auto; overflow-y: auto; }
+            html, body { height: auto; overflow: auto; }
+        }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="box">
+        <div class="topo-painel">
+            <h2>Painel de Controle Operacional</h2>
+            <div class="sub">Logística & Conciliação Híbrida de Documentos</div>
+        </div>
+        
+        <div class="dashboard-container">
+            <div class="grid-dashboard">
+                <div class="secao-operacional sec-oco">
+                    <div class="secao-titulo">📌 Gestão de Ocorrências</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/formulario')">📝 Novo Lançamento</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/relatorio')">🔍 Consultar Relatório</a>
+                    </div>
+                </div>
+                
+                <div class="secao-operacional sec-col">
+                    <div class="secao-titulo">📋 Gestão de Coletas</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/formulario_coleta')">📝 Registrar Solicitação</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/relatorio_coletas')">🔍 Monitorar Painel</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-dashboard">
+                <div class="secao-operacional sec-tra">
+                    <div class="secao-titulo">🏢 Cadastro de Transportadoras</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/cadastro_transportadora')">🚚 Inserir Cadastro</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/relatorio_transportadoras')">🔍 Consultar Lista</a>
+                    </div>
+                </div>
+
+                <div class="secao-operacional sec-can">
+                    <div class="secao-titulo">🧾 Controle de Canhotos</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/canhoto')">📝 Tela de Assinatura</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/sistema_canhotos')">🔍 Lista Local</a>
+                        <a href="#" class="btn btn-canhotos-assinados" onclick="window.location.href='/canhotos_assinados?v=' + Date.now(); return false;">👁️ Ver Assinados</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-dashboard">
+                <div class="secao-operacional sec-fat">
+                    <div class="secao-titulo">📊 Módulo de Faturamento & Conciliação</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/relatorio_faturamento')">🔍 Painel Operacional</a>
+                        <a href="#" class="btn btn-auditoria" onclick="abrirJanela('/auditoria_torre')">🔎 Auditoria Detalhada</a>
+                        <a href="#" class="btn btn-etiquetas" onclick="abrirJanela('/gerador_etiquetas')">🏷️ Emissor Etiquetas</a>
+                        <a href="#" class="btn btn-torre-view" onclick="abrirJanela('/torre_controle')">🚀 Torre (Gestão à Vista)</a>
+                        <a href="/exportar_base_faturamento" class="btn btn-download">📥 Baixar Base Bruta</a>
+                    </div>
+                </div>
+
+                <div class="secao-operacional sec-exp">
+                    <div class="secao-titulo">📦 Módulo de Notas Expedidas</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/relatorio_expedicao')">🔍 Filtrar Expedição</a>
+                        <a href="/exportar_base_expedicao" class="btn btn-download">📥 Baixar Planilha</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="master-footer-container">
+            <div class="rodape-bloco-alinhado">
+                <span>📲 Link Celular:</span>
+                <div class="input-link-wrapper">
+                    <input type="text" id="linkCanhotoMobile" readonly>
+                    <button onclick="copiarTextoGenerico('linkCanhotoMobile', 'btnCopiarLink')" id="btnCopiarLink" class="btn-copiar-link">📋 Copiar</button>
+                </div>
+            </div>
+            
+            <div class="rodape-bloco-alinhado">
+                <span>📺 Monitor:</span>
+                <select id="seletorRotaTV" class="select-tela-tv">
+                    <option value="/torre_controle">🚀 Torre (Gráfico Diário)</option>
+                    <option value="/monitor_tv">📺 Monitor Padrão (Grid)</option>
+                </select>
+                <div class="input-link-wrapper">
+                    <input type="text" id="inputLocalhostCentral" onchange="salvarDestinoLocalhostCentral(this.value)">
+                    <button onclick="copiarTextoGenerico('inputLocalhostCentral', 'btnCopiarTV')" id="btnCopiarTV" class="btn-copiar-link">📋 Copiar</button>
+                </div>
+                <button type="button" class="btn-tv-flags" onclick="acionarGerenciadorFlagsCentral()">⚙️ Configurar Telas</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function abrirJanela(url) {
+            window.location.href = url;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const campoLink = document.getElementById('linkCanhotoMobile');
+            const campoTV = document.getElementById('inputLocalhostCentral');
+            const hostAtual = window.location.host; 
+
+            campoLink.value = `http://${hostAtual}/canhoto`;
+            
+            if(localStorage.getItem('monitor_ip_maquina')) {
+                campoTV.value = localStorage.getItem('monitor_ip_maquina');
+                if(localStorage.getItem('monitor_ip_maquina').includes('/monitor_tv')) {
+                    document.getElementById('seletorRotaTV').value = "/monitor_tv";
+                } else {
+                    document.getElementById('seletorRotaTV').value = "/torre_controle";
+                }
+            } else {
+                atualizarLinkTVPorDropdown();
+            }
+        });
+
+        function atualizarLinkTVPorDropdown() {
+            const hostAtual = window.location.host;
+            const rotaSelecionada = document.getElementById('seletorRotaTV').value;
+            const campoTV = document.getElementById('inputLocalhostCentral');
+            
+            campoTV.value = `http://${hostAtual}${rotaSelecionada}`;
+            salvarDestinoLocalhostCentral(campoTV.value);
+        }
+
+        document.getElementById('seletorRotaTV').addEventListener('change', atualizarLinkTVPorDropdown);
+
+        function salvarDestinoLocalhostCentral(valor) {
+            localStorage.setItem('monitor_ip_maquina', valor.trim());
+        }
+
+        function acionarGerenciadorFlagsCentral() {
+            fetch('/api/abrir_gerenciador_monitor', { method: 'POST' })
+                .then(res => res.json())
+                .then(dados => {
+                    if(dados.status !== "sucesso") {
+                        alert("Aviso: Não foi possível carregar o gerenciador automático.");
+                    }
+                })
+                .catch(err => alert("Erro ao acionar o processo Tkinter mestre."));
+        }
+
+        function copiarTextoGenerico(idInput, idBotao) {
+            const campoText = document.getElementById(idInput);
+            const botao = document.getElementById(idBotao);
+            
+            campoText.select();
+            campoText.setSelectionRange(0, 99999); 
+
+            navigator.clipboard.writeText(campoText.value).then(() => {
+                const textoOriginal = botao.innerText;
+                botao.innerText = "✅ Copiado!";
+                botao.style.background = "#10b981"; 
+                
+                setTimeout(() => {
+                    botao.innerText = textoOriginal;
+                    botao.style.background = "#2563eb"; 
+                }, 2000);
+            }).catch(err => {
+                alert("Erro ao efetuar a cópia.");
+            });
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <title>Auditoria de Faixas CEP</title>
+    <style>
+        body{margin:0;padding:14px;background:#0f172a;color:#e2e8f0;font-family:var(--portal-font,'Segoe UI',sans-serif);font-size:12px;}
+        .wrap{max-width:1400px;margin:0 auto;}
+        h1{margin:0;font-size:18px;color:#38bdf8;}
+        .nav a{color:#38bdf8;margin-right:12px;}
+        .box{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:10px;}
+        label{display:block;font-size:11px;color:#94a3b8;margin-bottom:3px;font-weight:600;}
+        input,select{width:100%;box-sizing:border-box;padding:7px;border-radius:6px;border:1px solid #475569;background:#0f172a;color:#fff;margin-bottom:8px;}
+        .btn{border:none;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:12px;background:#2563eb;color:#fff;}
+        .filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+        .filtros>div{min-width:140px;flex:1;}
+        table{width:100%;border-collapse:collapse;}
+        th,td{border:1px solid #334155;padding:6px 8px;text-align:left;}
+        th{background:#1e293b;color:#38bdf8;}
+        tr:nth-child(even) td{background:#141c2b;}
+        .tbl-wrap{max-height:520px;overflow:auto;border:1px solid #334155;border-radius:6px;}
+        .badge{display:inline-block;padding:2px 8px;border-radius:4px;background:#1e3a5f;color:#7dd3fc;font-size:10px;margin:1px;}
+        .sem{background:#450a0a;color:#fca5a5;}
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <p class="nav"><a href="/roteirizador">← Roteirizador</a> · <a href="/roteirizador/cadastro">Cadastro</a></p>
+    <h1>🔍 Auditoria de faixas × mesorregião × transportadoras</h1>
+
+    <div class="box">
+        <div class="filtros">
+            <div><label>UF</label><select id="selUf"><option value="">Todas</option></select></div>
+            <div><label>Mesorregião</label><select id="selMeso"><option value="">Todas</option></select></div>
+            <div><label>Transportadora</label><select id="selTransp"><option value="">Todas</option></select></div>
+            <div><button type="button" class="btn" id="btnFiltrar">Filtrar</button></div>
+        </div>
+    </div>
+
+    <div class="box tbl-wrap">
+        <table>
+            <thead><tr>
+                <th>Cabeça CEP</th><th>Faixa</th><th>UF</th><th>Mesorregião</th><th>Municípios</th><th>Notas fat.</th><th>Transportadoras</th><th>Ação</th>
+            </tr></thead>
+            <tbody id="corpo"><tr><td colspan="8">Carregando…</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="box" id="painelAdd" style="display:none">
+        <h2 style="margin:0 0 8px;color:#38bdf8;font-size:13px">Direcionar transportadora à faixa</h2>
+        <input type="hidden" id="addPrefixo"><input type="hidden" id="addUf"><input type="hidden" id="addMeso">
+        <div class="filtros">
+            <div style="flex:2"><label>Faixa selecionada</label><input type="text" id="addLabel" readonly></div>
+            <div style="flex:2"><label>Transportadora</label><select id="addTransp"></select></div>
+            <div><button type="button" class="btn" id="btnAdd">Salvar direcionamento</button></div>
+        </div>
+    </div>
+</div>
+<script>
+async function api(u,m,b){const r=await fetch(u,{method:m||'GET',headers:b?{'Content-Type':'application/json'}:{},credentials:'same-origin',body:b?JSON.stringify(b):undefined});return r.json();}
+
+let dados=[];
+
+async function init(){
+    const ufs=await api('/api/roteirizador/ufs');
+    const su=document.getElementById('selUf');
+    ufs.forEach(u=>su.innerHTML+=`<option value="${u}">${u}</option>`);
+    const meso=await api('/api/roteirizador/mesoregioes');
+    const sm=document.getElementById('selMeso');
+    meso.forEach(m=>sm.innerHTML+=`<option value="${m.mesoregiao}">${m.mesoregiao} (${m.uf})</option>`);
+    const tr=await api('/api/roteirizador/transportadoras');
+    [document.getElementById('selTransp'),document.getElementById('addTransp')].forEach(s=>{
+        tr.forEach(t=>s.innerHTML+=`<option value="${t}">${t}</option>`);
+    });
+    await filtrar();
+}
+
+async function filtrar(){
+    const uf=document.getElementById('selUf').value;
+    const meso=document.getElementById('selMeso').value;
+    const transp=document.getElementById('selTransp').value;
+    let url='/api/roteirizador/clusters?';
+    if(uf) url+='uf='+encodeURIComponent(uf)+'&';
+    if(meso) url+='mesoregiao='+encodeURIComponent(meso);
+    dados=await api(url);
+    if(transp) dados=dados.filter(r=>(r.transportadoras||[]).includes(transp));
+    render();
+}
+
+function render(){
+    const tb=document.getElementById('corpo');
+    if(!dados.length){tb.innerHTML='<tr><td colspan="8">Nenhum registro.</td></tr>';return;}
+    tb.innerHTML=dados.map(r=>{
+        const tr=(r.transportadoras||[]);
+        const badges=tr.length?tr.map(t=>`<span class="badge">${t}</span>`).join(''):'<span class="badge sem">Sem transportadora</span>';
+        return `<tr>
+            <td><b>${r.prefixo_cep}</b>xxx</td>
+            <td>${r.faixa_cep||'—'}</td>
+            <td>${r.uf}</td>
+            <td>${r.mesoregiao}</td>
+            <td>${r.municipios||'—'}</td>
+            <td>${r.qtd_notas}</td>
+            <td>${badges}</td>
+            <td><button type="button" class="btn" style="padding:4px 8px;font-size:10px" onclick="abrirAdd('${r.prefixo_cep}','${r.uf}','${r.mesoregiao}')">+ Transp.</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function abrirAdd(p,uf,m){
+    document.getElementById('painelAdd').style.display='block';
+    document.getElementById('addPrefixo').value=p;
+    document.getElementById('addUf').value=uf;
+    document.getElementById('addMeso').value=m;
+    document.getElementById('addLabel').value=p+'xxx · '+uf+' · '+m;
+}
+
+document.getElementById('btnFiltrar').onclick=filtrar;
+document.getElementById('btnAdd').onclick=async()=>{
+    const r=await api('/api/roteirizador/direcionamento_faixa','POST',{
+        prefixo_cep:document.getElementById('addPrefixo').value,
+        uf:document.getElementById('addUf').value,
+        mesoregiao:document.getElementById('addMeso').value,
+        transportadora:document.getElementById('addTransp').value,
+    });
+    alert(r.mensagem||JSON.stringify(r));
+    await filtrar();
+};
+init();
+</script>
+</body>
+</html>

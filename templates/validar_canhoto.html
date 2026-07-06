@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>Validador de Canhotos - Fluxo Contínuo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        html, body { 
+            height: 100vh; margin: 0; padding: 0; overflow: hidden; 
+            background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); 
+        }
+        .main-app { display: flex; flex-direction: column; height: 100vh; padding: 15px; }
+        .header-slim { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 10px; margin-bottom: 10px; height: 50px; }
+        .painel-duplo { display: flex; flex: 1; gap: 15px; min-height: 0; }
+        .area-visualizador { flex: 1.3; background-color: #1e293b; border-radius: 8px; display: flex; flex-direction: column; position: relative; border: 1px solid #334155; }
+        .barra-carousel { background-color: rgba(17, 24, 39, 0.9); padding: 8px; display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .container-foto { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #000; position: relative; user-select: none; }
+        .container-foto::-webkit-scrollbar { width: 10px; height: 10px; }
+        .container-foto::-webkit-scrollbar-track { background: #0f172a; }
+        .container-foto::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .container-foto::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+        #fotoCanhoto { max-width: 95%; max-height: 95%; cursor: grab; position: relative; transform-origin: top left; }
+        #fotoCanhoto:active { cursor: grabbing; }
+        .area-formulario { flex: 0.7; background-color: #111827; border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #334155; }
+        .form-group { margin-bottom: 8px; }
+        .form-label { font-size: 11px; color: #38bdf8; font-weight: bold; margin-bottom: 2px; display: block; }
+        .form-control-sm, .form-control-lg { background-color: #0f172a; border: 1px solid #334155; color: #fff; font-size: 12px; }
+        .form-control-lg:focus, .form-control-sm:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        .btn-principal { background-color: #10b981; color: white; font-weight: bold; padding: 12px; border: none; border-radius: 6px; width: 100%; margin-top: auto; text-transform: uppercase; }
+        .btn-principal:hover { background-color: #059669; }
+        
+        /* Botão vermelho de atalho para a tela de ocorrências do Index */
+        .btn-ocorrencia { background-color: #ef4444; color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; width: 100%; text-transform: uppercase; font-size: 11px; display: block; text-align: center; text-decoration: none; }
+        .btn-ocorrencia:hover { background-color: #dc2626; color: white; }
+        
+        .btn-nav { background: #334155; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-size: 12px; }
+        .contador-fotos { font-size: 12px; color: #94a3b8; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+<div class="main-app">
+    <div class="header-slim">
+        <h1 class="m-0" style="font-size: 18px; color: #38bdf8;">📸 VALIDAÇÃO ASSISTIDA (SISTEMA DE NOMES ADRIANO)</h1>
+        <div class="d-flex gap-2">
+            <input type="file" id="inputZip" class="form-control form-control-sm" accept=".zip" style="width: 250px;">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm">Sair</a>
+        </div>
+    </div>
+
+    <div class="painel-duplo">
+        <div class="area-visualizador">
+            <div class="barra-carousel">
+                <button class="btn-nav" id="btnPrev" onclick="navegar(-1)">◀ Anterior</button>
+                <div class="contador-fotos" id="statusCarousel">Nenhum arquivo ZIP carregado</div>
+                <button class="btn-nav" id="btnNext" onclick="navegar(1)">Próximo ▶</button>
+            </div>
+            
+            <div class="container-foto" id="quadroFotoScroll">
+                <img id="fotoCanhoto" src="" style="display:none;">
+                <div id="msgEmpty" class="text-muted">Carregue o arquivo .zip exportado do WhatsApp para iniciar</div>
+            </div>
+
+            <div class="barra-ferramentas-zoom p-2 d-flex gap-2 justify-content-center" style="background: #111827; border-top: 1px solid #334155;">
+                <small class="text-muted align-self-center me-2">💡 Dica: Role o mouse para Zoom. Clique e segure para arrastar.</small>
+                <button class="btn btn-dark btn-sm fw-bold" onclick="rotar()">🔄 Rotacionar 90°</button>
+                <button class="btn btn-dark btn-sm fw-bold" onclick="resetarZoomManual()">🔄 Resetar Visão</button>
+            </div>
+        </div>
+
+        <div class="area-formulario">
+            <div class="p-2 border border-info rounded" style="background: rgba(56, 189, 248, 0.1);">
+                <small class="d-block text-info fw-bold">ARQUIVO ORIGINAL PROCESSADO:</small>
+                <span id="nomeArquivo" class="fw-bold text-white-50" style="font-size: 11px;">-</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">NOTA FISCAL DETECTADA:</label>
+                <input type="text" id="campoNF" class="form-control form-control-lg text-center fw-bold text-warning" style="font-size: 22px;" placeholder="000000">
+                <span id="badgeReentrega" class="badge bg-danger mt-1 d-none w-100 p-2 text-wrap" style="font-size: 11px;">⚠️ ATENÇÃO: TRATANDO COMO REENTREGA</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">MOTORISTA RECONHECIDO (REMETENTE WHATSAPP):</label>
+                <input type="text" id="campoMotorista" class="form-control form-control-sm fw-bold text-info" style="background-color: #1e293b;" placeholder="Buscando remetente...">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">DATA DA BAIXA LOGÍSTICA:</label>
+                <input type="date" id="campoData" class="form-control form-control-sm">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">OBSERVAÇÕES DA ENTREGA:</label>
+                <textarea id="campoObs" class="form-control form-control-sm" rows="2" placeholder="Ex: Assinatura legível..."></textarea>
+            </div>
+
+            <a href="/" target="_blank" class="btn-ocorrencia">⚠️ Abrir Painel de Ocorrências / Detalhes</a>
+
+            <button class="btn-principal" onclick="salvarENext()">VALIDAR E PRÓXIMA FOTO ➔</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let imagensZip = [];
+    let vinculoMotoristas = {}; 
+    let vinculoNotas = {}; 
+    let indexAtual = 0;
+    let ehReentrega = false; // Flag dinâmica que vai para o Python
+    
+    let percentualZoom = 100; let currentRotation = 0; let estaArrastando = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    const quadroScroll = document.getElementById('quadroFotoScroll');
+    const imgElement = document.getElementById('fotoCanhoto');
+
+    quadroScroll.addEventListener('wheel', function(evento) {
+        if (imagensZip.length === 0) return;
+        evento.preventDefault(); 
+        if (evento.deltaY < 0) percentualZoom += 12; else percentualZoom -= 12;
+        if (percentualZoom < 100) percentualZoom = 100; if (percentualZoom > 400) percentualZoom = 400;
+        aplicarDimensionamento();
+    });
+
+    quadroScroll.addEventListener('mousedown', (e) => {
+        estaArrastando = true; quadroScroll.style.cursor = 'grabbing';
+        startX = e.clientX; startY = e.clientY;
+        scrollLeft = quadroScroll.scrollLeft; scrollTop = quadroScroll.scrollTop;
+    });
+
+    quadroScroll.addEventListener('mousemove', (e) => {
+        if (!estaArrastando) return;
+        quadroScroll.scrollLeft = scrollLeft - (e.clientX - startX);
+        quadroScroll.scrollTop = scrollTop - (e.clientY - startY);
+    });
+    quadroScroll.addEventListener('mouseup', () => estaArrastando = false);
+    quadroScroll.addEventListener('mouseleave', () => estaArrastando = false);
+
+    function calcularHashAlternativo(nome, tamanho) {
+        let hash = 0; let stringCombinada = nome + "_" + tamanho;
+        for (let i = 0; i < stringCombinada.length; i++) {
+            hash = ((hash << 5) - hash) + stringCombinada.charCodeAt(i); hash |= 0;
+        }
+        return "hash_" + Math.abs(hash);
+    }
+
+    // 🎯 INTERCEPTADOR: Pega a digitação e pergunta sobre a Reentrega
+    document.getElementById('campoNF').addEventListener('input', function(e) {
+        const valorNF = e.target.value.trim();
+        if (valorNF.length >= 5) {
+            fetch(`/api/verificar_nf_existente/${valorNF}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res && res.existe) {
+                        // Caixa de decisão baseada na ideia do Adriano
+                        const conf = confirm(`⚠️ NOTA JÁ BAIXADA ANTERIORMENTE!\n\nA NF nº ${valorNF} já possui uma imagem salva na pasta do servidor.\n\nEsta nova foto trata-se de uma REENTREGA / OCORRÊNCIA?\n\n[Clique em OK para Liberar o Lançamento como Ocorrência ou Cancelar para pular a foto]`);
+                        
+                        if (conf) {
+                            ehReentrega = true;
+                            document.getElementById('badgeReentrega').classList.remove('d-none');
+                            document.getElementById('campoObs').value = "REENTREGA PROCEDENTE DE OCORRÊNCIA. ";
+                        } else {
+                            ehReentrega = false;
+                            document.getElementById('badgeReentrega').classList.add('d-none');
+                            // Se recusar a reentrega, o carrossel pula para o próximo arquivo automaticamente
+                            if (indexAtual < imagensZip.length - 1) navegar(1);
+                        }
+                    } else {
+                        ehReentrega = false;
+                        document.getElementById('badgeReentrega').classList.add('d-none');
+                    }
+                }).catch(() => {});
+        }
+    });
+
+    document.getElementById('inputZip').addEventListener('change', async (e) => {
+        try {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const zip = await JSZip.loadAsync(file);
+            imagensZip = []; vinculoMotoristas = {}; vinculoNotas = {};
+            let hashesConhecidos = new Set();
+            let arquivoTextoChat = null;
+            let contadorDuplicados = 0;
+
+            for (const filename of Object.keys(zip.files)) {
+                if (filename.toLowerCase().trim() === '_chat' || filename.toLowerCase().trim() === '_chat.txt') {
+                    arquivoTextoChat = zip.files[filename];
+                    break;
+                }
+            }
+
+            if (arquivoTextoChat) {
+                const textoBruto = await arquivoTextoChat.async("text");
+                const linhas = textoBruto.split(/\r?\n/);
+                
+                linhas.forEach(linha => {
+                    if (/\.(jpe?g|png|jpeg|webp)/i.test(linha)) {
+                        const matchImagem = linha.match(/[\w-]+\.(jpe?g|png|jpeg|webp)/i);
+                        if (matchImagem) {
+                            const nomeArquivoImagem = matchImagem[0].trim();
+                            let quemPostou = "";
+                            if (linha.includes(' - ')) {
+                                let parte = linha.split(' - ')[1];
+                                if (parte && parte.includes(':')) quemPostou = parte.split(':')[0].trim();
+                            } else if (linha.includes('] ')) {
+                                let parte = linha.split('] ')[1];
+                                if (parte && parte.includes(':')) quemPostou = parte.split(':')[0].trim();
+                            }
+                            if (quemPostou) vinculoMotoristas[nomeArquivoImagem] = quemPostou;
+
+                            let buscaNF = linha.match(/\b(\d{5})\b/);
+                            if (buscaNF) vinculoNotas[nomeArquivoImagem] = buscaNF[1];
+                        }
+                    }
+                });
+            }
+
+            for (const [filename, fileData] of Object.entries(zip.files)) {
+                if (/\.(jpe?g|png|jpeg|webp)$/i.test(filename) && !fileData.dir) {
+                    const nomeBase = filename.split('/').pop();
+                    
+                    // Triagem inicial: ignora mídias que já começam com a numeração limpa
+                    if (/^\d{5}_/.test(nomeBase)) {
+                        continue;
+                    }
+
+                    const tamanhoArquivo = fileData._data.uncompressedSize || 0;
+                    const hashImagem = calcularHashAlternativo(nomeBase, tamanhoArquivo);
+                    if (hashesConhecidos.has(hashImagem)) {
+                        contadorDuplicados++; continue; 
+                    }
+                    hashesConhecidos.add(hashImagem);
+                    
+                    const buffer = await fileData.async("arraybuffer");
+                    const blob = new Blob([buffer]);
+                    
+                    imagensZip.push({
+                        nomeOriginal: filename, nomeFiltro: nomeBase, url: URL.createObjectURL(blob)
+                    });
+                }
+            }
+
+            if (imagensZip.length > 0) {
+                indexAtual = 0; exibirImagem();
+                if (contadorDuplicados > 0) alert(`🛡️ Filtro Interno: ${contadorDuplicados} mídias repetidas descartadas.`);
+            } else {
+                alert("⚠️ Nenhuma imagem inédita pendente localizada neste pacote.");
+            }
+        } catch (err) {
+            alert("❌ Erro ao decodificar pacote ZIP: " + err.message);
+        }
+    });
+
+    function exibirImagem() {
+        if (!imagensZip[indexAtual]) return;
+        const data = imagensZip[indexAtual];
+        imgElement.src = data.url;
+        imgElement.style.display = 'block';
+        document.getElementById('msgEmpty').style.display = 'none';
+        document.getElementById('nomeArquivo').innerText = data.nomeFiltro;
+        document.getElementById('statusCarousel').innerText = `FOTO ${indexAtual + 1} de ${imagensZip.length}`;
+        
+        percentualZoom = 100; currentRotation = 0; aplicarDimensionamento();
+        document.getElementById('campoObs').value = "";
+        document.getElementById('badgeReentrega').classList.add('d-none');
+        ehReentrega = false;
+
+        const motIdentificado = vinculoMotoristas[data.nomeFiltro] || vinculoMotoristas[data.nomeOriginal];
+        document.getElementById('campoMotorista').value = motIdentificado ? motIdentificado.toUpperCase() : "REMETENTE NÃO ENCONTRADO";
+
+        const nfIdentificada = vinculoNotas[data.nomeFiltro] || vinculoNotas[data.nomeOriginal];
+        document.getElementById('campoNF').value = nfIdentificada ? nfIdentificada : "";
+        document.getElementById('campoNF').focus();
+    }
+
+    function navegar(direcao) {
+        indexAtual += direcao;
+        if (indexAtual < 0) indexAtual = 0;
+        if (indexAtual >= imagensZip.length) indexAtual = imagensZip.length - 1;
+        exibirImagem();
+    }
+
+    function rotar() { currentRotation += 90; if (currentRotation >= 360) currentRotation = 0; imgElement.style.transform = `rotate(${currentRotation}deg)`; }
+    function resetarZoomManual() { percentualZoom = 100; currentRotation = 0; aplicarDimensionamento(); imgElement.style.transform = `rotate(0deg)`; }
+
+    function aplicarDimensionamento() {
+        if (percentualZoom === 100) {
+            quadroScroll.style.alignItems = 'center'; quadroScroll.style.justifyContent = 'center';
+            imgElement.style.width = 'auto'; imgElement.style.height = 'auto'; imgElement.style.maxWidth = '95%'; imgElement.style.maxHeight = '95%';
+        } else {
+            quadroScroll.style.alignItems = 'flex-start'; quadroScroll.style.justifyContent = 'flex-start';
+            imgElement.style.maxWidth = 'none'; imgElement.style.maxHeight = 'none'; imgElement.style.width = percentualZoom + '%'; imgElement.style.height = 'auto';
+        }
+    }
+
+    function salvarENext() {
+        const nf = document.getElementById('campoNF').value.trim();
+        const motorista = document.getElementById('campoMotorista').value.trim();
+        const dataBaixa = document.getElementById('campoData').value;
+        const observacoes = document.getElementById('campoObs').value.trim();
+
+        if (!nf) { alert("⚠️ Insira o número da Nota Fiscal para validação!"); return; }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = imgElement.naturalWidth || 1000;
+        canvas.height = imgElement.naturalHeight || 1400;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+        const imagemBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+        fetch('/api/salvar_canhoto_zip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                nota_fiscal: nf, motorista: motorista, data_recebimento: dataBaixa,
+                observacoes: observacoes, nome_arquivo: imagensZip[indexAtual].nomeFiltro,
+                imagem_base64: imagemBase64, reentrega: ehReentrega // 👈 Envia a flag
+            })
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === "sucesso") {
+                if (indexAtual < imagensZip.length - 1) navegar(1);
+                else alert("🏁 Perfeito, Adriano! Todas as imagens desse lote ZIP foram processadas!");
+            } else {
+                alert("❌ Erro ao processar dados: " + res.mensagem);
+            }
+        }).catch(() => alert("❌ Erro de comunicação com o servidor."));
+    }
+
+    document.getElementById('campoData').valueAsDate = new Date();
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

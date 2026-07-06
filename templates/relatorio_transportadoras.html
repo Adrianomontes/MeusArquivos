@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Transportadoras cadastradas</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+</head>
+<body class="portal-page embedded">
+
+    <header class="portal-page-header">
+        <div>
+            <h1>Lista de Transportadoras</h1>
+            <p class="subtitle">Consulta e exportação da base de transportadoras.</p>
+        </div>
+        <a href="/exportar_transportadoras" class="portal-btn portal-btn-success" onclick="alert('Download iniciado. Verifique a pasta Downloads.')">Exportar Excel</a>
+    </header>
+
+    <form action="/relatorio_transportadoras" method="GET" class="portal-toolbar">
+        <div class="field">
+            <label class="portal-label" for="busca_transp">Transportadora</label>
+            <input type="text" id="busca_transp" name="busca_transp" class="portal-input" placeholder="Filtrar por nome" value="{{ filtro_transp }}">
+        </div>
+        <button type="submit" class="portal-btn portal-btn-primary">Pesquisar</button>
+        <a href="#" class="portal-btn portal-btn-ghost" onclick="irModulo('/gerenciar_transportadoras','Transportadoras'); return false;">Gerenciar cadastro</a>
+    </form>
+
+    <div class="portal-table-wrap">
+        <table class="portal-table">
+            <thead>
+                <tr>
+                    <th>Transportadora</th>
+                    <th>Telefone</th>
+                    <th>Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transp in transportadoras %}
+                <tr>
+                    <td>{{ transp['Transportadora'] }}</td>
+                    <td>{{ transp['Telefone'] }}</td>
+                    <td>{{ transp['Responsável'] }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="portal-empty">Nenhuma transportadora cadastrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

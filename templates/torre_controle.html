@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Torre de Controle - Metas Mensais</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root { 
+      --bg: #0f172a; 
+      --card: #1e293b; 
+      --text: #f8fafc; 
+      --muted: #94a3b8;
+      --border: #334155;
+      --radius: 14px;
+      
+      --primary: #3b82f6; 
+      --success: #10b981; 
+      --warning: #f59e0b; 
+      --danger: #ef4444;
+      --purple: #a855f7; 
+      --cyan: #06b6d4;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      padding: 16px 24px; 
+      display: block; 
+      height: 100vh; 
+      overflow: hidden; 
+    }
+    
+    .lado-dashboard { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 16px; 
+      min-width: 0; 
+      height: 100%;
+      overflow-y: auto; 
+      padding-right: 4px;
+    }
+    
+    .lado-dashboard::-webkit-scrollbar { width: 6px; }
+    .lado-dashboard::-webkit-scrollbar-track { background: transparent; }
+    .lado-dashboard::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      border-bottom: 1px solid var(--border); 
+      padding-bottom: 12px; 
+    }
+    .header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    
+    .input-calendario-torre { background: #1e293b; border: 1px solid var(--border); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; outline: none; }
+    
+    .grid-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; flex-shrink: 0; }
+    .card { background: var(--card); padding: 12px 16px; border-radius: var(--radius); border-left: 4px solid var(--primary); display: flex; flex-direction: column; gap: 2px; }
+    .card h4 { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .card h2 { font-size: 22px; font-weight: 800; color: #fff; }
+
+    .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; height: 420px; flex-shrink: 0; display: flex; flex-direction: column; gap: 12px; }
+    
+    .chart-header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .chart-header-row h3 { font-size: 14px; font-weight: 700; color: #fff; }
+    
+    .grupo-mini-badges { display: flex; gap: 10px; align-items: center; }
+    
+    .mini-badge-resumo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-item-data { color: var(--muted); font-weight: 700; }
+    .badge-item-porcentagem { color: var(--success); font-weight: 800; background: rgba(16, 185, 129, 0.1); padding: 2px 4px; border-radius: 4px; }
+    .badge-item-falta { font-weight: 700; padding: 2px 4px; border-radius: 4px; }
+    .meta-ok { color: var(--success); background: rgba(16, 185, 129, 0.1); }
+    .meta-nok { color: var(--danger); background: rgba(239, 64, 64, 0.1); }
+
+    .secao-auditoria {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+    .auditoria-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .auditoria-header h3 { font-size: 14px; font-weight: 700; color: var(--warning); display: flex; align-items: center; gap: 8px; }
+    .seta-toggle { color: var(--muted); font-size: 12px; transition: transform 0.2s; }
+    
+    .auditoria-conteudo {
+      display: none;
+      margin-top: 14px;
+      max-height: 280px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+    
+    .auditoria-conteudo::-webkit-scrollbar { width: 6px; }
+    .auditoria-conteudo::-webkit-scrollbar-track { background: transparent; }
+    .auditoria-conteudo::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .tabela-auditoria-dados {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+    
+    .tabela-auditoria-dados th {
+      background: #0f172a;
+      color: var(--muted);
+      padding: 8px 10px;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .tabela-auditoria-dados td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      color: #e2e8f0;
+    }
+    .tabela-auditoria-dados tr:hover { background: rgba(255,255,255,0.02); }
+    
+    .badge-tipo-linha {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .badge-master { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .badge-item { background: rgba(148, 163, 184, 0.1); color: var(--muted); }
+
+    .lado-admin-metas {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: none; 
+      flex-direction: column;
+      gap: 12px;
+      max-height: 320px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+    .lado-admin-metas h2 { font-size: 14px; font-weight: 800; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    
+    .lista-inputs-scroll {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: hidden;
+      display: flex;
+      flex-direction: row; 
+      gap: 10px;
+      padding-bottom: 8px;
+    }
+    .lista-inputs-scroll::-webkit-scrollbar { height: 6px; }
+    .lista-inputs-scroll::-webkit-scrollbar-track { background: transparent; }
+    .lista-inputs-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    
+    .item-campo-dia {
+      display: flex;
+      flex-direction: column; 
+      gap: 4px;
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      min-width: 125px;
+      align-items: center;
+    }
+    .item-campo-dia span { font-size: 11px; font-weight: 600; color: #e2e8f0; }
+    .item-campo-dia input {
+      background: #1e293b;
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 4px 6px;
+      border-radius: 6px;
+      width: 100%;
+      text-align: center;
+      font-weight: 700;
+      font-size: 12px;
+      outline: none;
+    }
+    
+    .btn-salvar-geral { background: var(--success); color: #fff; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; text-align: center; transition: background 0.2s; }
+    .btn-salvar-geral:hover { background: #15803d; }
+    
+    .btn-ajuste-gaveta { background: #334155; color: #fff; border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+    .btn-ajuste-gaveta:hover { background: #475569; }
+
+    .atualizacao-footer { text-align: center; font-size: 11px; color: var(--muted); font-weight: 500; padding: 10px 0; }
+  </style>
+</head>
+<body class="portal-page embedded">
+
+  <div class="lado-dashboard">
+    <div class="header">
+      <h1>🚀 Torre de Controle — Meta vs Realizado</h1>
+      <div style="display:flex; gap:10px; align-items: center;">
+          <button class="btn-ajuste-gaveta" onclick="toggleGavetaMetas()">⚙️ Ajustar Metas</button>
+          <input type="date" id="filtroData" class="input-calendario-torre" onchange="recalculandoCalendarioCompleto()">
+          <button onclick="window.location.href='/'" style="background:#ef4444; color:#fff; border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600;">Sair</button>
+      </div>
+    </div>
+
+    <div class="lado-admin-metas" id="painelMetasFixo">
+      <h2>⚙️ Lançamento de Metas Diárias</h2>
+      <p style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Insira os valores abaixo e clique no botão para salvar.</p>
+      <div class="lista-inputs-scroll" id="containerInputsMetas"></div>
+      <button class="btn-salvar-geral" onclick="salvarTodasAsMetasTela()">💾 Salvar todas as metas no Banco de Dados</button>
+    </div>
+
+    <div class="grid-kpis">
+      <div class="card" style="border-color: var(--success);"><h4>Faturamento do Dia</h4><h2 id="val_faturamento">R$ 0,00</h2></div>
+      <div class="card" style="border-color: var(--success);"><h4>Meta Alcançada</h4><h2 id="val_percentual">0%</h2></div>
+      <div class="card" style="border-color: var(--danger);"><h4>Falta para Meta</h4><h2 id="val_falta" style="color:#ef4444;">R$ 0,00</h2></div>
+      <div class="card" style="border-color: var(--cyan);"><h4>Volume de Notas</h4><h2 id="val_notas">0 NFs</h2></div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-header-row">
+        <h3>📈 Comparativo Mensal: Realizado vs Meta</h3>
+        
+        <div class="grupo-mini-badges">
+          <div class="mini-badge-resumo">
+            <span class="badge-item-data" id="lblMiniData">Dia --/--</span>
+            <span class="badge-item-porcentagem" id="lblMiniPorcentagem">0% atingido</span>
+            <span class="badge-item-falta meta-nok" id="lblMiniFalta">Falta: R$ 0,00</span>
+          </div>
+
+          <div class="mini-badge-resumo" style="border-color: var(--cyan);">
+            <span class="badge-item-data" style="color: var(--cyan);">Mês Acumulado</span>
+            <span class="badge-item-falta meta-nok" id="lblMiniAcumuladoMes" style="background: rgba(6, 182, 212, 0.1); color: var(--cyan);">Falta: R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+      <div class="chart-container" style="flex:1; min-height:0;">
+        <canvas id="chartMensal"></canvas>
+      </div>
+    </div>
+
+    <div class="secao-auditoria">
+      <div class="auditoria-header" onclick="toggleAuditoria()">
+        <h3>🔍 Painel de Auditoria de Itens (Conferência do Dia Selecionado)</h3>
+        <span class="seta-toggle" id="setaAuditoria">▼ Expandir Tabela</span>
+      </div>
+      <div class="auditoria-conteudo" id="blocoTabelaAuditoria">
+        <table class="tabela-auditoria-dados">
+          <thead>
+            <tr>
+              <th>Nota Fiscal</th>
+              <th>Cliente</th>
+              <th>Item / Produto</th>
+              <th>Valor da Linha</th>
+              <th>Análise do Python</th>
+            </tr>
+          </thead>
+          <tbody id="corpoTabelaAuditoria">
+            <tr>
+              <td colspan="5" style="text-align:center; color:var(--muted); padding:20px;">Nenhum dado carregado.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="atualizacao-footer" id="txtAtualizacao">Sincronizando dados...</div>
+  </div>
+
+  <script>
+    let chartMensal = null;
+    let dadosGlobais = null;
+
+    function toggleGavetaMetas() {
+      const gaveta = document.getElementById('painelMetasFixo');
+      if (gaveta.style.display === 'flex') {
+        gaveta.style.display = 'none';
+      } else {
+        gaveta.style.display = 'flex';
+        sincronizarValoresGaveta();
+      }
+    }
+
+    function toggleAuditoria() {
+      const conteudo = document.getElementById('blocoTabelaAuditoria');
+      const seta = document.getElementById('setaAuditoria');
+      if (conteudo.style.display === 'block') {
+        conteudo.style.display = 'none';
+        seta.innerText = '▼ Expandir Tabela';
+      } else {
+        conteudo.style.display = 'block';
+        seta.innerText = '▲ Recolher Tabela';
+      }
+    }
+
+    function inicializarCamposMetasLocal() {
+      const containerMetas = document.getElementById('containerInputsMetas');
+      containerMetas.innerHTML = "";
+      let dataBase = document.getElementById('filtroData').value;
+      if (!dataBase) dataBase = new Date().toISOString().split('T')[0];
+      const ano = parseInt(dataBase.split('-')[0]);
+      const mes = parseInt(dataBase.split('-')[1]);
+      const totalDias = new Date(ano, mes, 0).getDate();
+      
+      for (let i = 1; i <= totalDias; i++) {
+        const diaStr = String(i).padStart(2, '0');
+        const mesStr = String(mes).padStart(2, '0');
+        const dataCompleta = `${ano}-${mesStr}-${diaStr}`;
+        const labelFormatado = `${diaStr}/${mesStr}`;
+        
+        // 🗓️ LÓGICA DE DEFAULT PARA DIAS ÚTEIS:
+        // Cria um objeto Date do JavaScript para validar qual é o dia da semana
+        // 0 = Domingo, 6 = Sábado. Valores de 1 a 5 são os dias úteis (Segunda a Sexta).
+        const objetoData = new Date(ano, mes - 1, i);
+        const diaDaSemana = objetoData.getDay(); 
+        
+        let valorPadrãoMeta = 0;
+        if (diaDaSemana >= 1 && diaDaSemana <= 5) {
+          valorPadrãoMeta = 467500; // Define o valor padrão solicitado para os dias úteis
+        }
+
+        const div = document.createElement('div');
+        div.className = 'item-campo-dia';
+        div.innerHTML = `<span>Dia <b>${labelFormatado}</b></span><input type="number" step="0.01" class="input-meta-valor" id="input_meta_${dataCompleta}" data-data="${dataCompleta}" value="${valorPadrãoMeta}">`;
+        containerMetas.appendChild(div);
+      }
+    }
+
+    function recalculandoCalendarioCompleto() {
+      inicializarCamposMetasLocal();
+      carregarDados();
+    }
+
+    function sincronizarValoresGaveta() {
+      if (dadosGlobais && dadosGlobais.tendencia_mensal) {
+        dadosGlobais.tendencia_mensal.forEach(d => {
+          const inputElement = document.getElementById(`input_meta_${d.data}`);
+          if (inputElement) {
+            // Se o dia já possuir um registro salvo de meta no SQLite (diferente de zero),
+            // ele respeita e mantém o dado do banco. Caso contrário, mantém o padrão dos dias úteis.
+            if (d.meta && d.meta !== 0) {
+              inputElement.value = d.meta;
+            }
+          }
+        });
+      }
+    }
+
+    async function carregarDados() {
+      try {
+        let dataSelecionada = document.getElementById('filtroData').value;
+        if (!dataSelecionada) {
+          dataSelecionada = new Date().toISOString().split('T')[0];
+          document.getElementById('filtroData').value = dataSelecionada;
+        }
+
+        if (document.getElementById('containerInputsMetas').children.length === 0) {
+          inicializarCamposMetasLocal();
+        }
+
+        const res = await fetch(`/api/metricas_torre?data=${dataSelecionada}`);
+        const dados = await res.json();
+        dadosGlobais = dados;
+
+        const faturado = dados.resumo_dia?.valor_faturado || 0;
+        const qtdNotas = dados.resumo_dia?.qtd_notas || 0;
+        document.getElementById('val_faturamento').innerText = faturado.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+        document.getElementById('val_notas').innerText = `${qtdNotas} NFs`;
+
+        const diaCorrenteInfo = dados.tendencia_mensal ? dados.tendencia_mensal.find(d => d.data === dataSelecionada) : null;
+        const metaHoje = diaCorrenteInfo ? diaCorrenteInfo.meta : 0;
+        
+        const faltaHoje = Math.max(0, metaHoje - faturado);
+        const percentualHoje = metaHoje > 0 ? Math.round((faturado / metaHoje) * 100) : 0;
+
+        document.getElementById('val_falta').innerText = faltaHoje.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+        document.getElementById('val_percentual').innerText = `${percentualHoje}%`;
+
+        const dataFormatadaBr = dataSelecionada.split('-').reverse().slice(0,2).join('/');
+        document.getElementById('lblMiniData').innerText = `Foco Dia ${dataFormatadaBr}`;
+        document.getElementById('lblMiniPorcentagem').innerText = `${percentualHoje}% atingido`;
+        
+        const elMiniFalta = document.getElementById('lblMiniFalta');
+        if (faltaHoje > 0) {
+          elMiniFalta.innerText = `Falta: ${faltaHoje.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}`;
+          elMiniFalta.className = "badge-item-falta meta-nok";
+        } else {
+          elMiniFalta.innerText = "Meta Concluída! 🎉";
+          elMiniFalta.className = "badge-item-falta meta-ok";
+        }
+
+        const faltaNoMes = dados.acumulado_mes?.falta_no_mes || 0;
+        const elMiniAcumulado = document.getElementById('lblMiniAcumuladoMes');
+        if (faltaNoMes > 0) {
+          elMiniAcumulado.innerText = `Falta: ${faltaNoMes.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}`;
+          elMiniAcumulado.style.color = "var(--cyan)";
+          elMiniAcumulado.style.background = "rgba(6, 182, 212, 0.1)";
+        } else {
+          elMiniAcumulado.innerText = "Mês Batido! 🏆";
+          elMiniAcumulado.style.color = "var(--success)";
+          elMiniAcumulado.style.background = "rgba(16, 185, 129, 0.1)";
+        }
+
+        const corpoTabela = document.getElementById('corpoTabelaAuditoria');
+        corpoTabela.innerHTML = "";
+        
+        if (dados.tabela_auditoria && dados.tabela_auditoria.length > 0) {
+          dados.tabela_auditoria.forEach(row => {
+            const tr = document.createElement('tr');
+            const badgeClass = row.tipo_linha === "TOTALIZADOR" ? "badge-tipo-linha badge-master" : "badge-tipo-linha badge-item";
+            const textoBadge = row.tipo_linha === "TOTALIZADOR" ? "🟢 SOMADO (Master)" : "⚪ IGNORADO (Item)";
+            
+            tr.innerHTML = `
+              <td><b>${row.nf}</b></td>
+              <td>${row.cliente || '-'}</td>
+              <td>${row.produto || '<i style="color:var(--muted)">Linha de Fechamento</i>'}</td>
+              <td>${row.valor_linha.toLocaleString('pt-BR', {style:'currency', currency:'BRL'})}</td>
+              <td><span class="${badgeClass}">${textoBadge}</span></td>
+            `;
+            corpoTabela.appendChild(tr);
+          });
+        } else {
+          corpoTabela.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted); padding:20px;">Nenhuma nota fiscal encontrada para o dia focado.</td></tr>`;
+        }
+
+        sincronizarValoresGaveta();
+
+        if (dados.tendencia_mensal && dados.tendencia_mensal.length > 0) {
+          const labels = dados.tendencia_mensal.map(d => d.label);
+          const real = dados.tendencia_mensal.map(d => d.realizado);
+          const meta = dados.tendencia_mensal.map(d => d.meta);
+
+          if(chartMensal) chartMensal.destroy();
+          const maiorValorReal = Math.max(...real, 0);
+          const maiorValorMeta = Math.max(...meta, 0);
+          const tetoGrafico = Math.max(maiorValorReal, maiorValorMeta);
+          const limiteY = tetoGrafico > 0 ? tetoGrafico * 1.1 : 'auto';
+
+          chartMensal = new Chart(document.getElementById('chartMensal').getContext('2d'), {
+            type: 'bar',
+            data: {
+              labels: labels,
+              datasets: [
+                { label: 'Realizado (R$)', data: real, backgroundColor: '#10b981', borderRadius: 5, barPercentage: 0.8, categoryPercentage: 0.85 },
+                { label: 'Meta (R$)', data: meta, backgroundColor: '#ef4444', borderRadius: 5, barPercentage: 0.8, categoryPercentage: 0.85 }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { labels: { color: '#94a3b8', font: { weight: '600' } } } },
+              scales: { 
+                y: { 
+                  beginAtZero: true, max: limiteY, grid: { color: '#334155' }, 
+                  ticks: { color: '#94a3b8', callback: function(v) { return v >= 1000 ? 'R$ ' + (v / 1000) + 'k' : 'R$ ' + v; } } 
+                },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { weight: '600' } } }
+              }
+            }
+          });
+        }
+        document.getElementById('txtAtualizacao').innerText = `Atualizado em: ${new Date().toLocaleTimeString()}`;
+      } catch (err) { console.error(err); }
+    }
+
+    async function salvarTodasAsMetasTela() {
+      const inputs = document.querySelectorAll('.input-meta-valor');
+      const btn = document.querySelector('.btn-salvar-geral');
+      btn.innerText = "⏳ Gravando no Banco de Dados...";
+      btn.style.background = "#475569";
+      
+      for (let input of inputs) {
+        const dataAlvo = input.getAttribute('data-data');
+        const valorAlvo = parseFloat(input.value) || 0;
+        
+        await fetch('/api/salvar_meta', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({data: dataAlvo, valor: valorAlvo})
+        });
+      }
+      
+      btn.innerText = "💾 Salvar todas as metas no Banco de Dados";
+      btn.style.background = "var(--success)";
+      
+      toggleGavetaMetas();
+      carregarDados();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      inicializarCamposMetasLocal();
+      carregarDados();
+      setInterval(carregarDados, 300000);
+    });
+  </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

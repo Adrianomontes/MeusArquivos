@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle de Operações - CORES</title>
+    <style>
+        :root {
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #475569;
+            --border: #e2e8f0;
+            --shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 8px -1px rgba(15, 23, 42, 0.04);
+            --radius: 16px;
+            --nav-bg: #0f172a;
+
+            /* Cores de Identidade dos Módulos */
+            --decor-ocorrencias: #3b82f6;
+            --decor-coletas: #f59e0b;
+            --decor-transp: #10b981;
+            --decor-canhotos: #8b5cf6;
+            --decor-faturamento: #0284c7;
+            --decor-expedicao: #e11d48;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+
+        html, body { width: 100%; height: 100vh; background-color: var(--bg); overflow: hidden; }
+        body { display: flex; justify-content: center; align-items: center; padding: 20px; }
+        
+        .box {
+            width: 100%;
+            max-width: 1300px; 
+            height: 95vh;
+            background: var(--card);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .topo-painel { 
+            text-align: center; 
+            flex-shrink: 0; 
+            padding-bottom: 20px; 
+            border-bottom: 1px solid var(--border);
+        }
+        h2 { color: var(--nav-bg); margin-bottom: 6px; font-size: 28px; font-weight: 800; letter-spacing: -0.8px; }
+        .sub { color: var(--muted); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex-grow: 1;
+            min-height: 0;
+            justify-content: center;
+        }
+
+        .grid-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .secao-operacional {
+            background-color: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .secao-operacional:hover {
+            border-color: #cbd5e1;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px -2px rgba(15, 23, 42, 0.04);
+        }
+
+        .secao-titulo {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--nav-bg);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 4px;
+        }
+
+        .sec-oco { border-left: 4px solid var(--decor-ocorrencias); }
+        .sec-col { border-left: 4px solid var(--decor-coletas); }
+        .sec-tra { border-left: 4px solid var(--decor-transp); }
+        .sec-can { border-left: 4px solid var(--decor-canhotos); }
+        .sec-fat { border-left: 4px solid var(--decor-faturamento); }
+        .sec-exp { border-left: 4px solid var(--decor-expedicao); }
+
+        .menu-horizontal { 
+            display: flex; 
+            gap: 10px; 
+            width: 100%;
+            flex-wrap: wrap; /* Garante que os botões se organizem dinamicamente sem espremer */
+        }
+
+        .btn {
+            border: 1px solid #cbd5e1;
+            padding: 11px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 140px; /* Impede que o botão encolha a ponto de cortar o texto */
+            text-decoration: none;
+            background-color: #ffffff;
+            color: #334155;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .btn:hover { 
+            background-color: #f1f5f9;
+            color: var(--nav-bg);
+            border-color: #64748b;
+        }
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-primary-action { background-color: var(--nav-bg); color: #ffffff; border: none; }
+        .btn-primary-action:hover { background-color: #1e293b; color: #ffffff; }
+
+        .btn-download { background-color: #e2e8f0; color: #475569; border: none; }
+        .btn-download:hover { background-color: #cbd5e1; color: var(--nav-bg); }
+
+        /* Estilização Premium para os botões especiais customizados */
+        .btn-canhotos-assinados { background-color: #8b5cf6; color: white; border: none; }
+        .btn-canhotos-assinados:hover { background-color: #7c3aed; color: white; }
+        
+        .btn-auditoria { background-color: #6d28d9; color: white; border: none; }
+        .btn-auditoria:hover { background-color: #5b21b6; color: white; }
+        
+        .btn-etiquetas { background-color: #0284c7; color: white; border: none; }
+        .btn-etiquetas:hover { background-color: #0369a1; color: white; }
+        
+        .btn-torre-view { background-color: #1e1b4b; color: #f8fafc; border: none; }
+        .btn-torre-view:hover { background-color: #312e81; color: #f8fafc; }
+
+        /* 👑 BARRA DE RODAPÉ UNIFICADA E HIGH-TECH */
+        .master-footer-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            margin-top: 5px;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .link-whatsapp-bloco { display: flex; align-items: center; gap: 10px; }
+        .link-whatsapp-bloco span { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .input-link-wrapper { display: inline-flex; align-items: center; gap: 8px; background: #0f172a; padding: 6px 12px; border-radius: 8px; border: 1px solid #1e293b; }
+        .input-link-wrapper input { background: transparent; border: none; color: #38bdf8; font-family: monospace; font-size: 13px; width: 260px; font-weight: 700; outline: none; text-align: center; }
+        .btn-copiar-link { background: #2563eb; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+        .btn-copiar-link:hover { background: #1d4ed8; }
+
+        /* Módulo de controle do monitor integrado no rodapé direito */
+        .controle-tv-bloco { display: flex; align-items: center; gap: 10px; background: #f8fafc; padding: 6px 12px; border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: inset 0 1px 2px rgba(0,0,0,0.01); }
+        .controle-tv-bloco label { font-size: 12px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
+        .input-ip-tv { background: #0f172a; border: 1px solid #334155; color: #38bdf8; font-family: monospace; font-size: 12px; font-weight: 700; padding: 6px 10px; border-radius: 6px; width: 130px; text-align: center; outline: none; }
+        .btn-tv-flags { background: #0284c7; color: white; border: none; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-tv-flags:hover { background: #0369a1; }
+
+        @media (max-width: 1024px) {
+            .grid-dashboard { grid-template-columns: 1fr; gap: 15px; }
+            .master-footer-container { flex-direction: column; gap: 15px; align-items: center; }
+            .box { height: auto; overflow-y: auto; }
+            html, body { height: auto; overflow: auto; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <div class="topo-painel">
+            <h2>Painel de Controle Operacional</h2>
+            <div class="sub">Logística & Conciliação Híbrida de Documentos</div>
+        </div>
+        
+        <div class="dashboard-container">
+            <div class="grid-dashboard">
+                <div class="secao-operacional sec-oco">
+                    <div class="secao-titulo">📌 Gestão de Ocorrências</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/formulario')">📝 Novo Lançamento</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/relatorio')">🔍 Consultar Relatório</a>
+                    </div>
+                </div>
+                
+                <div class="secao-operacional sec-col">
+                    <div class="secao-titulo">📋 Gestão de Coletas</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/formulario_coleta')">📝 Registrar Solicitação</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/relatorio_coletas')">🔍 Monitorar Painel</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-dashboard">
+                <div class="secao-operacional sec-tra">
+                    <div class="secao-titulo">🏢 Cadastro de Transportadoras</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/cadastro_transportadora')">🚚 Inserir Cadastro</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/relatorio_transportadoras')">🔍 Consultar Lista</a>
+                    </div>
+                </div>
+
+                <div class="secao-operacional sec-can">
+                    <div class="secao-titulo">🧾 Controle de Canhotos</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/canhoto')">📝 Tela de Assinatura</a>
+                        <a href="#" class="btn" onclick="abrirJanela('/sistema_canhotos')">🔍 Lista Local</a>
+                        <a href="#" class="btn btn-canhotos-assinados" onclick="window.location.href='/canhotos_assinados?v=' + Date.now(); return false;">👁️ Ver Assinados</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-dashboard">
+                <div class="secao-operacional sec-fat">
+                    <div class="secao-titulo">📊 Módulo de Faturamento & Conciliação</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/relatorio_faturamento')">🔍 Painel Operacional</a>
+                        <a href="#" class="btn btn-auditoria" onclick="abrirJanela('/auditoria_torre')">🔎 Auditoria Detalhada</a>
+                        <a href="#" class="btn btn-etiquetas" onclick="abrirJanela('/gerador_etiquetas')">🏷️ Emissor Etiquetas</a>
+                        <a href="#" class="btn btn-torre-view" onclick="abrirJanela('/torre_controle')">🚀 Torre (Gestão à Vista)</a>
+                        <a href="/exportar_base_faturamento" class="btn btn-download">📥 Baixar Base Bruta</a>
+                    </div>
+                </div>
+
+                <div class="secao-operacional sec-exp">
+                    <div class="secao-titulo">📦 Módulo de Notas Expedidas</div>
+                    <div class="menu-horizontal">
+                        <a href="#" class="btn btn-primary-action" onclick="abrirJanela('/relatorio_expedicao')">🔍 Filtrar Expedição</a>
+                        <a href="/exportar_base_expedicao" class="btn btn-download">📥 Baixar Planilha</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="master-footer-container">
+            <div class="link-whatsapp-bloco">
+                <span>📲 Link Celular:</span>
+                <div class="input-link-wrapper">
+                    <input type="text" id="linkCanhotoMobile" readonly>
+                    <button onclick="copiarLinkCanhoto()" id="btnCopiarLink" class="btn-copiar-link">📋 Copiar</button>
+                </div>
+            </div>
+            
+            <div class="controle-tv-bloco">
+                <label>📺 Monitor TV:</label>
+                <input type="text" id="inputLocalhostCentral" class="input-ip-tv" value="localhost:5000" onchange="salvarDestinoLocalhostCentral(this.value)">
+                <button type="button" class="btn-tv-flags" onclick="acionarGerenciadorFlagsCentral()">⚙️ Selecionar Telas</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function abrirJanela(url) {
+            window.location.href = url;
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const campoLink = document.getElementById('linkCanhotoMobile');
+            // Busca o IP dinâmico da máquina de forma segura
+            const hostAtual = window.location.host; 
+            campoLink.value = `http://${hostAtual}/canhoto`;
+
+            if(localStorage.getItem('monitor_ip_maquina')) {
+                document.getElementById('inputLocalhostCentral').value = localStorage.getItem('monitor_ip_maquina');
+            }
+        });
+
+        function salvarDestinoLocalhostCentral(valor) {
+            localStorage.setItem('monitor_ip_maquina', valor.trim());
+        }
+
+        function acionarGerenciadorFlagsCentral() {
+            fetch('/api/abrir_gerenciador_monitor', { method: 'POST' })
+                .then(res => res.json())
+                .then(dados => {
+                    if(dados.status !== "sucesso") {
+                        alert("Aviso: Não foi possível carregar o gerenciador automático.");
+                    }
+                })
+                .catch(err => alert("Erro ao acionar o processo Tkinter mestre."));
+        }
+
+        function copiarLinkCanhoto() {
+            const campoLink = document.getElementById('linkCanhotoMobile');
+            const botao = document.getElementById('btnCopiarLink');
+            
+            campoLink.select();
+            campoLink.setSelectionRange(0, 99999); 
+
+            navigator.clipboard.writeText(campoLink.value).then(() => {
+                botao.innerText = "✅ Copiado!";
+                botao.style.background = "#10b981"; 
+                
+                setTimeout(() => {
+                    botao.innerText = "📋 Copiar";
+                    botao.style.background = "#2563eb"; 
+                }, 2000);
+            }).catch(err => {
+                alert("Erro ao copiar.");
+            });
+        }
+    </script>
+</body>
+</html>

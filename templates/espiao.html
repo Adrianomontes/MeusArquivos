@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>🕵️‍♂️ Módulo Espião - Diagnóstico de Saldo Físico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: var(--portal-font); padding: 20px; }
+        .Painel-espiao { background-color: #1e293b; border: 2px solid #334155; border-radius: 8px; padding: 20px; }
+        .table-D { background-color: #0f172a; color: #38bdf8; border-color: #334155; }
+        .table-D th { background-color: #334155; color: #f8fafc; text-align: center; }
+        .table-D td { text-align: center; }
+        .badge-alerta { background-color: #ef4444; color: white; padding: 3px 6px; border-radius: 4px; font-size: 11px; }
+        .badge-sucesso { background-color: #22c55e; color: white; padding: 3px 6px; border-radius: 4px; font-size: 11px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="Painel-espiao shadow-lg">
+            <h2 class="text-warning mb-1">🕵️‍♂️ Inspetor de Dados Logísticos (Histórico Bruto)</h2>
+            <p class="text-muted small">Este módulo analisa a resposta bruta da tabela 'historico_inventario_ciclico' sem travas de data.</p>
+            
+            <div class="row g-3 align-items-center mb-4">
+                <div class="col-auto">
+                    <button class="btn btn-warning fw-bold" onclick="interceptarAPI()">🔍 Escanear Linhas Físicas do Banco</button>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-secondary fw-bold" onclick="window.location.href='/'">Voltar Menu</button>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4 text-center">
+                <div class="col-md-4"><div class="p-2 border border-secondary rounded">Total de Linhas no Banco: <span id="resTotal" class="fw-bold text-white">-</span></div></div>
+                <div class="col-md-4"><div class="p-2 border border-secondary rounded">Último Código: <span id="resUltimo" class="fw-bold text-warning">-</span></div></div>
+                <div class="col-md-4"><div class="p-2 border border-secondary rounded">Status Conexão: <span id="resStatus" class="fw-bold">-</span></div></div>
+            </div>
+
+            <h5 class="text-white mt-3">📋 Payload de Resposta Bruta Interna</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle table-D">
+                    <thead>
+                        <tr>
+                            <th>ID (REG)</th>
+                            <th>Data Lançamento</th>
+                            <th>Responsável / Auditor</th>
+                            <th>Código do Item</th>
+                            <th style="text-align: left;">Descrição do Item</th>
+                            <th>Qtd Real Lançada</th>
+                            <th>Lote Gravado</th>
+                            <th>Saldo Anterior</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradeEspiao">
+                        <tr><td colspan="8" class="text-muted text-center py-4">Aguardando comando de varredura...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<script>
+function interceptarAPI() {
+    const tbody = document.getElementById('gradeEspiao');
+    const resStatus = document.getElementById('resStatus');
+    
+    tbody.innerHTML = `<tr><td colspan="8" class="text-warning text-center py-4">🕵️‍♂️ Escaneando tráfego de dados da rota /api/logistica/espiao_base_bruta...</td></tr>`;
+    resStatus.innerHTML = "<span class='text-warning'>Buscando...</span>";
+
+    // Chamando a rota correta do Espião
+    fetch('/api/logistica/espiao_base_bruta')
+        .then(response => {
+            if (!response.ok) throw new Error("A rota retornou erro HTTP " + response.status);
+            return response.json();
+        })
+        .then(dados => {
+            resStatus.innerHTML = "<span class='text-success'>Conectado (200 OK)</span>";
+            processarDadosEspiao(dados);
+        })
+        .catch(err => {
+            resStatus.innerHTML = "<span class='text-danger'>Falha de Resposta</span>";
+            tbody.innerHTML = `<tr><td colspan="8" class="text-danger py-4 fw-bold">❌ Erro ao ler API: ${err.message}</td></tr>`;
+        });
+}
+
+function processarDadosEspiao(dados) {
+    const tbody = document.getElementById('gradeEspiao');
+    tbody.innerHTML = "";
+
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center py-4">A tabela oficial está vazia no banco selecionado.</td></tr>`;
+        return;
+    }
+
+    dados.forEach((item) => {
+        const tr = document.createElement('tr');
+        
+        tr.innerHTML = `
+            <td class="text-white fw-bold"><span class="badge bg-danger">${item.id}</span></td>
+            <td class="text-warning font-monospace">${item.data_contagem}</td>
+            <td class="text-white text-uppercase">${item.responsavel}</td>
+            <td><strong class="text-info font-monospace">[${item.codigo_item}]</strong></td>
+            <td class="text-white text-uppercase" style="text-align: left;">${item.descricao}</td>
+            <td class="text-success fw-bold fs-6">${item.quantidade_real} UN</td>
+            <td class="text-white-50">${item.lote_peca}</td>
+            <td class="text-secondary font-monospace">${item.saldo_anterior}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Atualiza os contadores superiores
+    document.getElementById('resTotal').innerText = dados.length;
+    document.getElementById('resUltimo').innerText = dados[0] ? dados[0].codigo_item : "-";
+}
+
+// Inicializa automaticamente
+window.onload = interceptarAPI;
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

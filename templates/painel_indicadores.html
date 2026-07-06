@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPIs Mestre - Expedição Mensal</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 20px; box-sizing: border-box; min-height: 100vh; display: flex; flex-direction: column; }
+        .header-dashboard { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-dashboard h2 { margin: 0; font-size: 24px; color: #38bdf8; letter-spacing: -0.5px; }
+        
+        /* Estilo do novo seletor de mês */
+        .bloco-filtro-mes { display: flex; align-items: center; gap: 10px; background: #1e293b; border: 1px solid #334155; padding: 6px 12px; border-radius: 8px; }
+        .bloco-filtro-mes label { font-size: 12px; font-weight: bold; color: #94a3b8; text-transform: uppercase; }
+        .bloco-filtro-mes select { background: #0f172a; color: #fff; border: 1px solid #475569; padding: 6px; border-radius: 6px; font-size: 13px; font-weight: bold; outline: none; cursor: pointer; }
+        
+        .btn-link-voltar { color: #94a3b8; text-decoration: none; font-weight: bold; font-size: 14px; }
+        .btn-link-voltar:hover { color: #f8fafc; }
+
+        .grid-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+        .kpi-card { background: #1e293b; border: 1px solid #334155; padding: 15px 20px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
+        .kpi-card h4 { margin: 0 0 6px 0; font-size: 11px; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.5px; }
+        .kpi-card p { margin: 0; font-size: 24px; font-weight: 800; color: #fff; }
+
+        .painel-graficos-rotativos { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 25px; flex-grow: 1; min-height: 440px; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .container-grafico { display: none; width: 100%; height: 380px; animation: crossFade 1s ease-in-out; }
+        .container-grafico.ativo { display: block; }
+        
+        .titulo-grafico-atual { font-size: 18px; font-weight: 700; margin-bottom: 15px; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+
+        @keyframes crossFade {
+            from { opacity: 0; transform: scale(0.99); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="header-dashboard">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <h2>📈 Torre de Controle Operacional</h2>
+            
+            <div class="bloco-filtro-mes">
+                <label>📅 Competência:</label>
+                <select id="filtroMesAno" onchange="carregarDadosESenharGraficos()">
+                    <option value="05/2026">Maio / 2026</option>
+                    <option value="06/2026" selected>Junho / 2026</option>
+                    <option value="07/2026">Julho / 2026</option>
+                    <option value="08/2026">Agosto / 2026</option>
+                </select>
+            </div>
+        </div>
+        <a href="#" class="btn-link-voltar" onclick="window.location.href = window.location.origin + '/torre_controle'; return false;">← Voltar ao Painel</a>
+    </div>
+
+    <div class="grid-kpis">
+        <div class="kpi-card"><h4>🚛 Volume Nosso Carro</h4><p id="kpiNossoCarro">R$ 0,00</p></div>
+        <div class="kpi-card"><h4>📦 Volume Frete FOB</h4><p id="kpiFob">R$ 0,00</p></div>
+        <div class="kpi-card"><h4>🏢 Volume Cliente Retira</h4><p id="kpiRetira">R$ 0,00</p></div>
+        <div class="kpi-card"><h4>🧾 Total de Notas Ativas</h4><p id="kpiTotalNotas">0 NFs</p></div>
+    </div>
+
+    <div class="painel-graficos-rotativos">
+        <div id="blocoGraficoDiario" class="container-grafico ativo">
+            <div class="titulo-grafico-atual">📊 Histórico de Evolução Financeira Diária (R$)</div>
+            <canvas id="chartFaturamentoDiario" style="width: 100%; height: 1000%;"></canvas>
+        </div>
+
+        <div id="blocoGraficoModais" class="container-grafico">
+            <div class="titulo-grafico-atual">🚚 Distribuição de Carga por Modalidade Logística (Qtd Notas)</div>
+            <canvas id="chartVolumeModais" style="width: 100%; height: 100%;"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let graficoDiarioInstancia = null;
+        let graficoModaisInstancia = null;
+
+        function formatarMoedaReal(valor) {
+            return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // ⚡ ATUALIZADO: Passa o mês selecionado como argumento na requisição da API
+        function carregarDadosESenharGraficos() {
+            const mesSelecionado = document.getElementById('filtroMesAno').value;
+
+            fetch(`/api/dados_dashboard_expedicao?mes=${mesSelecionado}`)
+                .then(res => res.json())
+                .then(dados => {
+                    if(dados.status === "erro") return;
+
+                    // Atualiza os cards superiores com os valores filtrados do mês ativo
+                    document.getElementById('kpiNossoCarro').innerText = formatarMoedaReal(dados.modalidades_valor["NOSSO CARRO"] || 0);
+                    document.getElementById('kpiFob').innerText = formatarMoedaReal(dados.modalidades_valor["FOB"] || 0);
+                    document.getElementById('kpiRetira').innerText = formatarMoedaReal(dados.modalidades_valor["CLIENTE RETIRA"] || 0);
+                    
+                    const totalNotas = Object.values(dados.modalidades_qtd).reduce((a, b) => a + b, 0);
+                    document.getElementById('kpiTotalNotas').innerText = totalNotas + " NFs";
+
+                    const labelsDiario = dados.faturamento_diario.map(item => item.data);
+                    const valoresDiario = dados.faturamento_diario.map(item => item.valor);
+
+                    const ctxDiario = document.getElementById('chartFaturamentoDiario').getContext('2d');
+                    if (graficoDiarioInstancia) graficoDiarioInstancia.destroy();
+                    graficoDiarioInstancia = new Chart(ctxDiario, {
+                        type: 'line',
+                        data: {
+                            labels: labelsDiario,
+                            datasets: [{
+                                label: 'Faturamento',
+                                data: valoresDiario,
+                                borderColor: '#38bdf8',
+                                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.3
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+
+                    const ctxModais = document.getElementById('chartVolumeModais').getContext('2d');
+                    if (graficoModaisInstancia) graficoModaisInstancia.destroy();
+                    graficoModaisInstancia = new Chart(ctxModais, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Nosso Carro', 'FOB', 'Cliente Retira', 'CIF', 'Não Mapeado'],
+                            datasets: [{
+                                data: [
+                                    dados.modalidades_qtd["NOSSO CARRO"] || 0,
+                                    dados.modalidades_qtd["FOB"] || 0,
+                                    dados.modalidades_qtd["CLIENTE RETIRA"] || 0,
+                                    dados.modalidades_qtd["CIF"] || 0,
+                                    dados.modalidades_qtd["OUTROS"] || 0
+                                ],
+                                backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#64748b'],
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.error("Erro na atualização do filtro mensal:", err));
+        }
+
+        function iniciarRotacaoDeGraficos() {
+            const painelDiario = document.getElementById('blocoGraficoDiario');
+            const painelModais = document.getElementById('blocoGraficoModais');
+
+            setInterval(() => {
+                if (painelDiario.classList.contains('ativo')) {
+                    painelDiario.classList.remove('ativo');
+                    painelModais.classList.add('ativo');
+                } else {
+                    painelModais.classList.remove('ativo');
+                    painelDiario.classList.add('ativo');
+                }
+            }, 12000);
+        }
+
+        // Inicialização mestre com o mês atual da caixinha
+        carregarDadosESenharGraficos();
+        iniciarRotacaoDeGraficos();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

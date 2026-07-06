@@ -1,0 +1,291 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cockpit Avançado - Matriz de Giro & Escalas Dinâmicas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; padding: 20px; color: #0f172a; }
+        .card-mestre { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 1600px; margin: 0 auto; }
+        .header-logistico { border-bottom: 2px solid #cbd5e1; padding-bottom: 15px; margin-bottom: 20px; }
+        .input-busca { background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; font-size: 14px; font-weight: 600; }
+
+        /* Estilização das Curvas Operacionais */
+        .badge-classe-A { background-color: #ef4444; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .badge-classe-B { background-color: #f59e0b; color: #0f172a; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .badge-classe-C { background-color: #10b981; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .badge-classe-C3 { background-color: #06b6d4; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .badge-classe-C2 { background-color: #3b82f6; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .badge-classe-C1 { background-color: #6366f1; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        .badge-classe-Fora { background-color: #94a3b8; color: white; padding: 4px 8px; border-radius: 4px; }
+
+        .table-estoque th { background-color: #1e293b; color: white; text-align: center; font-size: 13px; padding: 12px; text-transform: uppercase; }
+        .table-estoque td { text-align: center; font-size: 14px; font-weight: 500; padding: 12px; }
+        .btn-excel { background-color: #107c41; color: white; font-weight: bold; border: none; padding: 10px 20px; border-radius: 8px; }
+        .card-parametro { background-color: #f8fafc; border: 2px solid #e2e8f0; border-radius: 10px; padding: 15px; }
+        .input-escala { max-width: 75px; text-align: center; font-weight: 700; border: 2px solid #cbd5e1; display: inline-block; border-radius: 4px; padding: 2px; }
+        .grafico-wrapper { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 25px; min-height: 320px; }
+        .box-config { background: #ffffff; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="card-mestre">
+        <div class="header-logistico d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <a href="#" style="text-decoration: none; font-weight: bold; color: #0284c7;" onclick="window.location.href = window.location.origin + '/'; return false;">← Voltar ao Menu Principal</a>
+                <h1 class="m-0 mt-1" style="font-size: 24px; font-weight: 700;">📊 Cockpit de Giro com Escalas Ajustáveis & Gráfico de Pareto</h1>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <label class="fw-bold text-secondary text-nowrap m-0">🗓️ Período Histórico:</label>
+                <input type="month" id="filtroMesAno" class="form-control input-busca py-1" value="2026-05" onchange="atualizarDadosAPI()">
+                <button class="btn btn-excel shadow-sm" onclick="exportarPlanilhaFiltro()">📥 Exportar Itens</button>
+            </div>
+        </div>
+
+        <div class="grafico-wrapper">
+            <h6 class="fw-bold text-dark mb-2">📈 Distribuição de Giro (Barras) e Curva de Pareto Decrescente Reais (Linha):</h6>
+            <div style="position: relative; height: 280px; width: 100%;">
+                <canvas id="graficoParetoMestre"></canvas>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-center flex-wrap mb-4" id="painelContadoresCurvas">
+            <span class="badge-classe-A" id="contadorA">🔴 A: 0 itens</span>
+            <span class="badge-classe-B" id="contadorB">🟡 B: 0 itens</span>
+            <span class="badge-classe-C" id="contadorC">🟢 C: 0 itens</span>
+            <span class="badge-classe-C3" id="contadorC3">🔵 C3: 0 itens</span>
+            <span class="badge-classe-C2" id="contadorC2">🟣 C2: 0 itens</span>
+            <span class="badge-classe-C1" id="contadorC1">✨ C1: 0 itens</span>
+        </div>
+
+        <div class="card-parametro mb-4">
+            <h6 class="fw-bold text-dark mb-3">🎛️ Configurar Escala das Curvas (Defina os intervalos decimais desejados):</h6>
+            <div class="row g-2 text-center row-cols-2 row-cols-sm-3 row-cols-md-6">
+                <div class="col"><div class="box-config"><strong class="text-danger small">🔴 Curva A</strong><br><input type="number" id="aTop" step="0.01" class="input-escala" value="100" oninput="reprocessarMatrizCurvas()"> a <input type="number" id="aPis" step="0.01" class="input-escala" value="90" oninput="reprocessarMatrizCurvas()">%</div></div>
+                <div class="col"><div class="box-config"><strong class="text-warning small">🟡 Curva B</strong><br><input type="number" id="bTop" step="0.01" class="input-escala" value="89.99" oninput="reprocessarMatrizCurvas()"> a <input type="number" id="bPis" step="0.01" class="input-escala" value="70" oninput="reprocessarMatrizCurvas()">%</div></div>
+                <div class="col"><div class="box-config"><strong class="text-success small">🟢 Curva C</strong><br><input type="number" id="cTop" step="0.01" class="input-escala" value="69.99" oninput="reprocessarMatrizCurvas()"> a <input type="number" id="cPis" step="0.01" class="input-escala" value="40" oninput="reprocessarMatrizCurvas()">%</div></div>
+                <div class="col"><div class="box-config"><strong class="text-info small">🔵 Curva C3</strong><br><input type="number" id="c3Top" step="0.01" class="input-escala" value="39.99" oninput="reprocessarMatrizCurvas()"> a <input type="number" id="c3Pis" step="0.01" class="input-escala" value="20" oninput="reprocessarMatrizCurvas()">%</div></div>
+                <div class="col"><div class="box-config"><strong class="text-primary small">🟣 Curva C2</strong><br><input type="number" id="c2Top" step="0.01" class="input-escala" value="19.99" oninput="reprocessarMatrizCurvas()"> a <input type="number" id="c2Pis" step="0.01" class="input-escala" value="10" oninput="reprocessarMatrizCurvas()">%</div></div>
+                <div class="col"><div class="box-config"><strong class="small" style="color:#6366f1;">✨ Curva C1</strong><br><input type="number" id="c1Top" step="0.01" class="input-escala" value="9.99" oninput="reprocessarMatrizCurvas()"> a <input type="number" id="c1Pis" step="0.01" class="input-escala" value="0" oninput="reprocessarMatrizCurvas()">%</div></div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-center flex-wrap pt-3 border-top mt-3">
+                <button class="btn btn-outline-danger fw-bold btn-sm active" id="btnFiltroA" onclick="alternarFiltroClasse('A')">🔴 Ver Classe A</button>
+                <button class="btn btn-outline-warning fw-bold btn-sm active text-dark" id="btnFiltroB" onclick="alternarFiltroClasse('B')">🟡 Ver Classe B</button>
+                <button class="btn btn-outline-success btn-sm active" id="btnFiltroC" onclick="alternarFiltroClasse('C')">🟢 Ver Classe C</button>
+                <button class="btn btn-outline-info btn-sm active" id="btnFiltroC3" onclick="alternarFiltroClasse('C3')">🔵 Ver Classe C3</button>
+                <button class="btn btn-outline-primary btn-sm active" id="btnFiltroC2" onclick="alternarFiltroClasse('C2')">🟣 Ver Classe C2</button>
+                <button class="btn btn-outline-secondary btn-sm active" style="color:#6366f1; border-color:#6366f1;" id="btnFiltroC1" onclick="alternarFiltroClasse('C1')">✨ Ver Curva C1</button>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <input type="text" id="buscaCodigo" class="form-control input-busca" placeholder="🔎 Código (Filtro automático)..." oninput="filtrarGradeEGráfico()">
+            </div>
+            <div class="col-md-8">
+                <input type="text" id="buscaDesc" class="form-control input-busca" placeholder="🔎 Descrição ou palavra-chave..." oninput="filtrarGradeEGráfico()">
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover align-middle table-estoque">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Código do Item</th>
+                        <th style="text-align: left; width: 40%;">Descrição Mestre do Material</th>
+                        <th style="width: 15%; background-color: #2563eb; color: white;">Saldo Físico (Em Poder)</th>
+                        <th style="width: 12%;">Giro no Período</th>
+                        <th style="width: 8%;">Part. %</th>
+                        <th style="width: 10%;">Acumulado % (Decrescente)</th>
+                        <th style="width: 10%;">Curva</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaEstoque">
+                    <tr><td colspan="7" class="text-muted py-4">Processando base e renderizando cockpit...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+let dadosBrutosAPI = [];
+let dadosComClassesLivres = [];
+let statusCurvasAtivas = { "A": true, "B": true, "C": true, "C3": true, "C2": true, "C1": true };
+let graficoMestre = null;
+
+window.onload = function() {
+    atualizarDadosAPI();
+};
+
+function atualizarDadosAPI() {
+    const mes = document.getElementById('filtroMesAno').value;
+    fetch(`/api/logistica/curva_abc?mes=${mes}`)
+        .then(r => r.json())
+        .then(dados => {
+            dadosBrutosAPI = dados;
+            reprocessarMatrizCurvas();
+        })
+        .catch(err => {
+            console.error("Erro na requisição da API:", err);
+            document.getElementById('corpoTabelaEstoque').innerHTML = `<tr><td colspan="7" class="text-danger fw-bold py-4">Erro ao falar com o Servidor. Verifique se o app.py está rodando.</td></tr>`;
+        });
+}
+
+function reprocessarMatrizCurvas() {
+    const getVal = (id) => {
+        const el = document.getElementById(id);
+        return el && el.value !== "" ? parseFloat(el.value) : 0;
+    };
+
+    const aTop = getVal('aTop'), aPis = getVal('aPis');
+    const bTop = getVal('bTop'), bPis = getVal('bPis');
+    const cTop = getVal('cTop'), cPis = getVal('cPis');
+    const c3Top = getVal('c3Top'), c3Pis = getVal('c3Pis');
+    const c2Top = getVal('c2Top'), c2Pis = getVal('c2Pis');
+    const c1Top = getVal('c1Top'), c1Pis = getVal('c1Pis');
+
+    const fA = { max: Math.max(aTop, aPis), min: Math.min(aTop, aPis) };
+    const fB = { max: Math.max(bTop, bPis), min: Math.min(bTop, bPis) };
+    const fC = { max: Math.max(cTop, cPis), min: Math.min(cTop, cPis) };
+    const fC3 = { max: Math.max(c3Top, c3Pis), min: Math.min(c3Top, c3Pis) };
+    const fC2 = { max: Math.max(c2Top, c2Pis), min: Math.min(c2Top, c2Pis) };
+    const fC1 = { max: Math.max(c1Top, c1Pis), min: Math.min(c1Top, c1Pis) };
+
+    dadosComClassesLivres = dadosBrutosAPI.map(item => {
+        let classeFinal = "Fora";
+
+        // 🔄 Inverte o acumulado padrão (crescente) para o decrescente:
+        // o item de maior giro fica próximo de 100%, o de menor giro próximo de 0%
+        const participacao = parseFloat(item.participacao) || 0;
+        const acumuladoPadrao = parseFloat(item.acumulado) || 0;
+        const vAcum = 100 - acumuladoPadrao + participacao;
+
+        if (vAcum <= fA.max && vAcum >= fA.min) classeFinal = "A";
+        else if (vAcum <= fB.max && vAcum >= fB.min) classeFinal = "B";
+        else if (vAcum <= fC.max && vAcum >= fC.min) classeFinal = "C";
+        else if (vAcum <= fC3.max && vAcum >= fC3.min) classeFinal = "C3";
+        else if (vAcum <= fC2.max && vAcum >= fC2.min) classeFinal = "C2";
+        else if (vAcum <= fC1.max && vAcum >= fC1.min) classeFinal = "C1";
+
+        if (vAcum <= 0.05) classeFinal = "C1";
+
+        return { ...item, classe: classeFinal, acumulado: vAcum.toFixed(2) };
+    });
+
+    atualizarContadoresCurvas();
+    filtrarGradeEGráfico();
+}
+
+function alternarFiltroClasse(cl) {
+    statusCurvasAtivas[cl] = !statusCurvasAtivas[cl];
+    const btn = document.getElementById(`btnFiltro${cl}`);
+    if (btn) btn.classList.toggle('active');
+    filtrarGradeEGráfico();
+}
+
+function filtrarGradeEGráfico() {
+    const txtCod = document.getElementById('buscaCodigo').value.trim().toLowerCase();
+    const txtDesc = document.getElementById('buscaDesc').value.trim().toUpperCase();
+    const tbody = document.getElementById('corpoTabelaEstoque');
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    const filtrados = dadosComClassesLivres.filter(item => {
+        const bateCurva = item.classe === "Fora" || statusCurvasAtivas[item.classe];
+        return item.codigo_item.toLowerCase().includes(txtCod) && item.descricao.toUpperCase().includes(txtDesc) && bateCurva;
+    });
+
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-muted py-4">Nenhum material localizado para as escalas ou filtros ativos.</td></tr>`;
+        rebuildGraficoPareto([]);
+        return;
+    }
+
+    filtrados.forEach(item => {
+        const tr = document.createElement('tr');
+        const classeSaldo = item.saldo_sistema === 0 ? 'text-danger fw-bold' : 'text-success fw-bold';
+        tr.innerHTML = `
+            <td><span class="badge bg-dark font-monospace" style="font-size:13px;">${item.codigo_item}</span></td>
+            <td style="text-align: left;" class="fw-bold text-uppercase">${item.descricao}</td>
+            <td class="${classeSaldo}">${item.saldo_sistema.toLocaleString('pt-BR')} UN</td>
+            <td class="text-primary fw-bold">${item.vendas.toLocaleString('pt-BR')} UN</td>
+            <td class="text-muted small">${item.participacao}%</td>
+            <td class="text-dark fw-bold">${item.acumulado}%</td>
+            <td><span class="badge-classe-${item.classe}">Classe ${item.classe}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    rebuildGraficoPareto(filtrados.slice(0, 15));
+}
+
+function rebuildGraficoPareto(itens) {
+    const canvas = document.getElementById('graficoParetoMestre');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (graficoMestre) graficoMestre.destroy();
+
+    if (itens.length === 0) return;
+
+    graficoMestre = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: itens.map(i => i.codigo_item),
+            datasets: [
+                { type: 'bar', label: 'Volume Giro (Vendas)', data: itens.map(i => i.vendas), backgroundColor: '#2563eb', yAxisID: 'y' },
+                { type: 'line', label: 'Curva Acumulada (%)', data: itens.map(i => i.acumulado), borderColor: '#ef4444', borderWidth: 3, tension: 0.1, fill: false, yAxisID: 'y1' }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { type: 'linear', position: 'left', title: { display: true, text: 'Unidades Vendidas' } },
+                y1: { type: 'linear', position: 'right', min: 0, max: 100, title: { display: true, text: 'Acumulado %' }, grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+}
+
+function exportarPlanilhaFiltro() {
+    let htmlExcel = `<meta charset="utf-8"><table border="1"><tr style="background-color: #1e293b; color: #ffffff; font-weight: bold; text-align: center;"><th>CÓDIGO</th><th>MATERIAL</th><th>SALDO FÍSICO</th><th>GIRO NO MÊS</th><th>ACUMULADO</th><th>CURVA</th></tr>`;
+    dadosComClassesLivres.forEach(item => {
+        if (statusCurvasAtivas[item.classe]) {
+            htmlExcel += `<tr><td>&nbsp;${item.codigo_item}</td><td>${item.descricao}</td><td>${item.saldo_sistema}</td><td>${item.vendas}</td><td>${item.acumulado}%</td><td>Classe ${item.classe}</td></tr>`;
+        }
+    });
+    htmlExcel += `</table>`;
+    const blob = new Blob([htmlExcel], { type: "application/vnd.ms-excel" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Relatorio_Giro_Parametrizado.xls`;
+    a.click();
+}
+
+function atualizarContadoresCurvas() {
+    const contagem = { A: 0, B: 0, C: 0, C3: 0, C2: 0, C1: 0 };
+    dadosComClassesLivres.forEach(item => {
+        if (contagem.hasOwnProperty(item.classe)) {
+            contagem[item.classe]++;
+        }
+    });
+
+    document.getElementById('contadorA').innerText = `🔴 A: ${contagem.A} itens`;
+    document.getElementById('contadorB').innerText = `🟡 B: ${contagem.B} itens`;
+    document.getElementById('contadorC').innerText = `🟢 C: ${contagem.C} itens`;
+    document.getElementById('contadorC3').innerText = `🔵 C3: ${contagem.C3} itens`;
+    document.getElementById('contadorC2').innerText = `🟣 C2: ${contagem.C2} itens`;
+    document.getElementById('contadorC1').innerText = `✨ C1: ${contagem.C1} itens`;
+}
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Catálogo de Módulos — Portal Logístico</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: var(--portal-bg);
+            color: var(--portal-text);
+            font-family: var(--portal-font);
+        }
+
+        .catalogo-shell {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 18px 20px 40px;
+        }
+
+        .catalogo-topo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--portal-border);
+        }
+
+        .topo-marca {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .topo-marca img { max-height: 48px; }
+
+        .topo-marca h1 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .topo-marca p {
+            margin: 3px 0 0;
+            font-size: 0.78rem;
+            color: var(--portal-muted);
+        }
+
+        .topo-acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .busca-global {
+            min-width: 260px;
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            color: var(--portal-text);
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 0.85rem;
+        }
+
+        .busca-global:focus {
+            outline: none;
+            border-color: var(--portal-accent);
+        }
+
+        .tabs-nav {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            color: var(--portal-muted);
+            border-radius: 999px;
+            padding: 7px 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .tab-btn.ativo {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--portal-accent);
+            color: var(--portal-accent);
+        }
+
+        .painel { display: none; }
+        .painel.ativo { display: block; }
+
+        .chips-ip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .chip-ip {
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+        }
+
+        .chip-ip strong {
+            display: block;
+            color: var(--portal-accent);
+            font-family: var(--portal-mono);
+            font-size: 0.82rem;
+        }
+
+        .chip-ip span { color: var(--portal-muted); }
+
+        .grupo-bloco {
+            margin-bottom: 22px;
+        }
+
+        .grupo-cabecalho {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--portal-border);
+        }
+
+        .grupo-icone {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+        }
+
+        .grupo-cabecalho h2 {
+            margin: 0;
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+
+        .grupo-cabecalho small {
+            color: var(--portal-dim);
+            font-size: 0.72rem;
+        }
+
+        .grid-modulos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px;
+        }
+
+        .tile-modulo {
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 130px;
+            transition: border-color 0.15s, transform 0.12s;
+        }
+
+        .tile-modulo:hover {
+            border-color: var(--portal-accent);
+            transform: translateY(-1px);
+        }
+
+        .tile-topo {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .tile-icone { font-size: 1.3rem; line-height: 1; }
+
+        .tile-titulo {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--portal-text);
+        }
+
+        .tile-desc {
+            font-size: 0.72rem;
+            color: var(--portal-muted);
+            line-height: 1.4;
+            flex: 1;
+        }
+
+        .tile-path {
+            font-family: var(--portal-mono);
+            font-size: 0.65rem;
+            color: var(--portal-dim);
+            background: var(--portal-bg);
+            padding: 4px 6px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+
+        .tile-acoes {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn-mini {
+            border: none;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-abrir { background: #2563eb; color: #fff; }
+        .btn-abrir:hover { background: #1d4ed8; }
+        .btn-link-ext { background: #475569; color: #fff; }
+        .btn-link-ext:hover { background: #334155; }
+        .btn-copiar { background: transparent; color: var(--portal-muted); border: 1px solid var(--portal-border); }
+        .btn-copiar:hover { color: var(--portal-accent); border-color: var(--portal-accent); }
+
+        .filtros-rede {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 14px;
+            align-items: flex-end;
+        }
+
+        .filtros-rede label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--portal-dim);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .filtros-rede select,
+        .filtros-rede input {
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            color: var(--portal-text);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            min-width: 180px;
+        }
+
+        .tabela-links-wrap {
+            background: var(--portal-surface);
+            border: 1px solid var(--portal-border);
+            border-radius: 10px;
+            overflow: auto;
+            max-height: calc(100vh - 280px);
+        }
+
+        .tabela-links {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.76rem;
+        }
+
+        .tabela-links th,
+        .tabela-links td {
+            padding: 9px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--portal-border);
+            vertical-align: middle;
+        }
+
+        .tabela-links th {
+            position: sticky;
+            top: 0;
+            background: var(--portal-bg);
+            color: var(--portal-accent);
+            z-index: 1;
+        }
+
+        .tabela-links tr:hover td { background: var(--portal-surface-2); }
+
+        .link-url {
+            font-family: var(--portal-mono);
+            font-size: 0.7rem;
+            color: #7dd3fc;
+            word-break: break-all;
+        }
+
+        .link-url a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .link-url a:hover { text-decoration: underline; }
+
+        .badge-grupo {
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--portal-dim);
+        }
+
+        .missao-box {
+            max-width: 360px;
+            font-size: 0.74rem;
+            color: var(--portal-muted);
+            line-height: 1.5;
+            border-right: 3px solid var(--portal-accent);
+            padding-right: 12px;
+            text-align: right;
+        }
+
+        .oculto { display: none !important; }
+
+        .rodape-catalogo {
+            margin-top: 24px;
+            padding-top: 14px;
+            border-top: 1px solid var(--portal-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.72rem;
+            color: var(--portal-dim);
+        }
+
+        .rodape-catalogo img { max-height: 32px; opacity: 0.85; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="catalogo-shell">
+        <header class="catalogo-topo">
+            <div class="topo-marca">
+                <img src="/cdn/logo_corax" alt="Corax">
+                <div>
+                    <h1>Catálogo Operacional</h1>
+                    <p>Todas as telas do sistema · Porta {{ porta }} · IP principal {{ ip_principal }}</p>
+                </div>
+            </div>
+            <div class="missao-box" id="txtMissao">Carregando missão...</div>
+            <div class="topo-acoes">
+                <input type="search" id="buscaGlobal" class="busca-global" placeholder="Buscar módulo, rota ou IP...">
+                <button type="button" class="portal-btn portal-btn-ghost btn-mini" onclick="copiarTodosLinks()">Copiar todos os links</button>
+            </div>
+        </header>
+
+        <div class="chips-ip">
+            {% for end in enderecos %}
+            <div class="chip-ip">
+                <strong>{{ end.base_url }}</strong>
+                <span>{{ end.rotulo }} · <a href="{{ end.portal_url }}" target="_blank" style="color:var(--portal-accent);">Portal</a> · <a href="{{ end.login_url }}" target="_blank" style="color:var(--portal-accent);">Login</a></span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <nav class="tabs-nav">
+            <button type="button" class="tab-btn ativo" data-tab="modulos">Módulos por contexto</button>
+            <button type="button" class="tab-btn" data-tab="rede">Links completos por IP</button>
+        </nav>
+
+        <!-- ABA MÓDULOS -->
+        <div id="painelModulos" class="painel ativo">
+            {% for grupo in catalogo %}
+            <section class="grupo-bloco" data-grupo="{{ grupo.id }}">
+                <div class="grupo-cabecalho">
+                    <div class="grupo-icone" style="border-left: 3px solid {{ grupo.cor }};">{{ grupo.icone }}</div>
+                    <div>
+                        <h2>{{ grupo.titulo }}</h2>
+                        <small>{{ grupo.itens|length }} tela(s)</small>
+                    </div>
+                </div>
+                <div class="grid-modulos">
+                    {% for item in grupo.itens %}
+                    {% if not item.admin_only or usuario_nivel in ['ADMIN', 'DIRETOR'] %}
+                    <article class="tile-modulo" data-busca="{{ grupo.titulo }} {{ item.titulo }} {{ item.url }} {{ item.desc }}">
+                        <div class="tile-topo">
+                            <span class="tile-icone">{{ item.icone }}</span>
+                            <div class="tile-titulo">{{ item.titulo }}</div>
+                        </div>
+                        <div class="tile-desc">{{ item.desc }}</div>
+                        <div class="tile-path">{{ item.url }}</div>
+                        <div class="tile-acoes">
+                            {% if item.get('externo') %}
+                            <a href="{{ item.url }}" target="_blank" class="btn-mini btn-abrir">Abrir ↗</a>
+                            {% elif item.get('nova_aba') %}
+                            <a href="{{ item.url }}" target="_blank" class="btn-mini btn-abrir">Abrir TV ↗</a>
+                            <button type="button" class="btn-mini btn-copiar" onclick="copiarLinkPath('{{ item.url }}')">Copiar link</button>
+                            {% else %}
+                            <button type="button" class="btn-mini btn-abrir" onclick="irPara('{{ item.url }}', '{{ item.titulo }}')">Abrir</button>
+                            <button type="button" class="btn-mini btn-link-ext" onclick="abrirExterno('{{ item.url }}')">Navegador ↗</button>
+                            <button type="button" class="btn-mini btn-copiar" onclick="copiarLinkPath('{{ item.url }}')">Copiar link</button>
+                            {% endif %}
+                        </div>
+                    </article>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+
+        <!-- ABA LINKS REDE -->
+        <div id="painelRede" class="painel">
+            <div class="filtros-rede">
+                <div>
+                    <label for="filtroIp">Filtrar por IP</label>
+                    <select id="filtroIp">
+                        <option value="">Todos os endereços</option>
+                        {% for end in enderecos %}
+                        <option value="{{ end.ip }}">{{ end.ip }} — {{ end.rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="filtroGrupo">Filtrar por grupo</label>
+                    <select id="filtroGrupo">
+                        <option value="">Todos os grupos</option>
+                        {% for grupo in catalogo %}
+                        <option value="{{ grupo.id }}">{{ grupo.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex:1; min-width:200px;">
+                    <label for="buscaLink">Buscar na tabela</label>
+                    <input type="search" id="buscaLink" placeholder="Nome do módulo ou caminho...">
+                </div>
+            </div>
+
+            <div class="tabela-links-wrap">
+                <table class="tabela-links">
+                    <thead>
+                        <tr>
+                            <th>Grupo</th>
+                            <th>Módulo</th>
+                            <th>IP / Origem</th>
+                            <th>URL completa (clique para abrir)</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoLinks">
+                        {% for link in links_rede %}
+                        {% if not link.admin_only or usuario_nivel in ['ADMIN', 'DIRETOR'] %}
+                        <tr data-ip="{{ link.ip }}" data-grupo="{{ link.grupo_id }}" data-busca="{{ link.grupo }} {{ link.titulo }} {{ link.url_path }} {{ link.link_completo }}">
+                            <td><span class="badge-grupo">{{ link.grupo }}</span></td>
+                            <td><strong>{{ link.titulo }}</strong><br><span class="tile-path">{{ link.url_path }}</span></td>
+                            <td>
+                                <strong style="font-family:var(--portal-mono);">{{ link.ip }}</strong><br>
+                                <span style="color:var(--portal-dim);font-size:0.68rem;">{{ link.ip_rotulo }}</span>
+                            </td>
+                            <td class="link-url">
+                                <a href="{{ link.link_completo }}" target="_blank" rel="noopener">{{ link.link_completo }}</a>
+                            </td>
+                            <td>
+                                <button type="button" class="btn-mini btn-copiar" onclick="copiarTexto('{{ link.link_completo }}')">Copiar</button>
+                                {% if link.nova_aba %}
+                                <a href="{{ link.link_completo }}" target="_blank" class="btn-mini btn-abrir">Abrir ↗</a>
+                                {% else %}
+                                <button type="button" class="btn-mini btn-abrir" onclick="irPara('{{ link.url_path }}', '{{ link.titulo }}')">Portal</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="rodape-catalogo">
+            <img src="/cdn/logo_ultrasafe" alt="Ultra Safe">
+            <span>{{ links_rede|length }} links de acesso · {{ enderecos|length }} endereço(s) de rede detectado(s)</span>
+        </footer>
+    </div>
+
+    <script>
+        const ENDERECOS = {{ enderecos | tojson }};
+        const PORTA = {{ porta }};
+        const USER_NIVEL = "{{ usuario_nivel }}";
+
+        function irPara(url, titulo) {
+            if (window.parent && typeof window.parent.navegarPorUrl === 'function') {
+                window.parent.navegarPorUrl(url, titulo);
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        function abrirExterno(path) {
+            const ip = ENDERECOS.find(e => e.ip !== '127.0.0.1') || ENDERECOS[0];
+            window.open(ip.base_url + path, '_blank');
+        }
+
+        function copiarTexto(texto) {
+            navigator.clipboard.writeText(texto).then(() => alert('Link copiado:\n' + texto));
+        }
+
+        function copiarLinkPath(path) {
+            const preferido = ENDERECOS.find(e => e.ip !== '127.0.0.1') || ENDERECOS[0];
+            copiarTexto(preferido.base_url + path);
+        }
+
+        function copiarTodosLinks() {
+            const linhas = [];
+            ENDERECOS.forEach(end => {
+                linhas.push('=== ' + end.rotulo + ' (' + end.base_url + ') ===');
+                linhas.push(end.portal_url + '  → Portal');
+                linhas.push(end.login_url + '  → Login');
+                document.querySelectorAll('#corpoLinks tr:not(.oculto-filtro)').forEach(tr => {
+                    const link = tr.querySelector('.link-url a');
+                    if (link && (!tr.dataset.ip || tr.dataset.ip === end.ip || !document.getElementById('filtroIp').value)) {
+                        if (!tr.classList.contains('oculto-busca')) {
+                            linhas.push(link.href);
+                        }
+                    }
+                });
+                linhas.push('');
+            });
+            copiarTexto(linhas.join('\n'));
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
+                document.querySelectorAll('.painel').forEach(p => p.classList.remove('ativo'));
+                btn.classList.add('ativo');
+                document.getElementById(btn.dataset.tab === 'modulos' ? 'painelModulos' : 'painelRede').classList.add('ativo');
+            });
+        });
+
+        function aplicarBuscaGlobal(termo) {
+            const t = termo.trim().toLowerCase();
+            document.querySelectorAll('.tile-modulo, .grupo-bloco').forEach(() => {});
+            document.querySelectorAll('.tile-modulo').forEach(tile => {
+                const ok = !t || tile.dataset.busca.toLowerCase().includes(t);
+                tile.classList.toggle('oculto', !ok);
+            });
+            document.querySelectorAll('.grupo-bloco').forEach(sec => {
+                const visiveis = sec.querySelectorAll('.tile-modulo:not(.oculto)').length;
+                sec.classList.toggle('oculto', visiveis === 0);
+            });
+            document.querySelectorAll('#corpoLinks tr').forEach(tr => {
+                const ok = !t || tr.dataset.busca.toLowerCase().includes(t);
+                tr.classList.toggle('oculto-busca', !ok);
+            });
+        }
+
+        document.getElementById('buscaGlobal').addEventListener('input', e => aplicarBuscaGlobal(e.target.value));
+
+        function filtrarTabelaRede() {
+            const ip = document.getElementById('filtroIp').value;
+            const grupo = document.getElementById('filtroGrupo').value;
+            const txt = document.getElementById('buscaLink').value.trim().toLowerCase();
+            document.querySelectorAll('#corpoLinks tr').forEach(tr => {
+                const okIp = !ip || tr.dataset.ip === ip;
+                const okGrupo = !grupo || tr.dataset.grupo === grupo;
+                const okTxt = !txt || tr.dataset.busca.toLowerCase().includes(txt);
+                tr.classList.toggle('oculto-filtro', !(okIp && okGrupo && okTxt));
+            });
+        }
+
+        document.getElementById('filtroIp').addEventListener('change', filtrarTabelaRede);
+        document.getElementById('filtroGrupo').addEventListener('change', filtrarTabelaRede);
+        document.getElementById('buscaLink').addEventListener('input', filtrarTabelaRede);
+
+        fetch('/api/obter_missao')
+            .then(r => r.json())
+            .then(d => { document.getElementById('txtMissao').innerText = d.missao; })
+            .catch(() => {});
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

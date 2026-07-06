@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portaria - Canhotos Assinados & Triagem WhatsApp</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    body { background: var(--bg); color: var(--text); padding: 24px; min-height: 100vh; }
+    
+    .container { max-width: 1250px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    
+    .header-consulta { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    .header-consulta h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #fff; }
+    
+    .grupo-botoes { display: flex; gap: 10px; align-items: center; }
+    .btn-acao { border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; color: white; }
+    .btn-voltar { background: var(--danger); }
+    .btn-voltar:hover { background: #dc2626; }
+    .btn-whats { background: #25d366; }
+    .btn-whats:hover { background: #128c7e; }
+
+    .wrapper-link-topo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #1e293b;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .wrapper-link-topo input {
+      background: transparent;
+      border: none;
+      color: #38bdf8;
+      font-family: var(--portal-font);
+      font-size: 13px;
+      width: 270px;
+      font-weight: 700;
+      outline: none;
+      text-align: center;
+    }
+    .label-topo-link {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .busca-box { background: var(--card); border: 1px solid var(--border); padding: 16px; border-radius: 12px; display: flex; gap: 12px; align-items: center; }
+    .busca-box input { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px; flex-grow: 1; outline: none; }
+    .busca-box input:focus { border-color: var(--primary); }
+
+    .tabela-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+    th { background: #0f172a; color: var(--muted); padding: 12px 16px; font-weight: 700; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: #e2e8f0; vertical-align: middle; }
+    tr:hover { background: rgba(255, 255, 255, 0.02); }
+    
+    .assinatura-preview { background: white; border-radius: 6px; padding: 4px; display: inline-block; max-height: 55px; border: 1px solid var(--border); cursor: pointer; position: relative; transition: transform 0.15s; }
+    .assinatura-preview:hover { transform: scale(1.05); border-color: var(--primary); }
+    .assinatura-preview img { max-height: 45px; display: block; filter: contrast(1.1); }
+
+    .badge-data { background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 12px; border: 1px solid rgba(16, 185, 129, 0.2); }
+    .badge-nf { background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; border: 1px solid rgba(245, 158, 11, 0.2); word-break: break-all; display: inline-block; }
+    .status-vazio { padding: 32px; text-align: center; color: var(--muted); font-weight: 500; }
+
+    /* Estilos do Modal Pop-up */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 100; padding: 16px; }
+    .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; max-width: 450px; width: 100%; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); }
+    .modal-box h3 { font-size: 18px; color: #fff; border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 4px; }
+    .form-grupo { display: flex; flex-direction: column; gap: 6px; }
+    .form-grupo label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .form-grupo input { background: #0f172a; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 8px; font-size: 14px; outline: none; }
+    .form-grupo input:focus { border-color: var(--primary); }
+    .modal-botoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+    
+    .btn-confirmar-modal { background-color: var(--success); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
+    .btn-confirmar-modal:hover { background-color: #059669; }
+    .btn-cancelar-modal { background-color: var(--danger); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; }
+    .btn-cancelar-modal:hover { background-color: #dc2626; }
+    
+    /* Configurações dos botões de ação do Grid */
+    .container-botoes-grid { display: flex; gap: 6px; justify-content: center; }
+    .btn-editar-linha { background: var(--warning); color: #000; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-editar-linha:hover { background: #d97706; color: #fff; }
+    .btn-excluir-linha { background: var(--danger); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-excluir-linha:hover { background: #b91c1c; }
+
+    /* Estilos do Visualizador com Zoom */
+    .viewer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.95); display: none; flex-direction: column; z-index: 200; }
+    .viewer-header { background: #1e293b; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    .viewer-title { font-size: 15px; font-weight: 700; color: #f8fafc; }
+    .viewer-controls { display: flex; gap: 8px; align-items: center; }
+    .btn-zoom { background: #334155; color: white; border: 1px solid #475569; border-radius: 6px; padding: 8px 14px; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .btn-zoom:hover { background: #475569; border-color: #64748b; }
+    .btn-fechar-viewer { background: #ef4444; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-size: 13px; font-weight: bold; cursor: pointer; }
+    .btn-fechar-viewer:hover { background: #dc2626; }
+    
+    .viewer-body { flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; cursor: grab; }
+    .viewer-body:active { cursor: grabbing; }
+    .viewer-image { max-width: 90%; max-height: 85vh; object-fit: contain; transition: transform 0.1s ease-out; transform-origin: center center; user-select: none; -webkit-user-drag: none; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); background: white; border-radius: 4px; }
+
+    /* ============================================================
+       🟢 NOVOS ESTILOS DO MODO MURAL TV WHATSAPP (BASED ON _CHAT.TXT)
+       ============================================================ */
+    .grid-canhotos-tv { display: none; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; margin-top: 10px; }
+    .card-canhoto { background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .card-header-dados { background: #111827; padding: 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; font-size: 12px; color: #94a3b8; }
+    .card-body-dados { padding: 15px; display: flex; gap: 15px; height: 180px; }
+    .container-foto-preview-tv { width: 110px; height: 100%; background: #0f172a; border-radius: 6px; overflow: hidden; border: 1px solid #475569; display: flex; align-items: center; justify-content: center; }
+    .foto-canhoto-tv { width: 100%; height: 100%; object-fit: cover; }
+    .bloco-texto-info { flex: 1; display: flex; flex-direction: column; justify-content: space-between; font-size: 13px; }
+    .txt-legenda-pura { color: #e2e8f0; font-style: italic; background: #0f172a; padding: 8px; border-radius: 4px; border-left: 3px solid #38bdf8; max-height: 70px; overflow-y: auto; }
+    .destaque-nf-tv { color: #fbbf24; font-size: 16px; font-weight: bold; }
+    .destaque-valor-log { font-weight: bold; color: #38bdf8; }
+  </style>
+</head>
+<body class="portal-page embedded">
+
+  <div class="container">
+    <div class="header-consulta">
+      <h1 id="tituloPaginaMestre">📋 Canhotos Assinados <span style="font-size: 12px; background: #10b981; color: #fff; padding: 3px 8px; border-radius: 20px; font-weight: normal; margin-left: 8px;">● Tempo Real</span></h1>
+      <div class="grupo-botoes" id="blocoBotoesTopo">
+          <div class="label-topo-link">📲 Link Celular:</div>
+          <div class="wrapper-link-topo">
+              <input type="text" value="http://{{ ip_servidor if ip_servidor else '192.168.1.37' }}:5000/canhoto" readonly>
+          </div>
+          <button class="btn-acao btn-whats" onclick="abrirModalImportacao()">📥 Importar Canhoto WhatsApp</button>
+          <a href="#" class="btn-acao btn-voltar" onclick="window.location.href = window.location.origin + '/'; return false;">Sair</a>
+      </div>
+    </div>
+
+    <div id="visaoPortariaAdministrativa">
+        <div class="busca-box" style="margin-bottom: 20px;">
+          <input type="text" id="filtroTexto" placeholder="🔍 Buscar por Nome do Motorista, RG, Nota Fiscal ou Transportadora..." oninput="filtrarTabelaLocal()">
+        </div>
+
+        <div class="tabela-container">
+          <table id="tabelaCanhotos">
+            <thead>
+              <tr>
+                <th style="width: 60px; text-align: center;">ID</th>
+                <th>Motorista</th>
+                <th style="width: 140px;">RG / Documento</th>
+                <th style="width: 220px; text-align: center;">Nota Fiscal</th>
+                <th>Empresa / Transportadora</th>
+                <th style="width: 180px;">Data / Hora Assinatura</th>
+                <th style="width: 150px; text-align: center;">Imagem / Assinatura</th>
+                <th style="width: 160px; text-align: center;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="corpoTabelaCanhotos">
+              <tr>
+                <td colspan="8" class="status-vazio">⏳ Sincronizando registros com o banco SQLite...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    </div>
+
+    <div class="grid-canhotos-tv" id="visaoMuralTVWhatsApp">
+        <div class="text-center text-muted col-span-full py-5">Carregando triagem em tempo real do WhatsApp...</div>
+    </div>
+
+  </div>
+
+  <div class="modal-overlay" id="modalWhatsApp">
+      <div class="modal-box">
+          <h3>📥 Vincular Imagem do WhatsApp</h3>
+          <div class="form-grupo">
+              <label>Nome do Motorista / Identificação:</label>
+              <input type="text" id="inpMotorista" placeholder="Ex: JOÃO DA SILVA (FOTO WHATS)">
+          </div>
+          <div class="form-grupo" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                  <label>RG do Motorista:</label>
+                  <input type="text" id="inpRg" placeholder="Opcional">
+              </div>
+              <div>
+                  <label>Número da NF:</label>
+                  <input type="text" id="inpNotaFiscal" placeholder="Ex: 66613">
+              </div>
+          </div>
+          <div class="form-grupo">
+              <label>Transportadora:</label>
+              <input type="text" id="inpTransportadora" list="listaTransportadoras" placeholder="Digite ou selecione...">
+          </div>
+          <div class="form-grupo">
+              <label>Selecionar Foto (Pasta Downloads):</label>
+              <input type="file" id="inpFile" accept="image/png, image/jpeg, image/jpg">
+          </div>
+          <div class="modal-botoes">
+              <button class="btn-cancelar-modal" type="button" onclick="fecharModalImportacao()">Cancelar</button>
+              <button class="btn-confirmar-modal" type="button" id="btnSalvarWhats" onclick="salvarCanhotoWhatsApp()">💾 Salvar Registro</button>
+          </div>
+      </div>
+  </div>
+
+  <div class="modal-overlay" id="modalEditar">
+      <div class="modal-box">
+          <h3>✏️ Editar Registro de Canhoto</h3>
+          <input type="hidden" id="editId">
+          <div class="form-grupo">
+              <label>Nome do Motorista:</label>
+              <input type="text" id="editMotorista">
+          </div>
+          <div class="form-grupo" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                  <label>RG do Motorista:</label>
+                  <input type="text" id="editRg">
+              </div>
+              <div>
+                  <label>Número da NF:</label>
+                  <input type="text" id="editNotaFiscal">
+              </div>
+          </div>
+          <div class="form-grupo">
+              <label>Transportadora:</label>
+              <input type="text" id="editTransportadora" list="listaTransportadoras">
+          </div>
+          <div class="modal-botoes">
+              <button class="btn-cancelar-modal" type="button" onclick="fecharModalEditar()">Cancelar</button>
+              <button class="btn-confirmar-modal" type="button" id="btnSalvarEdicao" onclick="salvarEdicaoCanhoto()">💾 Salvar Alteração</button>
+          </div>
+      </div>
+  </div>
+
+  <div class="viewer-overlay" id="imageViewer">
+      <div class="viewer-header">
+          <div class="viewer-title" id="viewerTitle">Visualização do Documento</div>
+          <div class="viewer-controls">
+              <button class="btn-zoom" onclick="aplicarZoom(0.25)">🔍➕ Aumentar</button>
+              <button class="btn-zoom" onclick="aplicarZoom(-0.25)">🔍➖ Diminuir</button>
+              <button class="btn-zoom" onclick="resetarVisualizador()">🔄 Resetar</button>
+              <button class="btn-fechar-viewer" onclick="fecharVisualizador()">❌ Fechar</button>
+          </div>
+      </div>
+      <div class="viewer-body" id="viewerBody" onmousedown="iniciarArrasto(event)" onmousemove="arrastarImagem(event)" onmouseup="pararArrasto()" onmouseleave="pararArrasto()">
+          <img src="" id="viewerImage" class="viewer-image" alt="Canhoto Ampliado">
+      </div>
+  </div>
+
+  <datalist id="listaTransportadoras">
+      {% for transp in transportadoras %}
+          <option value="{{ transp }}"></option>
+      {% endfor %}
+  </datalist>
+
+  <script>
+    // Preservados 100% os seus estados e lógicas originais
+    let registrosGlobais = [];
+    let hashUltimaCarga = ""; 
+    let escalaAtual = 1.0;
+    let estaArrastando = false;
+    let startX = 0, startY = 0, transX = 0, transY = 0;
+
+    // 📺 CHECAGEM DO MODO TV MURAL: Identifica se veio pelo configurador verde
+    const parametrosUrl = new URLSearchParams(window.location.search);
+    const isModoTVAtivo = parametrosUrl.get('v') || window.location.pathname.includes('tv_canhotos_whatsapp');
+
+    async function carregarHistoricoCanhotos() {
+      if (isModoTVAtivo) return; // Se for modo TV, essa rotina da portaria dorme
+      try {
+        const resposta = await fetch('/api/listar_canhotos');
+        const dados = await resposta.json();
+        const hashAtual = dados.map(r => `${r.id}-${r.data_hora}-${r.motorista}-${r.nota_fiscal}`).join('|');
+        
+        if (hashAtual !== hashUltimaCarga) {
+            hashUltimaCarga = hashAtual;
+            registrosGlobais = dados;
+            const termoBusca = document.getElementById('filtroTexto').value.trim();
+            if (!termoBusca) {
+                renderizarTabela(registrosGlobais);
+            } else {
+                filtrarTabelaLocal();
+            }
+        }
+      } catch (erro) {
+        console.error("Erro no sincronismo em tempo real:", erro);
+      }
+    }
+
+    function renderizarTabela(lista) {
+      const corpo = document.getElementById('corpoTabelaCanhotos');
+      corpo.innerHTML = "";
+      if (lista.length === 0) {
+        corpo.innerHTML = `<tr><td colspan="8" class="status-vazio">Nenhum canhoto digital assinado localizado.</td></tr>`;
+        return;
+      }
+      lista.forEach(reg => {
+        let nfsFormatadas = "-";
+        if (reg.nota_fiscal) {
+            nfsFormatadas = reg.nota_fiscal.split(',').map(n => n.trim()).filter(n => n).join(', ');
+        }
+        const nfExibicao = reg.nota_fiscal ? `<span class="badge-nf">🧾 ${nfsFormatadas}</span>` : `<span style="color:var(--muted); font-style:italic;">-</span>`;
+        const rgExibicao = reg.rg ? reg.rg : `<span style="color:var(--muted); font-style:italic;">-</span>`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align: center; color: var(--muted); font-weight: bold;">#${reg.id}</td>
+          <td><b>${reg.motorista.toUpperCase()}</b></td>
+          <td>${rgExibicao}</td>
+          <td style="text-align: center;">${nfExibicao}</td>
+          <td>${reg.transportadora.toUpperCase()}</td>
+          <td><span class="badge-data">🕒 ${reg.data_hora}</span></td>
+          <td style="text-align: center;">
+            <div class="assinatura-preview" onclick="abrirVisualizador('${reg.assinatura}', '${reg.motorista.toUpperCase()}', '${reg.nota_fiscal || ''}')" title="Clique para Ampliar com Zoom">
+              <img src="${reg.assinatura}" alt="Canhoto">
+            </div>
+          </td>
+          <td style="text-align: center;">
+             <div class="container-botoes-grid">
+                 <button class="btn-editar-linha" onclick="abrirModalEditar(${reg.id}, '${reg.motorista}', '${reg.rg || ''}', '${reg.nota_fiscal || ''}', '${reg.transportadora}')">✏️ Editar</button>
+                 <button class="btn-excluir-linha" onclick="executarExclusaoRegistro(${reg.id}, '${reg.motorista.toUpperCase()}')">❌ Excluir</button>
+             </div>
+          </td>
+        `;
+        corpo.appendChild(tr);
+      });
+    }
+
+    // ============================================================
+    // 📺 ROTINA DINÂMICA DO MURAL AUTOMÁTICO DO WHATSAPP (MODO TV)
+    // ============================================================
+    function atualizarMuralTVWhatsApp() {
+        fetch('/api/dados_canhotos_whatsapp')
+            .then(res => res.json())
+            .then(dados => {
+                const container = document.getElementById('visaoMuralTVWhatsApp');
+                if (dados.length === 0) {
+                    container.innerHTML = `<div class="text-center text-warning col-span-full py-5">⚠️ Nenhuma foto vinculada localizada no log do WhatsApp.</div>`;
+                    return;
+                }
+                container.innerHTML = "";
+                dados.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card-canhoto';
+                    card.innerHTML = `
+                        <div class="card-header-dados">
+                            <div>🕒 ${item.data_hora}</div>
+                            <div>👤 ${item.operador}</div>
+                        </div>
+                        <div class="card-body-dados">
+                            <div class="container-foto-preview-tv">
+                                <img src="/static/${item.arquivo_foto}" class="foto-canhoto-tv" onerror="this.src='https://placehold.co/110x180/1e293b/38bdf8?text=📸+CANHOTO';">
+                            </div>
+                            <div class="bloco-texto-info">
+                                <div style="color: #cbd5e1;">
+                                    <b>NF/PEDIDO:</b> <span class="destaque-nf-tv">${item.nf}</span><br>
+                                    <b>VOLUMES:</b> <span class="destaque-valor-log">${item.volumes} V</span><br>
+                                    <b style="font-size:10px;">CLIENTE:</b> <span class="text-white fw-bold" style="font-size:11px;">${item.cliente}</span>
+                                </div>
+                                <div>
+                                    <small class="text-muted d-block mb-1">TEXTO WHATSAPP:</small>
+                                    <div class="txt-legenda-pura">"${item.texto_original}"</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }).catch(err => console.error("Erro no mural da TV:", err));
+    }
+
+    // Preservadas integralmente suas funções originais de controle e zoom
+    async function executarExclusaoRegistro(id, motoristaNome) {
+        const confirmacaoMestre = confirm(`⚠️ ALERTA OPERACIONAL!\n\nVocê deseja excluir o canhoto do motorista ${motoristaNome} permanentemente?`);
+        if (!confirmacaoMestre) return;
+        try {
+            const res = await fetch('/api/excluir_canhoto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const dadosRetorno = await res.json();
+            if (dadosRetorno.status === "sucesso") {
+                alert("✅ Canhoto removido com sucesso!");
+                hashUltimaCarga = ""; 
+                await carregarHistoricoCanhotos();
+            } else { alert("❌ Erro interno: " + dadosRetorno.mensagem); }
+        } catch(err) { alert("❌ Falha de comunicação."); }
+    }
+
+    function abrirVisualizador(base64Data, motorista, nf) {
+        const img = document.getElementById('viewerImage');
+        document.getElementById('viewerTitle').innerText = `🔎 Visualizando Canhoto: ${motorista} ${nf ? '| NF: ' + nf : ''}`;
+        img.src = base64Data;
+        document.getElementById('imageViewer').style.display = 'flex';
+        resetarVisualizador();
+    }
+    function fecharVisualizador() { document.getElementById('imageViewer').style.display = 'none'; }
+    function aplicarZoom(fator) { escalaAtual = Math.max(0.5, Math.min(escalaAtual + fator, 5.0)); atualizarTransformacaoImagem(); }
+    function resetarVisualizador() { escalaAtual = 1.0; transX = 0; transY = 0; atualizarTransformacaoImagem(); }
+    function atualizarTransformacaoImagem() { document.getElementById('viewerImage').style.transform = `translate(${transX}px, ${transY}px) scale(${escalaAtual})`; }
+    document.getElementById('viewerBody').addEventListener('wheel', (e) => { e.preventDefault(); aplicarZoom(e.deltaY < 0 ? 0.25 : -0.25); }, { passive: false });
+    function iniciarArrasto(e) { estaArrastando = true; startX = e.clientX - transX; startY = e.clientY - transY; e.preventDefault(); }
+    function arrastarImagem(e) { if (!estaArrastando) return; transX = e.clientX - startX; transY = e.clientY - startY; atualizarTransformacaoImagem(); }
+    function pararArrasto() { estaArrastando = false; }
+    function abrirModalImportacao() { document.getElementById('modalWhatsApp').style.display = 'flex'; }
+    function fecharModalImportacao() {
+        document.getElementById('modalWhatsApp').style.display = 'none';
+        document.getElementById('inpMotorista').value = ""; document.getElementById('inpRg').value = "";
+        document.getElementById('inpNotaFiscal').value = ""; document.getElementById('inpTransportadora').value = "";
+        document.getElementById('inpFile').value = "";
+    }
+    function abrirModalEditar(id, motorista, rg, nota_fiscal, transportadora) {
+        document.getElementById('editId').value = id; document.getElementById('editMotorista').value = motorista;
+        document.getElementById('editRg').value = rg == 'None' ? '' : rg; document.getElementById('editNotaFiscal').value = nota_fiscal == 'None' ? '' : nota_fiscal;
+        document.getElementById('editTransportadora').value = transportadora; document.getElementById('modalEditar').style.display = 'flex';
+    }
+    function fecharModalEditar() { document.getElementById('modalEditar').style.display = 'none'; }
+
+    async function salvarEdicaoCanhoto() {
+        const id = document.getElementById('editId').value;
+        const motorista = document.getElementById('editMotorista').value.trim();
+        const rg = document.getElementById('editRg').value.trim();
+        const nota_fiscal = document.getElementById('editNotaFiscal').value.trim();
+        const transportadora = document.getElementById('editTransportadora').value.trim();
+        const btn = document.getElementById('btnSalvarEdicao');
+        if(!motorista || !transportadora) { alert("⚠️ Motorista e Transportadora são obrigatórios!"); return; }
+        btn.innerText = "⏳ Alterando..."; btn.disabled = true;
+        try {
+            const res = await fetch('/api/editar_canhoto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, motorista, rg, nota_fiscal, transportadora })
+            });
+            if((await res.json()).status === "sucesso") {
+                alert("✅ Registro editado com sucesso!"); fecharModalEditar(); hashUltimaCarga = ""; carregarHistoricoCanhotos();
+            } else { alert("❌ Erro ao salvar."); }
+        } catch(e) { alert("❌ Erro de comunicação."); } finally { btn.innerHTML = "💾 Salvar Alteração"; btn.disabled = false; }
+    }
+
+    async function salvarCanhotoWhatsApp() {
+        const mot = document.getElementById('inpMotorista').value.trim();
+        const rg = document.getElementById('inpRg').value.trim();
+        const nf = document.getElementById('inpNotaFiscal').value.trim();
+        const transp = document.getElementById('inpTransportadora').value.trim();
+        const fileInput = document.getElementById('inpFile');
+        const btn = document.getElementById('btnSalvarWhats');
+        if(!mot || !transp || fileInput.files.length === 0) { alert("⚠️ Preencha os campos e anexe o canhoto!"); return; }
+        const formData = new FormData();
+        formData.append('motorista', mot); formData.append('rg', rg); formData.append('nota_fiscal', nf); formData.append('transportadora', transp); formData.append('file', fileInput.files[0]);
+        btn.innerText = "⏳ Importando..."; btn.disabled = true;
+        try {
+            const res = await fetch('/api/importar_canhoto_whatsapp', { method: 'POST', body: formData });
+            if((await res.json()).status === "sucesso") {
+                alert("✅ Canhoto do WhatsApp arquivado!"); fecharModalImportacao(); hashUltimaCarga = ""; carregarHistoricoCanhotos();
+            } else { alert("❌ Falha na importação."); }
+        } catch(e) { alert("❌ Erro no servidor."); } finally { btn.innerHTML = "💾 Salvar Registro"; btn.disabled = false; }
+    }
+
+    function filtrarTabelaLocal() {
+      const texto = document.getElementById('filtroTexto').value.toLowerCase().trim();
+      if (!texto) { renderizarTabela(registrosGlobais); return; }
+      renderizarTabela(registrosGlobais.filter(reg => {
+        const nfString = reg.nota_fiscal ? String(reg.nota_fiscal).toLowerCase() : "";
+        const rgString = reg.rg ? String(reg.rg).toLowerCase() : "";
+        return reg.motorista.toLowerCase().includes(texto) || rgString.includes(texto) || nfString.includes(texto) || reg.transportadora.toLowerCase().includes(texto);
+      }));
+    }
+
+    // ============================================================
+    // 🏁 INICIALIZAÇÃO CONTROLADA INTELIGENTE (PORTARIA VS TV)
+    // ============================================================
+    document.addEventListener("DOMContentLoaded", () => {
+        if (isModoTVAtivo) {
+            // 📺 COMPORTAMENTO MODO TV: Esconde a parte administrativa e ativa o Mural
+            document.getElementById('visaoPortariaAdministrativa').style.display = "none";
+            document.getElementById('blocoBotoesTopo').style.display = "none";
+            document.getElementById('visaoMuralTVWhatsApp').style.display = "grid";
+            document.getElementById('tituloPaginaMestre').innerHTML = "📱 TRIAGEM DIGITAL — MONITORAMENTO WHATSAPP <span style='font-size: 12px; background: #38bdf8; color: #000; padding: 3px 8px; border-radius: 20px; font-weight: bold; margin-left: 8px;'>● MODO CARROSSEL</span>";
+            
+            atualizarMuralTVWhatsApp();
+            setInterval(atualizarMuralTVWhatsApp, 5000); // Sincroniza a TV a cada 5 segundos
+        } else {
+            // 🏢 COMPORTAMENTO PORTARIA: Ativa o seu CRUD e sincronismo tradicional de 1.5s
+            carregarHistoricoCanhotos();
+            setInterval(carregarHistoricoCanhotos, 1500);
+        }
+    });
+  </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

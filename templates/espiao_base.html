@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tela Espião - Visão Bruta do SQLite</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background-color: #0f172a; padding: 15px; color: #38bdf8; font-size: 11px; }
+        .card-espiao { background: #1e293b; border: 2px solid #334155; padding: 15px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .titulo-painel { color: #f43f5e; font-weight: bold; border-bottom: 2px dashed #334155; padding-bottom: 8px; margin-bottom: 15px; font-size: 14px; }
+        
+        .conteiner-rolagem-total { 
+            width: 100%; 
+            max-height: 750px; 
+            overflow-x: auto !important; 
+            overflow-y: auto !important; 
+            border: 1px solid #475569;
+            background-color: #090d16;
+        }
+
+        .table-bruta { width: 100%; min-width: 1300px; margin-bottom: 0; color: #cbd5e1; }
+        .table-bruta th { background-color: #334155 !important; color: #f43f5e !important; font-size: 10px; text-transform: uppercase; padding: 10px; text-align: center; border: 1px solid #475569 !important; }
+        .table-bruta td { padding: 8px; font-size: 11px; font-weight: bold; border: 1px solid #334155 !important; text-align: center; white-space: nowrap; }
+        .table-bruta tbody tr:hover { background-color: #1e293b !important; color: #ffffff; }
+        
+        .badge-id { background-color: #f43f5e; color: white; padding: 2px 5px; border-radius: 4px; }
+        .badge-codigo-bruto { background-color: #0284c7; color: white; font-size: 11px; padding: 3px 6px; }
+        .btn-refresh { background-color: #f43f5e; color: white; border: none; font-weight: bold; padding: 6px 15px; border-radius: 4px; font-size: 11px; }
+        .btn-refresh:hover { background-color: #e11d48; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="card-espiao">
+        <div class="d-flex justify-content-between align-items-center titulo-painel">
+            <div>🕵️ TELA ESPIÃO - VISÃO REAL, NUA E CRUA DA TABELA DE HISTÓRICO</div>
+            <div class="d-flex gap-2">
+                <button class="btn-refresh" onclick="buscarDadosBrutosDoBanco()">🔄 Atualizar Leitura</button>
+                <button class="btn btn-sm btn-secondary font-weight-bold" onclick="window.location.href='/'">Voltar Menu</button>
+            </div>
+        </div>
+
+        <div class="mb-3 text-secondary small fw-bold">
+            💡 Esta tela exibe as linhas exatamente na ordem e formato em que foram injetadas no SQLite. Use as barras de rolagem inferior e lateral para navegar por toda a massa de registros.
+        </div>
+
+        <div class="conteiner-rolagem-total">
+            <table class="table table-bordered table-dark table-striped align-middle table-bruta">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">REG (ID)</th>
+                        <th style="width: 10%;">Data Contagem</th>
+                        <th style="width: 12%;">Responsável / Auditor</th>
+                        <th style="width: 12%;">Código Gravado</th>
+                        <th style="text-align: left; width: 30%;">Descrição no Momento do Lançamento</th>
+                        <th style="width: 9%;">Qtd Real</th>
+                        <th style="width: 12%;">Lote Gravado</th>
+                        <th style="width: 10%;">Saldo Sistema Ant</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaEspiao">
+                    <tr><td colspan="8" class="text-muted py-4">Buscando linhas físicas na tabela...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+function buscarDadosBrutosDoBanco() {
+    const tbody = document.getElementById('corpoTabelaEspiao');
+    tbody.innerHTML = `<tr><td colspan="8" class="text-warning py-4">Lendo arquivos do banco SQLite...</td></tr>`;
+
+    fetch('/api/logistica/espiao_base_bruta')
+        .then(r => r.json())
+        .then(dados => {
+            if (!dados || dados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-danger py-4">A tabela 'historico_inventario_ciclico' está vazia ou não contém registros para exibição.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = "";
+            dados.forEach(linha => {
+                const tr = document.createElement('tr');
+                
+                const lote = linha.lote_peca ? linha.lote_peca : "GERAL";
+                const saldoAnt = linha.saldo_anterior !== null ? linha.saldo_anterior : "-";
+
+                tr.innerHTML = `
+                    <td><span class="badge-id">${linha.id}</span></td>
+                    <td class="font-monospace text-warning">${linha.data_contagem}</td>
+                    <td class="text-uppercase">${linha.responsavel}</td>
+                    <td><span class="badge-codigo-bruto font-monospace">${linha.codigo_item}</span></td>
+                    <td style="text-align: left;" class="text-white text-uppercase">${linha.descricao}</td>
+                    <td class="text-success fs-6">${linha.quantidade_real}</td>
+                    <td class="text-info">${lote}</td>
+                    <td class="text-secondary font-monospace">${saldoAnt}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            tbody.innerHTML = `<tr><td colspan="8" class="text-danger py-4">Erro crítico de comunicação com o servidor.</td></tr>`;
+        });
+}
+
+window.onload = buscarDadosBrutosDoBanco;
+</script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

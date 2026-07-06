@@ -1,0 +1,1861 @@
+# ============================================================
+# CONFIGURAÇÕES INICIAIS E DIRETÓRIOS
+# ============================================================
+import sys
+import os
+import glob
+import sqlite3
+import threading
+import base64
+from datetime import datetime, timedelta
+import pandas as pd
+from flask import Flask, render_template, request, redirect, send_file, jsonify
+import webview
+import socket
+
+# Ajuste inteligente para executáveis (.exe) e script normal (.py)
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+    TEMPLATE_DIR = os.path.join(sys._MEIPASS, 'templates')
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
+DB_FILE = os.path.join(BASE_DIR, 'sistema_operacional.db')
+
+# Caminhos fixos de arquivos externos
+EXCEL_LISTA_MOTIVOS = r"C:\Users\adriano.montes\Desktop\Controle_ocorrencias\LISTA_MOTIVOS.xlsx"
+EXCEL_OCORRENCIAS = r"C:\Users\adriano.montes\Desktop\Controle_ocorrencias\relatorio_ocorrencias.xlsx"
+EXCEL_COLETAS = os.path.join(BASE_DIR, 'relatorio_coletas.xlsx')
+EXCEL_TRANSPORTADORAS = os.path.join(BASE_DIR, 'cadastro_transportadoras.xlsx')
+EXCEL_CANHOTOS = os.path.join(BASE_DIR, 'relatorio_canhotos.xlsx')
+
+
+# ============================================================
+# INICIALIZAÇÃO DO BANCO DE DADOS (Executado na carga do app)
+# ============================================================
+def inicializar_banco():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row  # Mantém compatibilidade com leituras estruturadas
+    cursor = conn.cursor()
+
+    # 📋 Tabela de Canhotos Digitais (Mobile) - Centralizada aqui!
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS canhotos_digitais (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            motorista TEXT NOT NULL,
+            rg TEXT NOT NULL,
+            transportadora TEXT NOT NULL,
+            assinatura_base64 TEXT NOT NULL,
+            data_hora TEXT NOT NULL
+        )
+    """)
+
+    # Tabela de Ocorrências
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS ocorrencias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT, nota_fiscal TEXT, data TEXT, tratativa TEXT, motivo TEXT
+        )
+    ''')
+
+    # Tabela de Coletas
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS coletas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT, nota_fiscal TEXT, transportadora TEXT, data_solicitacao TEXT, status TEXT
+        )
+    ''')
+
+    # Tabela de Transportadoras
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS transportadoras (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE, telephone TEXT, responsavel TEXT
+        )
+    ''')
+
+    # Tabela de Canhotos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS canhotos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente TEXT, nota_fiscal TEXT, data_recebimento TEXT, status TEXT, observacoes TEXT
+        )
+    ''')
+
+    # Tabela de Entregas Efetuadas (Módulo de Baixas)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS entregas_efetuadas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nota_fiscal TEXT UNIQUE,
+            data_entrega TEXT,
+            recebedor TEXT,
+            assinatura TEXT
+        )
+    ''')
+
+    # Tabela de Faturamento (Cabeçalho da NF)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS faturamento (
+            nf TEXT PRIMARY KEY, emissao TEXT, cliente TEXT, endereco TEXT, 
+            municipio TEXT, uf TEXT, cep TEXT, transportadora TEXT, 
+            modalidade TEXT, volumes TEXT, especie TEXT, peso_bruto_nf TEXT, 
+            pedido TEXT, valor_total_nf TEXT
+        )
+    """)
+
+    # Tabela de Itens de Faturamento
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS faturamento_itens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            nf TEXT, codigo_item TEXT, descricao_item TEXT, 
+            qtde TEXT, um TEXT, peso_unitario TEXT, peso_total TEXT,
+            FOREIGN KEY (nf) REFERENCES faturamento(nf)
+        )
+    """)
+
+    # 💾 TABELA DE METAS DIÁRIAS (Inserida estrategicamente aqui no motor inicial)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS metas_diarias (
+            data TEXT PRIMARY KEY,
+            valor_meta REAL
+        )
+    """)
+
+    # Migração estrutural de segurança para o módulo de canhotos do WhatsApp
+    try:
+        cursor.execute("ALTER TABLE canhotos_digitais ADD COLUMN nota_fiscal TEXT")
+    except sqlite3.OperationalError:
+        pass
+
+    # Índices de Alta Performance
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_nf_unique ON entregas_efetuadas(nota_fiscal);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_faturamento_cliente ON faturamento(cliente);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_faturamento_transportadora ON faturamento(transportadora);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_faturamento_emissao ON faturamento(emissao);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_items_nf ON faturamento_itens(nf);")
+
+    # Migração e colunas dinâmicas para o Módulo Mobile
+    cursor.execute("PRAGMA table_info(entregas_efetuadas)")
+    cols_entregas = [c[1] for c in cursor.fetchall()]
+    if "recebedor" not in cols_entregas:
+        cursor.execute("ALTER TABLE entregas_efetuadas ADD COLUMN recebedor TEXT")
+    if "assinatura" not in cols_entregas:
+        cursor.execute("ALTER TABLE entregas_efetuadas ADD COLUMN assinatura TEXT")
+
+    # População inicial de dados padrão para transportadoras
+    cursor.execute("SELECT COUNT(*) FROM transportadoras")
+    if cursor.fetchone()[0] == 0:
+        padroes = [('Braspress', '', ''), ('TNT Mercurio', '', ''), ('Jamef', '', ''), ('Planalto', '', '')]
+        cursor.executemany("INSERT INTO transportadoras (name, telephone, responsavel) VALUES (?, ?, ?)", padroes)
+
+    conn.commit()
+    conn.close()
+
+# Executa e garante a estrutura completa do banco de dados na inicialização
+inicializar_banco()
+
+# ============================================================
+# 🔥 COLA O CÓDIGO DA MIGRAÇÃO EXATAMENTE AQUI (PONTO 1)
+# ============================================================
+def migrar_excel_motivos_para_sqlite():
+    caminho_excel_motivos = r"C:\Users\adriano.montes\Desktop\Controle_ocorrencias\templates\LISTA_MOTIVOS.xlsx"
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS motivos_ocorrencias (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            motivo TEXT NOT NULL UNIQUE
+        )
+    """)
+    if os.path.exists(caminho_excel_motivos):
+        try:
+            df = pd.read_excel(caminho_excel_motivos)
+            if not df.empty:
+                df = df.fillna("")
+                dados_para_inserir = []
+                for cod, mot in zip(df.iloc[:, 0], df.iloc[:, 1]):
+                    cod = str(cod).strip().replace('.0', '')
+                    mot = str(mot).strip()
+                    texto_motivo = f"{cod} - {mot}" if cod and mot else mot
+                    if texto_motivo:
+                        dados_para_inserir.append((texto_motivo,))
+                cursor.executemany("INSERT OR IGNORE INTO motivos_ocorrencias (motivo) VALUES (?)", dados_para_inserir)
+                conn.commit()
+                print(f"✔️ [BANCO DE DADOS] Planilha LISTA_MOTIVOS consolidada no SQLite.")
+        except Exception as e:
+            print(f"❌ Erro ao processar planilha de motivos: {e}")
+    conn.close()
+
+migrar_excel_motivos_para_sqlite()
+
+def ler_motivos_ocorrencias_db():
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT motivo FROM motivos_ocorrencias ORDER BY id ASC")
+        motivos = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return motifs if (motifs := motivos) else []
+    except Exception as e:
+        print(f"Erro ao ler motivos do SQLite: {e}")
+        return []
+# ============================================================
+
+
+# ============================================================
+# 🔥 MOTOR DE CONCILIAÇÃO LOGÍSTICA BLINDADO CONTRA ERROS DE DIGITAÇÃO
+# ============================================================
+def conciliar_faturamento_automatico(nota_fiscal_str, motorista, assinatura_dados):
+    """
+    Esta função quebra o lote de notas vindo do celular, remove espaços extras,
+    zeros à esquerda e garante o vínculo perfeito com a tabela de faturamento corporativo.
+    """
+    try:
+        if not nota_fiscal_str:
+            return
+            
+        # Separa a string de notas por vírgula e remove espaços/caracteres invisíveis
+        notas_individuais = [n.strip() for n in str(nota_fiscal_str).split(',') if n.strip()]
+        if not notas_individuais:
+            return
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        data_entrega_atual = datetime.now().strftime('%d/%m/%Y')
+        recebedor_formatado = f"MOT: {str(motorista).upper().strip()}"
+        
+        for nf in notas_individuais:
+            # Limpeza cirúrgica: remove zeros à esquerda e espaços (transforma "066613 " em "66613")
+            nf_limpa = nf.lstrip('0').strip()
+            if not nf_limpa:
+                continue
+                
+            # ⚡ PASSO 1: Registra a baixa oficial na tabela de entregas
+            cursor.execute("""
+                INSERT INTO entregas_efetuadas (nota_fiscal, data_entrega, recebedor, assinatura)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(nota_fiscal) DO UPDATE SET
+                    data_entrega = excluded.data_entrega,
+                    recebedor = excluded.recebedor,
+                    assinatura = excluded.assinatura
+            """, (nf_limpa, data_entrega_atual, recebedor_formatado, "FOTO CAPTURADA VIA CAMERA MOBILE"))
+            
+            # ⚡ PASSO 2: Força o update preventivo na tabela de faturamento para garantir a sincronia
+            # (testa o formato normal, com zero à esquerda e sem zero para não ter erro)
+            cursor.execute("""
+                UPDATE faturamento 
+                SET transportadora = ? 
+                WHERE TRIM(nf) = ? OR TRIM(nf) = ?
+            """, (recebedor_formatado, nf_limpa, nf))
+            
+        conn.commit()
+        conn.close()
+        print(f"✔️ [CONCILIAÇÃO CONTROLE] Baixa automatizada aplicada com sucesso para as NFs: {notas_individuais}")
+    except Exception as e:
+        print(f"❌ [ERRO CRÍTICO CONCILIAÇÃO] Falha ao amarrar faturamento: {str(e)}")
+
+
+# ============================================================
+# FUNÇÕES AUXILIARES DE SISTEMA E EXCEL
+# ============================================================
+
+def buscar_ultimo_faturamento():
+    pasta = "C:/Users/adriano.montes/Downloads"
+    if not os.path.exists(pasta):
+        return None
+    arquivos = [
+        os.path.join(pasta, f)
+        for f in os.listdir(pasta)
+        if f.lower().startswith("nf-e_emitidas_endereços") 
+        and f.lower().endswith(".xlsx") 
+        and not f.startswith("~$")
+    ]
+    if not arquivos:
+        return None
+    arquivos.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    return arquivos[0]
+
+
+def buscar_ultima_expedicao():
+    pasta = "C:/Users/adriano.montes/Downloads"
+    if not os.path.exists(pasta):
+        return None
+    arquivos = [
+        f for f in glob.glob(os.path.join(pasta, "Notas_Expedidas_-_Relatório*.xlsx"))
+        if not os.path.basename(f).startswith("~$")
+    ]
+    return max(arquivos, key=os.path.getmtime) if arquivos else None
+
+
+def importar_faturamento_para_sqlite(caminho_excel):
+    df = pd.read_excel(caminho_excel)
+    colunas_para_replicar = [
+        'Emissão da NF-e', 'Cliente', 'Endereço', 'Município', 'UF', 'CEP', 
+        'Transportadora', 'Modalidade', 'Volumes', 'Especie', 'Peso bruto NF', 
+        'Pedido', 'Valor total da NF-e'
+    ]
+    for col in colunas_para_replicar:
+        if col in df.columns:
+            df[col] = df[col].ffill()
+
+    df = df.fillna("")
+
+    if 'Número da NF-e' in df.columns:
+        df['Número da NF-e'] = (
+            df['Número da NF-e']
+            .astype(str)
+            .str.replace(r'\.0$', '', regex=True)
+            .str.strip()
+        )
+
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM faturamento")
+    cur.execute("DELETE FROM faturamento_itens")
+
+    faturamentos_salvos = set()
+    dados_faturamento = []
+    dados_itens = []
+
+    for _, row in df.iterrows():
+        nf = row["Número da NF-e"]
+        if not nf:
+            continue
+
+        if nf not in faturamentos_salvos:
+            dados_faturamento.append((
+                nf, str(row["Emissão da NF-e"]), row["Cliente"], row["Endereço"],
+                row["Município"], row["UF"], row["CEP"], row["Transportadora"],
+                row["Modalidade"], str(row["Volumes"]), row["Especie"],
+                str(row["Peso bruto NF"]), str(row["Pedido"]), str(row["Valor total da NF-e"])
+            ))
+            faturamentos_salvos.add(nf)
+
+        dados_itens.append((
+            nf, 
+            str(row.get("Código item", "")).strip(), 
+            str(row.get("Descrição do item", "")).strip(), 
+            str(row.get("Qtde", "")).strip(),
+            str(row.get("U.M.", "")).strip(), 
+            str(row.get("Peso unitário do item", "")).strip(), 
+            str(row.get("Peso total do item", "")).strip()
+        ))
+
+    if dados_faturamento:
+        cur.executemany("""
+            INSERT INTO faturamento (
+                nf, emissao, cliente, endereco, municipio, uf, cep,
+                transportadora, modalidade, volumes, especie, peso_bruto_nf, pedido, valor_total_nf
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, dados_faturamento)
+
+    if dados_itens:
+        cur.executemany("""
+            INSERT INTO faturamento_itens (
+                nf, codigo_item, descricao_item, qtde, um, peso_unitario, peso_total
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, dados_itens)
+
+    conn.commit()
+    conn.close()
+
+
+def ler_lista_do_excel():
+    itens = []
+    if not os.path.exists(EXCEL_LISTA_MOTIVOS):
+        return itens
+    try:
+        df = pd.read_excel(EXCEL_LISTA_MOTIVOS)
+        if df.shape[0] >= 1:
+            df = df.fillna("")
+            for cod, mot in zip(df.iloc[:, 0], df.iloc[:, 1]):
+                cod = str(cod).strip()
+                mot = str(mot).strip()
+                if cod and mot:
+                    itens.append(f"{cod} - {mot}")
+                elif mot:
+                    itens.append(mot)
+    except Exception as e:
+        print(f"ERRO ao ler a lista de motivos do Excel: {e}")
+    return itens
+
+
+def ler_transportadoras_db():
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM transportadoras ORDER BY name ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+# ============================================================
+# ROTAS DE RENDERIZAÇÃO DAS TELAS E INICIALIZAÇÃO
+# ============================================================
+
+def obter_ip_local():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "192.168.10.193" # IP padrão de garantia
+
+# ============================================================
+# ROTAS DE RENDERIZAÇÃO DAS TELAS E INICIALIZAÇÃO
+# ============================================================
+
+@app.route('/')
+def home():
+    ip_rede = obter_ip_local()
+    return render_template('abrir.html', ip_servidor=ip_rede)
+
+# ============================================================
+# 🟢 ROTAS DE RENDERIZAÇÃO ADAPTADAS PARA O FORMATO SUSPENSO (PONTO 2)
+# ============================================================
+@app.route('/formulario')
+def index():
+    # Puxa os dados direto do SQLite integrado ao invés de ler o Excel toda hora
+    lista_motivos = ler_motivos_ocorrencias_db()
+    return render_template('index.html', itens_word=lista_motivos)
+
+@app.route('/coletas')
+def coletas():
+    return render_template('coletas.html', lista_transportadoras=ler_transportadoras_db())
+
+@app.route('/cadastro_transportadora')
+def cadastro_transportadora():
+    return render_template('cadastro_transportadora.html')
+
+@app.route('/torre_controle')
+def torre_controle():
+    return render_template('torre_controle.html')
+
+@app.route('/auditoria_torre')
+def auditoria_torre():
+    return render_template('torre_auditora.html') 
+
+# ============================================================
+# MÓDULO LOGÍSTICO: INTERFACE DE TORRE DE CONTROLE (API JSON)
+# ============================================================
+
+@app.route('/api/metricas_torre')
+def metricas_torre():
+    data_filtro = request.args.get('data', '').strip()
+
+    if data_filtro:
+        try:
+            dt_base = datetime.strptime(data_filtro, '%Y-%m-%d').date()
+        except Exception:
+            dt_base = datetime.today().date()
+    else:
+        dt_base = datetime.today().date()
+
+    primeiro_dia = dt_base.replace(day=1)
+    ultimo_dia = (primeiro_dia + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    pasta_downloads = "C:/Users/adriano.montes/Downloads"
+
+    # --- CROSS LOGÍSTICO ---
+    padrao_expedicao = os.path.join(pasta_downloads, "Notas_Expedidas_-_Relatório*.xlsx")
+    arquivos_expedicao = glob.glob(padrao_expedicao)
+    dict_expedicao = {}
+    
+    if arquivos_expedicao:
+        arquivos_expedicao.sort(key=os.path.getmtime)
+        ultimo_exp = arquivos_expedicao[-1]
+        try:
+            df_exp = pd.read_excel(ultimo_exp)
+            if not df_exp.empty:
+                c_data_exp = df_exp.columns[1]
+                c_transp = df_exp.columns[3]
+                c_mot = df_exp.columns[4]
+                c_nf = df_exp.columns[7]
+                c_obs = df_exp.columns[10]
+                
+                df_exp[c_nf] = df_exp[c_nf].astype(str).str.replace(';', ',').str.replace('\n', ',')
+                df_exp[c_nf] = df_exp[c_nf].str.split(',')
+                df_exp = df_exp.explode(c_nf)
+                df_exp[c_nf] = df_exp[c_nf].str.strip().str.replace(r'\.0$', '', regex=True)
+                
+                for _, r in df_exp.iterrows():
+                    nf_exp = str(r[c_nf]).strip()
+                    if nf_exp and nf_exp not in ('nan', 'None', '-'):
+                        dict_expedicao[nf_exp] = {
+                            "data_exp": str(r[c_data_exp]).split()[0] if pd.notna(r[c_data_exp]) else "Pendente",
+                            "transportadora": str(r[c_transp]).strip() if pd.notna(r[c_transp]) else "-",
+                            "motorista": str(r[c_mot]).strip() if pd.notna(r[c_mot]) else "-",
+                            "observacoes": str(r[c_obs]).strip() if pd.notna(r[c_obs]) else ""
+                        }
+            print(f"✔️ [TORRE] {len(dict_expedicao)} notas fiscalizadas com sucesso.")
+        except Exception as e:
+            print(f"❌ Erro ao cruzar arquivo de expedição na torre: {str(e)}")
+
+    excel_fat = buscar_ultimo_faturamento()
+    df_excel = pd.DataFrame()
+
+    if excel_fat:
+        try:
+            df_excel = pd.read_excel(excel_fat)
+        except Exception as e:
+            print(f"❌ Erro ao ler o arquivo Excel na torre: {str(e)}")
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    metas_db = {}
+    try:
+        cursor.execute("SELECT data, valor_meta FROM metas_diarias WHERE data BETWEEN ? AND ?", 
+                       (str(primeiro_dia), str(ultimo_dia)))
+        for row in cursor.fetchall():
+            chave_data = str(row['data']).strip()
+            metas_db[chave_data] = float(row['valor_meta'])
+    except Exception as e:
+        print(f"⚠️ Aviso: Tabela de metas inacessível ou vazia: {str(e)}")
+    finally:
+        conn.close()
+
+    faturamento_diario_real = {}
+    total_financeiro_selecionado = 0.0
+    contagem_notas_dia_selecionado = 0
+    dados_auditoria_tela = []
+    notas_unicas_expedidas = set()
+
+    def converter_data_ultra(dt_input):
+        if not dt_input or pd.isna(dt_input): return None
+        if hasattr(dt_input, 'date'): return dt_input.date()
+        dt_str = str(dt_input).strip().split()[0]
+        if dt_str in ('', '-', 'nan', 'None', '-no value-'): return None
+        formatos = ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%Y/%m/%d', '%d/%m/%y', '%m/%d/%Y')
+        for fmt in formatos:
+            try: return datetime.strptime(dt_str, fmt).date()
+            except: pass
+        return None
+
+    if not df_excel.empty:
+        col_emissao = df_excel.columns[0]
+        col_nf = df_excel.columns[1]
+        col_cliente = df_excel.columns[2]
+        col_pedido = df_excel.columns[12]
+        col_prod_desc = df_excel.columns[14]
+        col_um = df_excel.columns[16]
+        col_valor = df_excel.columns[19]
+
+        df_excel[col_nf] = df_excel[col_nf].ffill()
+        df_excel[col_emissao] = df_excel[col_emissao].ffill()
+        df_excel[col_cliente] = df_excel[col_cliente].ffill()
+
+        ultima_nf_valida = None
+        ultima_data_valida = None
+        ultimo_cliente_valido = None
+        ultimo_pedido_valido = None
+
+        for _, row in df_excel.iterrows():
+            nf_bruta = str(row[col_nf]).split('.')[0].strip() if pd.notna(row[col_nf]) else ""
+            if nf_bruta and nf_bruta not in ('nan', 'None', '-'):
+                ultima_nf_valida = nf_bruta
+            val_nf = ultima_nf_valida
+
+            if not val_nf: 
+                continue
+
+            dt_convertida = converter_data_ultra(row[col_emissao])
+            if dt_convertida:
+                ultima_data_valida = dt_convertida
+            dt_emissao_atual = ultima_data_valida
+
+            if not dt_emissao_atual: 
+                continue
+
+            if pd.notna(row[col_cliente]) and str(row[col_cliente]).strip() not in ('', 'nan', 'None'):
+                ultimo_cliente_valido = str(row[col_cliente]).strip()
+            if pd.notna(row[col_pedido]) and str(row[col_pedido]).strip() not in ('', 'nan', 'None', '-No Value-'):
+                ultimo_pedido_valido = str(row[col_pedido]).strip()
+
+            val_um = str(row[col_um]).strip().upper() if pd.notna(row[col_um]) else ""
+            desc_prod = str(row[col_prod_desc]).strip() if pd.notna(row[col_prod_desc]) else ""
+
+            is_item_real = (val_um != "" and val_um not in ('NAN', 'NONE', '-NO VALUE-', '0', '0.0'))
+
+            val_bruto = row[col_valor]
+            val_float = 0.0
+            if pd.notna(val_bruto):
+                try:
+                    if isinstance(val_bruto, (int, float)):
+                        val_float = float(val_bruto)
+                    else:
+                        val_limpo = str(val_bruto).replace('R$', '').strip()
+                        if '.' in val_limpo and ',' in val_limpo:
+                            val_limpo = val_limpo.replace('.', '').replace(',', '.')
+                        elif ',' in val_limpo:
+                            val_limpo = val_limpo.replace(',', '.')
+                        val_float = float(val_limpo)
+                except:
+                    val_float = 0.0
+
+            if not is_item_real:
+                if primeiro_dia <= dt_emissao_atual <= ultimo_dia:
+                    data_s = str(dt_emissao_atual)
+                    faturamento_diario_real[data_s] = faturamento_diario_real.get(data_s, 0.0) + val_float
+
+                if dt_emissao_atual == dt_base:
+                    total_financeiro_selecionado += val_float
+                    contagem_notas_dia_selecionado += 1
+                    
+                    if val_nf in dict_expedicao:
+                        notas_unicas_expedidas.add(val_nf)
+
+                    dados_exp = dict_expedicao.get(val_nf, {"transportadora": "-"})
+                    status_log = f"EXPEDIDO | 🚚 {dados_exp['transportadora']}" if dados_exp['transportadora'] != "-" else "NÃO EXPEDIDO"
+
+                    dados_auditoria_tela.append({
+                        "nf": val_nf,
+                        "cliente": ultimo_cliente_valido if ultimo_cliente_valido else "-",
+                        "produto": f"<b>TOTAL CONSOLIDADO DA NOTA</b> | {status_log}",
+                        "valor_linha": 0.0,
+                        "valor_total_nota": val_float,
+                        "tipo_linha": "TOTALIZADOR"
+                    })
+
+                    dados_auditoria_tela.append({
+                        "nf": "", "cliente": "", "produto": "",
+                        "valor_linha": 0.0, "valor_total_nota": 0.0,
+                        "tipo_linha": "DIVISOR"
+                    })
+            else:
+                if dt_emissao_atual == dt_base:
+                    dados_exp = dict_expedicao.get(val_nf, {
+                        "data_exp": "Não Expedida", "transportadora": "-", "motorista": "-", "observacoes": ""
+                    })
+
+                    pedido_texto = f"Pedido: {ultimo_pedido_valido}" if ultimo_pedido_valido else "Item"
+                    produto_detalhado = f"{desc_prod} ({pedido_texto}) | 🚚 {dados_exp['transportadora']} | Motorista: {dados_exp['motorista']}"
+                    if dados_exp['observacoes']:
+                        produto_detalhado += f" ({dados_exp['observacoes']})"
+
+                    dados_auditoria_tela.append({
+                        "nf": val_nf,
+                        "cliente": ultimo_cliente_valido if ultimo_cliente_valido else "-",
+                        "produto": produto_detalhado,
+                        "valor_linha": val_float,
+                        "valor_total_nota": 0.0,
+                        "tipo_linha": "ITEM"
+                    })
+
+    tendencia_mensal = []
+    acumulado_meta_ate_hoje = 0.0
+    acumulado_real_ate_hoje = 0.0
+
+    curr = primeiro_dia
+    while curr <= ultimo_dia:
+        data_s = str(curr).strip()
+        realizado_dia = faturamento_diario_real.get(data_s, 0.0)
+        meta_dia = metas_db.get(data_s, 0.0)
+        
+        if curr <= dt_base:
+            acumulado_meta_ate_hoje += meta_dia
+            acumulado_real_ate_hoje += realizado_dia
+
+        tendencia_mensal.append({
+            "data": data_s, "label": curr.strftime('%d/%m'),
+            "realizado": round(realizado_dia, 2), "meta": round(meta_dia, 2)
+        })
+        curr += timedelta(days=1)
+
+    falta_acumulado_mes = max(0, acumulado_meta_ate_hoje - acumulado_real_ate_hoje)
+    qtd_expedidas_dia = len(notas_unicas_expedidas)
+    qtd_pendentes_dia = max(0, contagem_notas_dia_selecionado - qtd_expedidas_dia)
+
+    return {
+        "resumo_dia": {
+            "valor_faturado": round(total_financeiro_selecionado, 2),
+            "qtd_notas": contagem_notas_dia_selecionado
+        },
+        "acumulado_mes": {
+            "falta_no_mes": round(falta_acumulado_mes, 2)
+        },
+        "status_notas": {
+            "entregues": 0, 
+            "expedidas": qtd_expedidas_dia, 
+            "nao_expedidas": qtd_pendentes_dia
+        },
+        "lead_times": {"pedido_faturamento": 0, "faturamento_expedicao": 0, "expedicao_entrega": 0},
+        "tendencia_mensal": tendencia_mensal,
+        "tabela_auditoria": dados_auditoria_tela
+    }
+
+
+@app.route('/api/listar_metas')
+def listar_metas():
+    data_filtro = request.args.get('data', '').strip()
+    if data_filtro:
+        try: dt_base = datetime.strptime(data_filtro, '%Y-%m-%d').date()
+        except: dt_base = datetime.today().date()
+    else:
+        dt_base = datetime.today().date()
+
+    primeiro_dia = dt_base.replace(day=1)
+    ultimo_dia = (primeiro_dia + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    metas = {}
+    try:
+        cursor.execute("SELECT data, valor_meta FROM metas_diarias WHERE data BETWEEN ? AND ?", 
+                       (str(primeiro_dia), str(ultimo_dia)))
+        for row in cursor.fetchall():
+            metas[str(row['data']).strip()] = float(row['valor_meta'])
+    except Exception as e:
+        print(f"❌ Erro ao listar metas: {str(e)}")
+    finally:
+        conn.close()
+
+    return jsonify(metas)
+
+
+@app.route('/api/salvar_meta', methods=['POST'])
+def salvar_meta():
+    dados = request.get_json()
+    if not dados:
+        return {"status": "erro", "mensagem": "Nenhum dado recebido"}, 400
+
+    data_meta = dados.get('data')
+    valor_meta = dados.get('valor') if dados.get('valor') is not None else dados.get('valor_meta')
+    
+    if not data_meta:
+        return {"status": "erro", "mensagem": "Data nao informada"}, 400
+    if valor_meta is None:
+        return {"status": "erro", "mensagem": "Valor da meta nao informado"}, 400
+        
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT OR REPLACE INTO metas_diarias (data, valor_meta) 
+            VALUES (?, ?)
+        """, (str(data_meta).strip(), float(valor_meta)))
+        conn.commit()
+        return {"status": "sucesso", "mensagem": "Meta salva com sucesso!"}
+    except Exception as e:
+        conn.rollback()
+        return {"status": "erro", "mensagem": str(e)}, 500
+    finally:
+        conn.close()
+
+
+# ============================================================
+# RELATÓRIOS DO CORE OPERACIONAL E SISTEMAS DE FILTRO
+# ============================================================
+
+@app.route('/sistema_canhotos', methods=['GET'])
+def sistema_canhotos():
+    filtro = request.args.get('busca_cliente', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    if filtro:
+        cursor.execute("SELECT * FROM canhotos WHERE cliente LIKE ? ORDER BY id DESC", (f'%{filtro}%',))
+    else:
+        cursor.execute("SELECT * FROM canhotos ORDER BY id DESC")
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    lista = [{
+        'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'],
+        'Data Recebimento': r['data_recebimento'], 'Status': r['status'], 'Observações': r['observacoes']
+    } for r in rows]
+    return render_template('canhotos_sistema.html', canhotos=lista)
+
+
+@app.route('/relatorio', methods=['GET'])
+def relatorio():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    query = "SELECT * FROM ocorrencias WHERE 1=1"
+    params = []
+
+    if filtro_cliente:
+        query += " AND LOWER(cliente) LIKE ?"
+        params.append(f'%{filtro_cliente.lower()}%')
+    if filtro_nf:
+        query += " AND nota_fiscal LIKE ?"
+        params.append(f'%{filtro_nf}%')
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    lista = [{
+        'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'],
+        'Data': r['data'], 'Tratativa': r['tratativa'], 'Motivo': r['motivo']
+    } for r in rows]
+    return render_template('relatorio.html', ocorrencias=lista, filtro_cliente=filtro_cliente, filtro_nf=filtro_nf)
+
+
+@app.route('/relatorio_coletas', methods=['GET'])
+def relatorio_coletas():
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    filtro_data = request.args.get('busca_data', '').strip()
+    filtro_apenas_pendentes = request.args.get('apenas_pendentes', '')
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM coletas WHERE status LIKE '%Pendente%'")
+    pendentes = cursor.fetchone()[0] or 0
+    cursor.execute("SELECT COUNT(*) FROM coletas WHERE status LIKE '%Efetuada%'")
+    efetuadas = cursor.fetchone()[0] or 0
+
+    query = "SELECT * FROM coletas WHERE 1=1"
+    params = []
+
+    if filtro_cliente:
+        query += " AND LOWER(cliente) LIKE ?"
+        params.append(f'%{filtro_cliente.lower()}%')
+    if filtro_nf:
+        query += " AND nota_fiscal LIKE ?"
+        params.append(f'%{filtro_nf}%')
+    if filtro_transp:
+        query += " AND LOWER(transportadora) LIKE ?"
+        params.append(f'%{filtro_transp.lower()}%')
+    if filtro_data:
+        try:
+            data_convertida = datetime.strptime(filtro_data, '%Y-%m-%d').strftime('%d/%m/%Y')
+            query += " AND data_solicitacao LIKE ?"
+            params.append(f'%{data_convertida}%')
+        except Exception:
+            query += " AND data_solicitacao LIKE ?"
+            params.append(f'%{filtro_data}%')
+
+    if filtro_apenas_pendentes == 'on':
+        query += " AND status LIKE '%Pendente%'"
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    lista = []
+    hoje = datetime.now().date()
+    texto_email_linhas = []
+
+    for r in rows:
+        status_atual = r['status']
+        data_solic_str = r['data_solicitacao']
+        alerta_dias, classe_alerta = "Data sem formato", ""
+        
+        try:
+            data_coleta = datetime.strptime(data_solic_str, '%d/%m/%Y').date() if "/" in data_solic_str else datetime.strptime(data_solic_str, '%Y-%m-%d').date()
+            diferenca = (data_coleta - hoje).days
+            
+            if "Pendente" in status_atual:
+                if diferenca > 0:
+                    alerta_dias = f"Faltam {diferenca} dias"
+                    classe_alerta = "alerta-futuro"
+                elif diferenca == 0:
+                    alerta_dias = "🚨 É HOJE!"
+                    classe_alerta = "alerta-hoje"
+                else:
+                    alerta_dias = f"Atrasado há {abs(diferenca)} dias"
+                    classe_alerta = "alerta-atrasado"
+            else:
+                alerta_dias = "Concluído"
+                classe_alerta = "alerta-concluido"
+        except Exception:
+            pass
+
+        item = {
+            'Cliente': r['cliente'], 'Nota Fiscal': r['nota_fiscal'], 'Transportadora': r['transportadora'],
+            'Data Solicitação': r['data_solicitacao'], 'Status': status_atual, 'AlertaDias': alerta_dias, 'ClasseAlerta': classe_alerta
+        }
+        lista.append(item)
+        if "Pendente" in status_atual:
+            texto_email_linhas.append(f"• Cliente: {item['Cliente']} | NF: {item['Nota Fiscal']} | Transp: {item['Transportadora']} | Data Programada: {item['Data Solicitação']} ({alerta_dias})")
+
+    corpo_email_padrao = "Prezados,\n\nSegue a lista de coletas pendentes update:\n\n"
+    corpo_email_padrao += "\n".join(texto_email_linhas) if texto_email_linhas else "Nenhuma coleta pendente encontrada para os filtros selecionados."
+    corpo_email_padrao += "\n\nFicamos no aguardo do retorno operacional.\n\nAtenciosamente,"
+
+    return render_template('relatorio_coletas.html', coletas=lista, filtro_cliente=filtro_cliente, filtro_nf=filtro_nf,
+                           filtro_transp=filtro_transp, filtro_data=filtro_data, filtro_apenas_pendentes=filtro_apenas_pendentes,
+                           pendentes=pendentes, efetuadas=efetuadas, static_mail_data=corpo_email_padrao)
+
+# 🟢 DUPLO MAPEAMENTO: Aceita tanto o link novo quanto o antigo mapeado nos seus botões
+@app.route('/registrar_coleta')
+@app.route('/formulario_coleta')
+def abrir_formulario_registro_coleta():
+    # Puxa a lista viva de transportadoras registradas no SQLite
+    lista_transp = ler_transportadoras_db()
+    return render_template('registrar_coleta.html', lista_transportadoras=lista_transp)
+
+@app.route('/relatorio_faturamento', methods=['GET'])
+def relatorio_faturamento():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+    busca_status = request.args.get('busca_status', '').strip()
+    
+    pagina = request.args.get('page', 1, type=int)
+    registros_por_pagina = 100
+    offset = (pagina - 1) * registros_por_pagina
+
+    excel_fat = buscar_ultimo_faturamento()
+    if excel_fat:
+        try: importar_faturamento_para_sqlite(excel_fat)
+        except Exception as e: print(f"Aviso de sincronia faturamento: {e}")
+
+    dict_expedidas_relatorio = {}
+    excel_exp = buscar_ultima_expedicao()
+    if excel_exp:
+        try:
+            df_exp = pd.read_excel(excel_exp)
+            if not df_exp.empty:
+                col_nf_v = next((c for c in df_exp.columns if 'nota' in str(c).lower()), df_exp.columns[7])
+                col_data_v = next((c for c in df_exp.columns if 'emiss' in str(c).lower() or 'data' in str(c).lower()), df_exp.columns[1])
+                
+                df_exp[col_nf_v] = df_exp[col_nf_v].astype(str).str.replace(';', ',').str.replace('\n', ',')
+                df_exp[col_nf_v] = df_exp[col_nf_v].str.split(',')
+                df_exp = df_exp.explode(col_nf_v)
+                df_exp[col_nf_v] = df_exp[col_nf_v].str.strip().str.replace(r'\.0$', '', regex=True)
+                
+                for _, r in df_exp.iterrows():
+                    nf_str_exp = str(r[col_nf_v]).strip()
+                    if nf_str_exp and nf_str_exp not in ('nan', 'None', '-'):
+                        dict_expedidas_relatorio[nf_str_exp] = {
+                            "data_expedicao": str(r[col_data_v]).split()[0] if pd.notna(r[col_data_v]) else "-"
+                        }
+        except Exception as e:
+            print(f"❌ Erro ao mapear arquivo de expedição para o relatório: {e}")
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM faturamento")
+    total_geral_faturadas = cursor.fetchone()[0] or 0
+    cursor.execute("SELECT COUNT(*) FROM entregas_efetuadas")
+    total_geral_entregues_db = cursor.fetchone()[0] or 0
+
+    where_clauses = ["1=1"]
+    params = []
+
+    if filtro_cliente:
+        where_clauses.append("f.cliente LIKE ?")
+        params.append(f'%{filtro_cliente}%')
+    if filtro_nf:
+        where_clauses.append("f.nf LIKE ?")
+        params.append(f'%{filtro_nf}%')
+    if filtro_transp:
+        where_clauses.append("f.transportadora LIKE ?")
+        params.append(f'%{filtro_transp}%')
+    if filtro_inicio:
+        where_clauses.append("f.emissao >= ?")
+        params.append(filtro_inicio)
+    if filtro_fim:
+        where_clauses.append("f.emissao <= ?")
+        params.append(filtro_fim)
+
+    where_str = " AND ".join(where_clauses)
+
+    query_dados_total = f"""
+        SELECT 
+            f.nf AS [Nota Fiscal], f.emissao AS [Emissão], f.cliente AS [Cliente], 
+            f.endereco AS [Endereço], f.municipio AS [Município], f.uf AS [UF], f.cep AS [CEP], 
+            f.transportadora AS [Transportadora], f.modalidade AS [Modalidade], f.volumes AS [Volumes], 
+            f.especie AS [Espécie], f.peso_bruto_nf AS [Peso Bruto], f.pedido AS [Pedido], 
+            f.valor_total_nf AS [Valor Total], e.data_entrega AS [Data Entrega], 
+            e.recebedor AS [Recebedor], e.assinatura AS [Assinatura / Obs] 
+        FROM faturamento f 
+        LEFT JOIN entregas_efetuadas e ON f.nf = e.nota_fiscal 
+        WHERE {where_str} 
+        GROUP BY f.nf 
+        ORDER BY f.nf DESC
+    """
+    
+    cursor.execute(query_dados_total, params)
+    rows_completas = cursor.fetchall()
+    conn.close()
+
+    dados_filtrados_com_status = []
+    total_expedidas_filtro = 0
+    total_entregues_filtro = 0
+    total_nao_exp_filtro = 0
+    valor_total_filtro = 0.0
+
+    for r in rows_completas:
+        item = dict(r)
+        nf_str = str(item['Nota Fiscal']).strip()
+        val_raw = str(item['Valor Total']).replace('R$', '').strip()
+        
+        if ',' in val_raw and '.' in val_raw:
+            val_limpo = val_raw.replace('.', '').replace(',', '.')
+        elif ',' in val_raw:
+            val_limpo = val_raw.replace(',', '.')
+        else:
+            val_limpo = val_raw
+
+        try: val_float = float(val_limpo)
+        except Exception: val_float = 0.0
+
+        info_exp_combinada = dict_expedidas_relatorio.get(nf_str, None)
+
+        # ⚡ CORREÇÃO DA LEITURA DE CHAVE DE MAIÚSCULA: Verifica '[Data Entrega]' mapeada no SQL
+        if item.get('Data Entrega') and item['Data Entrega'] not in ('', '-', None):
+            status_final = 'ENTREGUE'
+            total_entregues_filtro += 1
+            item['Data Expedição'] = info_exp_combinada['data_expedicao'] if info_exp_combinada else "-"
+            item['data_expedicao'] = info_exp_combinada['data_expedicao'] if info_exp_combinada else "-"
+        elif info_exp_combinada is not None:
+            status_final = 'EXPEDIDO'
+            total_expedidas_filtro += 1
+            item['Data Expedição'] = info_exp_combinada['data_expedicao']
+            item['data_expedicao'] = info_exp_combinada['data_expedicao']
+        else:
+            status_final = 'NÃO EXPEDIDO'
+            total_nao_exp_filtro += 1
+            item['Data Expedição'] = "-"
+            item['data_expedicao'] = "-"
+
+        item['STATUS EXPEDIÇÃO'] = status_final
+
+        # Aplica o filtro na busca se houver
+        if busca_status and status_final != busca_status:
+            continue
+            
+        valor_total_filtro += val_float
+        dados_filtrados_com_status.append(item)
+
+    total_faturadas_filtro = len(dados_filtrados_com_status)
+    financeiro_filtrado = round(valor_total_filtro, 2)
+    
+    # Recalcula os totais do Dashboard de forma unificada
+    total_geral_movimentadas = total_geral_entregues_db
+    total_geral_em_aberto_recalculado = max(0, total_geral_faturadas - total_geral_movimentadas)
+    taxa_eficiencia = round((total_geral_movimentadas / total_geral_faturadas * 100), 1) if total_geral_faturadas > 0 else 0.0
+
+    dados_lista_paginada = dados_filtrados_com_status[offset : offset + registros_por_pagina]
+
+    colunas = [
+        'Nota Fiscal', 'Emissão', 'Cliente', 'Endereço', 'Município', 'UF', 'CEP',
+        'Transportadora', 'Modalidade', 'Volumes', 'Espécie', 'Peso Bruto', 'Pedido',
+        'Valor Total', 'STATUS EXPEDIÇÃO', 'Data Expedição', 'Data Entrega', 'Recebedor', 'Assinatura / Obs'
+    ]
+
+    return render_template(
+        'relatorio_faturamento.html', dados=dados_lista_paginada, colunas=colunas,
+        filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp,
+        busca_status=busca_status, data_inicio=filtro_inicio, data_fim=filtro_fim,
+        total_faturadas=total_geral_faturadas, total_expedidas=total_geral_movimentadas,
+        total_em_aberto=total_geral_em_aberto_recalculado, taxa_eficiencia=taxa_eficiencia,
+        total_faturadas_filtro=total_faturadas_filtro, total_expedidas_filtro=total_expedidas_filtro,
+        total_em_aberto_filtro=total_nao_exp_filtro,
+        financeiro_filtrado=f"R$ {financeiro_filtrado:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+        page=pagina, tem_mais=(len(dados_filtrados_com_status) > offset + registros_por_pagina), erro=None
+    )
+
+
+@app.route('/relatorio_transportadoras', methods=['GET'])
+def relatorio_transportadoras():
+    filtro = request.args.get('busca_transp', '').strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    if filtro:
+        cursor.execute("SELECT * FROM transportadoras WHERE LOWER(name) LIKE ? ORDER BY name ASC", (f'%{filtro.lower()}%',))
+    else:
+        cursor.execute("SELECT * FROM transportadoras ORDER BY name ASC")
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    lista = [{'Transportadora': r['name'], 'Telefone': r['telefone'], 'Responsável': r['responsavel']} for r in rows]
+    return render_template('relatorio_transportadoras.html', transportadoras=lista, filtro_transp=filtro)
+
+
+@app.route('/relatorio_expedicao', methods=['GET'])
+def relatorio_expedicao():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    filtro_transp = request.args.get('busca_transp', '').strip()
+
+    colunas, dados_lista, msg_erro = [], [], None
+    excel_exp = buscar_ultima_expedicao()
+
+    if not excel_exp:
+        return render_template('relatorio_expedicao.html', erro="Nenhum arquivo de expedição localizado em Downloads.")
+
+    try:
+        df = pd.read_excel(excel_exp, dtype=str)
+        col_nf = next((c for c in df.columns if 'nota' in str(c).lower()), None)
+        col_data = next((c for c in df.columns if 'emiss' in str(c).lower() or 'data' in str(c).lower()), None)
+        col_cli = next((c for c in df.columns if 'clie' in str(c).lower() or 'raz' in str(c).lower() or 'model' in str(c).lower()), None)
+        col_transp = next((c for c in df.columns if 'transp' in str(c).lower()), None)
+
+        if not col_nf: col_nf = df.columns[7]
+        if not col_data: col_data = df.columns[1]
+        if not col_cli: col_cli = df.columns[2]
+        if not col_transp: col_transp = df.columns[3]
+
+        df[col_nf] = df[col_nf].astype(str).str.replace(';', ',').str.replace('\n', ',')
+        df[col_nf] = df[col_nf].str.split(',')
+        df = df.explode(col_nf)
+        df[col_nf] = df[col_nf].str.strip().str.replace(r'\.0$', '', regex=True)
+        df = df[df[col_nf] != ""]
+        df = df[df[col_nf] != "nan"]
+        df = df[df[col_nf] != "None"]
+
+        if col_data and filtro_inicio and filtro_fim:
+            df[col_data] = pd.to_datetime(df[col_data], errors='coerce')
+            df = df[(df[col_data] >= pd.to_datetime(filtro_inicio)) & (df[col_data] <= pd.to_datetime(filtro_fim))]
+            df[col_data] = df[col_data].dt.strftime('%d/%m/%Y')
+        elif col_data:
+            try: df[col_data] = pd.to_datetime(df[col_data], errors='coerce').dt.strftime('%d/%m/%Y')
+            except: pass
+
+        if filtro_nf:
+            df = df[df[col_nf].str.contains(filtro_nf, case=False, na=False)]
+        if filtro_cliente and col_cli:
+            df = df[df[col_cli].astype(str).str.contains(filtro_cliente, case=False, na=False)]
+        if filtro_transp and col_transp:
+            df = df[df[col_transp].astype(str).str.contains(filtro_transp, case=False, na=False)]
+
+        df = df.fillna("-")
+        colunas = df.columns.tolist()
+        dados_lista = df.to_dict(orient='records')
+        print(f"➔ [DEBUG EXPEDIÇÃO] {len(dados_lista)} linhas processadas.")
+        
+    except Exception as e:
+        msg_erro = f"Erro crítico no alinhamento das colunas: {str(e)}"
+        print(f"❌ {msg_erro}")
+
+    return render_template(
+        'relatorio_expedicao.html', dados=dados_lista, colunas=colunas,
+        filtro_nf=filtro_nf, filtro_cliente=filtro_cliente, filtro_transp=filtro_transp,
+        data_inicio=filtro_inicio, data_fim=filtro_fim, erro=msg_erro
+    )
+
+# ============================================================
+# SALVAR ENTRADAS DE FORMULÁRIOS E APOIO DE NEGÓCIO
+# ============================================================
+
+@app.route('/salvar', methods=['POST'])
+def salvar():
+    cliente = request.form.get('cliente', '').strip()
+    nf = request.form.get('nota_fiscal', '').strip()
+    data = request.form.get('data', '').strip()
+    tratativa = request.form.get('tratativa', '').strip()
+    motivo = request.form.get('item_word', '').strip()
+
+    try: data_f = datetime.strptime(data, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except Exception: data_f = data
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO ocorrencias (cliente, nota_fiscal, data, tratativa, motivo) VALUES (?, ?, ?, ?, ?)",
+                   (cliente, nf, data_f, tratativa, motivo))
+    conn.commit()
+    conn.close()
+
+    texto = f"Prezados,\n\nNova ocorrência registrada.\n\n• Cliente: {cliente}\n• NF: {nf}\n• Data: {data_f}\n• Motivo: {motivo}"
+    return render_template('sucesso.html', texto_notificacao=texto)
+
+
+@app.route('/salvar_coleta', methods=['POST'])
+def salvar_coleta():
+    cliente = request.form.get('cliente', '').strip()
+    nf = request.form.get('nota_fiscal', '').strip()
+    transp = request.form.get('transportadora', '').strip()
+    data = request.form.get('data', '').strip()
+    status = request.form.get('status', '').strip()
+
+    try: data_f = datetime.strptime(data, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except Exception: data_f = data
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO coletas (cliente, nota_fiscal, transportadora, data_solicitacao, status) VALUES (?, ?, ?, ?, ?)",
+                   (cliente, nf, transp, data_f, status))
+    conn.commit()
+    
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM coletas ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    lista = []
+    texto_email_linhas = []
+    pendentes, efetuadas = 0, 0
+
+    for r in rows:
+        lista.append({'cliente': r['cliente'], 'nota_fiscal': r['nota_fiscal'], 'transportadora': r['transportadora'], 'data_solicitacao': r['data_solicitacao'], 'status': r['status']})
+        if r['status'].lower() == 'pendente':
+            pendentes += 1
+            texto_email_linhas.append(f"• NF: {r['nota_fiscal']} | Cliente: {r['cliente']} | Transp: {r['transportadora']}")
+        else:
+            efetuadas += 1
+
+    corpo_email_padrao = "Prezados,\n\nSegue a lista de coletas pendentes atualizada:\n\n"
+    corpo_email_padrao += "\n".join(texto_email_linhas) if texto_email_linhas else "Nenhuma coleta pendente encontrada."
+    corpo_email_padrao += "\n\nFicamos no aguardo do retorno operacional.\n\nAtenciosamente,"
+
+    return render_template('relatorio_coletas.html', coletas=lista, filtro_cliente="", filtro_nf="", filtro_transp="", filtro_data="", filtro_apenas_pendentes="",
+                           pendentes=pendentes, efetuadas=efetuadas, static_mail_data=corpo_email_padrao)
+
+
+@app.route('/salvar_transportadora', methods=['POST'])
+def salvar_transportadora():
+    nome = request.form.get('nome_transportadora', '').strip()
+    tel = request.form.get('telefone_transportadora', '').strip()
+    resp = request.form.get('responsavel_transportadora', '').strip()
+
+    if not nome: return redirect('/relatorio_transportadoras')
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO transportadoras (name, telephone, responsavel) VALUES (?, ?, ?)", (nome, tel, resp))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass
+    conn.close()
+    return redirect('/relatorio_transportadoras')
+
+
+@app.route('/salvar_entrega_faturamento', methods=['POST'])
+def salvar_entrega_faturamento():
+    nf = request.form.get('entrega_nf', '').strip()
+    data = request.form.get('entrega_data', '').strip()
+
+    try: data_f = datetime.strptime(data, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except Exception: data_f = data
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO entregas_efetuadas (nota_fiscal, data_entrega) VALUES (?, ?)
+        ON CONFLICT(nota_fiscal) DO UPDATE SET data_entrega = excluded.data_entrega
+    """, (nf, data_f))
+    conn.commit()
+    conn.close()
+    return redirect('/relatorio_faturamento')
+
+
+@app.route('/buscar_nf')
+def buscar_nf():
+    nf = request.args.get("nf", "").strip()
+    if not nf: return {"erro": "NF não informada"}, 400
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM faturamento WHERE nf = ?", (nf,))
+    cab = cur.fetchone()
+
+    if not cab:
+        conn.close()
+        return {"erro": "NF não encontrada"}, 404
+
+    cur.execute("SELECT codigo_item, descricao_item, qtde, um, peso_unitario, peso_total FROM faturamento_itens WHERE nf = ?", (nf,))
+    itens = cur.fetchall()
+    conn.close()
+
+    return {
+        "nf": cab["nf"], "emissao": cab["emissao"], "cliente": cab["cliente"], "endereco": cab["endereco"],
+        "municipio": cab["municipio"], "uf": cab["uf"], "cep": cab["cep"], "transportadora": cab["transportadora"],
+        "modalidade": cab["modalidade"], "volumes": cab["volumes"], "especie": cab["especie"],
+        "peso_bruto_nf": cab["peso_bruto_nf"], "pedido": cab["pedido"], "valor_total_nf": cab["valor_total_nf"],
+        "itens": [{"codigo": i["codigo_item"], "descricao": i["descricao_item"], "qtde": i["qtde"], "um": i["um"], "peso_unitario": i["peso_unitario"], "peso_total": i["peso_total"]} for i in itens]
+    }
+
+
+@app.route('/salvar_entrega_confirmada', methods=['POST'])
+def salvar_entrega_confirmada():
+    nf = request.form.get('nf_confirmada', '').strip()
+    data = request.form.get('data_confirmada', '').strip()
+    recebedor = request.form.get('recebedor_confirmado', '').strip()
+
+    try: data_f = datetime.strptime(data, '%Y-%m-%d').strftime('%d/%m/%Y')
+    except Exception: data_f = data
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO entregas_efetuadas (nota_fiscal, data_entrega, recebedor) VALUES (?, ?, ?)
+        ON CONFLICT(nota_fiscal) DO UPDATE SET data_entrega = excluded.data_entrega, recebedor = excluded.recebedor
+    """, (nf, data_f, recebedor))
+    conn.commit()
+    conn.close()
+    return redirect('/relatorio_faturamento')
+
+
+@app.route('/baixa_entrega_mobile', methods=['GET', 'POST'])
+def baixa_entrega_mobile():
+    if request.method == 'POST':
+        nf = request.form.get('nf', '').strip()
+        data = request.form.get('data_entrega', '').strip()
+        recebedor = request.form.get('recebedor', '').strip()
+        assinatura = request.form.get('assinatura_base64', '')
+
+        try: data_f = datetime.strptime(data, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except Exception: data_f = data
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO entregas_efetuadas (nota_fiscal, data_entrega, recebedor, assinatura) VALUES (?, ?, ?, ?)
+            ON CONFLICT(nota_fiscal) DO UPDATE SET data_entrega = excluded.data_entrega, recebedor = excluded.recebedor, assinatura = excluded.assinatura
+        """, (nf, data_f, recebedor, assinatura))
+        conn.commit()
+        conn.close()
+        return render_template('baixa_entrega_mobile_sucesso.html', nf=nf)
+
+    hoje = datetime.today().strftime('%Y-%m-%d')
+    return render_template('baixa_entrega_mobile.html', data_hoje=hoje)
+
+
+@app.route('/buscar_nf_baixa', methods=['GET'])
+def buscar_nf_baixa():
+    nf_busca = request.args.get('nf_baixa', '').strip()
+    if not nf_busca: return redirect('/relatorio_faturamento?erro=Digite uma Nota Fiscal.')
+
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM faturamento WHERE nf = ?", (nf_busca,))
+    nota = cursor.fetchone()
+    cursor.execute("SELECT * FROM entregas_efetuadas WHERE nota_fiscal = ?", (nf_busca,))
+    baixa_existente = cursor.fetchone()
+    conn.close()
+
+    if not nota: return redirect(f'/relatorio_faturamento?erro=Nota Fiscal {nf_busca} nao localizada.')
+
+    nota_dict = {"nf": nota["nf"], "cliente": nota["cliente"], "transportadora": nota["transportadora"]}
+
+    if baixa_existente:
+        nota_dict['ja_entregue'] = True
+        nota_dict['data_entrega'] = baixa_existente['data_entrega']
+        nota_dict['recebedor'] = baixa_existente['recebedor']
+        nota_dict['assinatura'] = baixa_existente['assinatura']
+    else:
+        nota_dict['ja_entregue'] = False
+
+    return render_template('efetuar_baixa.html', nota=nota_dict)
+
+
+@app.route('/salvar_baixa_entrega', methods=['POST'])
+def salvar_baixa_entrega():
+    nf = request.form.get('nota_fiscal', '').strip()
+    recebedor = request.form.get('recebedor', '').strip()
+    assinatura = request.form.get('assinatura', '').strip()
+    data_entrega = request.form.get('data_entrega', '').strip()
+
+    if "-" in data_entrega:
+        try: data_entrega = datetime.strptime(data_entrega, '%Y-%m-%d').strftime('%d/%m/%Y')
+        except Exception: pass
+
+    if not data_entrega: data_entrega = datetime.now().strftime('%d/%m/%Y')
+    if not nf: return redirect('/relatorio_faturamento?erro=Dados invalidos.')
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO entregas_efetuadas (nota_fiscal, data_entrega, recebedor, assinatura) VALUES (?, ?, ?, ?) 
+            ON CONFLICT(nota_fiscal) DO UPDATE SET data_entrega = excluded.data_entrega, recebedor = excluded.recebedor, assinatura = excluded.assinatura
+        """, (nf, data_entrega, recebedor, assinatura))
+        conn.commit()
+        msg, tipo_msg = f"Baixa da NF {nf} realizada com sucesso!", "sucesso"
+    except Exception as e:
+        conn.rollback()
+        msg, tipo_msg = f"Erro no banco: {str(e)}", "erro"
+    finally:
+        conn.close()
+
+    return redirect(f'/relatorio_faturamento?msg_sucesso={msg}' if tipo_msg == "sucesso" else f'/relatorio_faturamento?erro={msg}')
+
+
+@app.route('/obter_itens_nota/<nf>', methods=['GET'])
+def obter_itens_nota(nf):
+    nf_busca = str(nf).strip()
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT valor_total_nf FROM faturamento WHERE nf = ?", (nf_busca,))
+    nota_principal = cursor.fetchone()
+    valor_nota = nota_principal['valor_total_nf'] if nota_principal else "R$ 0,00"
+    
+    cursor.execute("SELECT codigo_item, descricao_item, qtde, um, peso_unitario, peso_total FROM faturamento_itens WHERE nf = ? ORDER BY id ASC", (nf_busca,))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    peso_acumulado = 0.0
+    itens_normalizados = []
+    
+    for r in rows:
+        item_ajustado = {
+            'codigo_item': r['codigo_item'], 'descricao_item': r['descricao_item'], 'qtde': r['qtde'],
+            'um': r['um'], 'peso_unitario': r['peso_unitario'], 'peso_total': r['peso_total']
+        }
+        itens_normalizados.append(item_ajustado)
+        peso_raw = str(item_ajustado['peso_total']).strip()
+        if ',' in peso_raw and '.' in peso_raw:
+            peso_raw = peso_raw.replace('.', '').replace(',', '.')
+        elif ',' in peso_raw:
+            peso_raw = peso_raw.replace(',', '.')
+            
+        try: peso_acumulado += float(peso_raw)
+        except Exception: pass
+
+    peso_formatado = f"{peso_acumulado:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + " KG"
+    return {"itens": itens_normalizados, "valor_total": valor_nota, "peso_total": peso_formatado}
+
+
+# ============================================================
+# EXPORTAÇÕES PARCIAIS DE RELATÓRIOS EM EXCEL
+# ============================================================
+
+@app.route('/exportar')
+def exportar():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], data AS Data, tratativa AS Tratativa, motivo AS Motivo FROM ocorrencias ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_OCORRENCIAS, index=False)
+    return send_file(EXCEL_OCORRENCIAS, as_attachment=True, download_name='relatorio_ocorrencias.xlsx')
+
+
+@app.route('/exportar_coletas')
+def exportar_coletas():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], transportadora AS Transportadora, data_solicitacao AS [Data Solicitação], status AS Status FROM coletas ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_COLETAS, index=False)
+    return send_file(EXCEL_COLETAS, as_attachment=True, download_name='relatorio_coletas.xlsx')
+
+
+@app.route('/exportar_transportadoras')
+def exportar_transportadoras():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT name AS Transportadora, telephone AS Telefone, responsavel AS Responsável FROM transportadoras ORDER BY name ASC", conn)
+    conn.close()
+    df.to_excel(EXCEL_TRANSPORTADORAS, index=False)
+    return send_file(EXCEL_TRANSPORTADORAS, as_attachment=True, download_name='cadastro_transportadoras.xlsx')
+
+
+@app.route('/exportar_canhotos')
+def exportar_canhotos():
+    conn = sqlite3.connect(DB_FILE)
+    df = pd.read_sql_query("SELECT cliente AS Cliente, nota_fiscal AS [Nota Fiscal], data_recebimento AS [Data Recebimento], status AS Status, observacoes AS Observações FROM canhotos ORDER BY id DESC", conn)
+    conn.close()
+    df.to_excel(EXCEL_CANHOTOS, index=False)
+    return send_file(EXCEL_CANHOTOS, as_attachment=True, download_name='relatorio_canhotos.xlsx')
+
+
+@app.route('/exportar_base_faturamento')
+def exportar_base_faturamento():
+    excel_fat = buscar_ultimo_faturamento()
+    if excel_fat and os.path.exists(excel_fat):
+        return send_file(excel_fat, as_attachment=True, download_name=os.path.basename(excel_fat))
+    return "Erro: Planilha não localizada."
+
+
+@app.route('/exportar_base_expedicao')
+def exportar_base_expedicao():
+    excel_exp = buscar_ultima_expedicao()
+    if excel_exp and os.path.exists(excel_exp):
+        return send_file(excel_exp, as_attachment=True, download_name=os.path.basename(excel_exp))
+    return "Erro: Planilha não localizada."
+
+
+@app.route('/exportar_faturamento_filtrado', methods=['GET'])
+def exportar_faturamento_filtrado():
+    filtro_inicio = request.args.get('data_inicio', '').strip()
+    filtro_fim = request.args.get('data_fim', '').strip()
+    filtro_nf = request.args.get('busca_nf', '').strip()
+    filtro_cliente = request.args.get('busca_cliente', '').strip()
+    busca_status = request.args.get('busca_status', '').strip()
+
+    excel_fat = buscar_ultimo_faturamento()
+    excel_exp = buscar_ultima_expedicao()
+
+    if not excel_fat: return "Erro: Planilha não localizada."
+
+    try:
+        df = pd.read_excel(excel_fat)
+        df['Emissão da NF-e'] = pd.to_datetime(df['Emissão da NF-e'], errors='coerce')
+        df['Número da NF-e'] = df['Número da NF-e'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+
+        if filtro_inicio and filtro_fim:
+            df = df[(df['Emissão da NF-e'] >= pd.to_datetime(filtro_inicio)) & (df['Emissão da NF-e'] <= pd.to_datetime(filtro_fim))]
+        if filtro_cliente:
+            df = df[df['Cliente'].str.contains(filtro_cliente, case=False, na=False)]
+        if filtro_nf:
+            df = df[df['Número da NF-e'].str.contains(filtro_nf, case=False, na=False)]
+
+        conn = sqlite3.connect(DB_FILE)
+        df_ent = pd.read_sql_query("SELECT * FROM entregas_efetuadas", conn)
+        conn.close()
+        df_ent['nota_fiscal'] = df_ent['nota_fiscal'].astype(str).str.strip()
+        df_ent = df_ent.drop_duplicates(subset=['nota_fiscal'])
+        df = df.merge(df_ent, left_on='Número da NF-e', right_on='nota_fiscal', how='left')
+
+        if excel_exp:
+            df_exp = pd.read_excel(excel_exp)
+            col_doc = df_exp.columns[0]
+            col_transp = df_exp.columns[3]
+            df_exp[col_doc] = df_exp[col_doc].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+            df_exp = df_exp.drop_duplicates(subset=[col_doc])
+            df = df.merge(df_exp[[col_doc, col_transp]], left_on='Número da NF-e', right_on=col_doc, how='left')
+
+        df['STATUS EXPEDIÇÃO'] = df.apply(
+            lambda r: 'ENTREGUE' if pd.notna(r['data_entrega']) and r['data_entrega'] != ""
+            else 'EXPEDIDO' if pd.notna(r.get(df_exp.columns[3] if excel_exp else 'Transportadora')) and r[df_exp.columns[3] if excel_exp else 'Transportadora'] != ""
+            else 'NÃO EXPEDIDO', axis=1
+        )
+
+        if busca_status: df = df[df['STATUS EXPEDIÇÃO'] == busca_status]
+
+        df = df.fillna("")
+        arquivo = os.path.join(BASE_DIR, 'faturamento_conciliado_filtrado.xlsx')
+        df.to_excel(arquivo, index=False)
+        return send_file(arquivo, as_attachment=True, download_name='relatorio_faturamento_conciliado.xlsx')
+    except Exception as e:
+        return f"Erro ao exportar: {str(e)}"
+
+
+# ============================================================
+# 🎯 MÓDULO EMISSOR DE ETIQUETAS E API DE INTEGRAÇÃO SEQUENCIAL
+# ============================================================
+
+@app.route('/gerador_etiquetas')
+def gerador_etiquetas():
+    return render_template('gerador_etiquetas.html')
+
+
+@app.route('/api/itens_nota/<nf>')
+def api_itens_nota(nf):
+    nf_busca = str(nf).strip()
+    
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT cliente, transportadora, pedido FROM faturamento WHERE nf = ?", (nf_busca,))
+    cabecalho = cursor.fetchone()
+    conn.close()
+    
+    if not cabecalho:
+        return jsonify({"status": "erro", "mensagem": f"Nota Fiscal {nf_busca} não encontrada no faturamento."}), 404
+
+    excel_fat = buscar_ultimo_faturamento()
+    if not excel_fat:
+        return jsonify({"status": "erro", "mensagem": "Arquivo Excel de faturamento não localizado."}), 404
+        
+    try:
+        df_excel = pd.read_excel(excel_fat)
+        if df_excel.empty:
+            return jsonify({"status": "erro", "mensagem": "O arquivo de faturamento está vazio."}), 404
+
+        col_nf = df_excel.columns[1]
+        col_prod_desc = df_excel.columns[14]
+        col_um = df_excel.columns[16]
+        col_qtde = df_excel.columns[15]
+
+        df_excel[col_nf] = df_excel[col_nf].ffill()
+        df_excel[col_nf] = df_excel[col_nf].astype(str).str.split('.').str[0].str.strip()
+
+        df_nota = df_excel[df_excel[col_nf] == nf_busca]
+
+        if df_nota.empty:
+            return jsonify({"status": "erro", "mensagem": f"A nota {nf_busca} não possui itens no Excel."}), 404
+
+        lista_itens = []
+        idx = 1
+
+        for _, row in df_nota.iterrows():
+            val_um = str(row[col_um]).strip().upper() if pd.notna(row[col_um]) else ""
+            desc_prod = str(row[col_prod_desc]).strip() if pd.notna(row[col_prod_desc]) else ""
+
+            is_item_real = (val_um != "" and val_um not in ('NAN', 'NONE', '-NO VALUE-', '0', '0.0'))
+
+            if is_item_real and desc_prod:
+                try:
+                    qtd_limpa = int(float(row[col_qtde])) if pd.notna(row[col_qtde]) else 1
+                except:
+                    qtd_limpa = 1
+
+                lista_itens.append({
+                    "id": idx,
+                    "descricao": desc_prod.upper(),
+                    "qtd_total": qtd_limpa
+                })
+                idx += 1
+
+        if not lista_itens:
+            return jsonify({"status": "erro", "mensagem": f"Nenhum produto físico localizado para a nota {nf_busca}."}), 404
+
+        nota_encontrada = {
+            "cliente": cabecalho["cliente"],
+            "transportadora": cabecalho["transportadora"],
+            "pedido": cabecalho["pedido"] if cabecalho["pedido"] else "-",
+            "pedido_compra": cabecalho["pedido"] if cabecalho["pedido"] else "-", 
+            "itens": lista_itens
+        }
+        
+        return jsonify(nota_encontrada)
+
+    except Exception as e:
+        print(f"❌ Erro ao ler Excel na API de Etiquetas: {str(e)}")
+        return jsonify({"status": "erro", "mensagem": f"Erro ao processar o Excel: {str(e)}"}), 500
+
+
+# ============================================================
+# PORTAS DE ENTRADA (ROTAS) DO CANHOTO DIGITAL MOBILE
+# ============================================================
+
+@app.route('/api/salvar_canhoto', methods=['POST'])
+def salvar_canhoto():
+    dados = request.get_json()
+    if not dados:
+        return jsonify({"status": "erro", "mensagem": "Nenhum dado recebido"}), 400
+        
+    motorista = dados.get('motorista')
+    rg = dados.get('rg')
+    nota_fiscal = dados.get('nota_fiscal', '').strip() # 🟢 Captura a NF vinda do Celular
+    transportadora = dados.get('transportadora')
+    assinatura = dados.get('assinatura')
+    
+    if not all([motorista, transportadora, signature_val := assinatura]):
+        return jsonify({"status": "erro", "mensagem": "Motorista, Transportadora e Assinatura sao obrigatorios!"}), 400
+        
+    agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        # 🔥 Grava salvando a Nota Fiscal na sua respectiva coluna distinta
+        cursor.execute("""
+            INSERT INTO canhotos_digitais (motorista, rg, nota_fiscal, transportadora, assinatura_base64, data_hora)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (motorista.upper().strip(), rg.strip(), nota_fiscal, transportadora.upper().strip(), assinatura, agora))
+        conn.commit()
+        
+        # ⚡ CONCILIAÇÃO AUTOMÁTICA ATIVADA: Abastece o relatório de faturamento na mesma hora!
+        conciliar_faturamento_automatico(nota_fiscal, motorista, "ASSINATURA DIGITAL TELA")
+        
+        return jsonify({"status": "sucesso", "mensagem": "Canhoto assinado e salvo com sucesso!"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/importar_canhoto_whatsapp', methods=['POST'])
+def importar_canhoto_whatsapp():
+    try:
+        motorista = request.form.get('motorista', '').strip()
+        rg = request.form.get('rg', '').strip()
+        nota_fiscal = request.form.get('nota_fiscal', '').strip()
+        transportadora = request.form.get('transportadora', '').strip()
+        arquivo = request.files.get('file')
+
+        if not all([motorista, transportadora, arquivo]):
+            return jsonify({"status": "erro", "mensagem": "Motorista, Transportadora e Arquivo são obrigatórios!"}), 400
+
+        imagem_bytes = arquivo.read()
+        extensao = arquivo.filename.split('.')[-1].lower()
+        if extensao not in ['jpg', 'jpeg', 'png']:
+            return jsonify({"status": "erro", "mensagem": "Formato de imagem inválido. Use JPG ou PNG."}), 400
+
+        imagem_base64 = f"data:image/{extensao};base64," + base64.b64encode(imagem_bytes).decode('utf-8')
+        agora = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO canhotos_digitais (motorista, rg, nota_fiscal, transportadora, assinatura_base64, data_hora)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (motorista.upper(), rg.strip(), nota_fiscal.strip(), transportadora.upper(), imagem_base64, agora))
+        conn.commit()
+        conn.close()
+
+        # ⚡ CONCILIAÇÃO AUTOMÁTICA ATIVADA: Abastece o relatório de faturamento na mesma hora!
+        conciliar_faturamento_automatico(nota_fiscal, motorista, "FOTO CANHOTO FÍSICO")
+
+        return jsonify({"status": "sucesso", "mensagem": "Foto do WhatsApp integrada com sucesso!"})
+
+    except Exception as e:
+        print(f"❌ Erro ao importar foto do WhatsApp: {str(e)}")
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
+
+# 🔥 NOVA ROTA EXCLUSIVA DE EDIÇÃO SOLICITADA PELO ADRIANO
+@app.route('/api/editar_canhoto', methods=['POST'])
+def editar_canhoto():
+    try:
+        dados = request.get_json()
+        canhoto_id = dados.get('id')
+        motorista = dados.get('motorista', '').strip()
+        rg = dados.get('rg', '').strip()
+        nota_fiscal = dados.get('nota_fiscal', '').strip()
+        transportadora = dados.get('transportadora', '').strip()
+
+        if not canhoto_id or not motorista or not transportadora:
+            return jsonify({"status": "erro", "mensagem": "ID, Motorista e Transportadora são obrigatórios!"}), 400
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE canhotos_digitais 
+            SET motorista = ?, rg = ?, nota_fiscal = ?, transportadora = ?
+            WHERE id = ?
+        """, (motorista.upper(), rg, nota_fiscal, transportadora.upper(), canhoto_id))
+        conn.commit()
+        conn.close()
+
+        # ⚡ CONCILIAÇÃO AUTOMÁTICA ATIVADA: Se alterar a nota na edição, atualiza a baixa também!
+        conciliar_faturamento_automatico(nota_fiscal, motorista, "REGISTRO ALTERADO OPERACIONALMENTE")
+
+        return jsonify({"status": "sucesso", "mensagem": "Registro updated com sucesso!"})
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+    
+
+# 🔥 NOVA ROTA EXCLUSIVA DE EXCLUSÃO SOLICITADA PELO ADRIANO
+# 🔥 ROTA DE EXCLUSÃO CORRIGIDA COM ENGENHARIA REVERSA DE STATUS OPERACIONAL
+@app.route('/api/excluir_canhoto', methods=['POST'])
+def excluir_canhoto():
+    try:
+        dados = request.get_json()
+        canhoto_id = dados.get('id')
+
+        if not canhoto_id:
+            return jsonify({"status": "erro", "mensagem": "ID do registro não informado!"}), 400
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+
+        # 1. PASSO DA ENGENHARIA REVERSA: Localiza as Notas Fiscais antes de apagar o canhoto
+        cursor.execute("SELECT nota_fiscal FROM canhotos_digitais WHERE id = ?", (canhoto_id,))
+        registro = cursor.fetchone()
+        
+        if registro and registro[0]:
+            nota_fiscal_str = registro[0]
+            # Quebra o lote de notas caso o registro tenha mais de uma por vírgula
+            notas_individuais = [n.strip() for n in str(nota_fiscal_str).split(',') if n.strip()]
+            
+            for nf in notas_individuais:
+                nf_limpa = nf.lstrip('0').strip()
+                if not nf_limpa:
+                    continue
+                
+                # 2. Caminho Inverso: Apaga o vínculo de entrega efetuada (tira o selo VERDE)
+                cursor.execute("DELETE FROM entregas_efetuadas WHERE nota_fiscal = ?", (nf_limpa,))
+                
+                # 3. Caminho Inverso: Limpa o campo de recebedor/motorista no cabeçalho do faturamento
+                cursor.execute("""
+                    UPDATE faturamento 
+                    SET transportadora = (
+                        SELECT transportadora FROM faturamento WHERE nf = ?
+                    ) 
+                    WHERE TRIM(nf) = ? OR TRIM(nf) = ?
+                """, (nf_limpa, nf_limpa, nf))
+
+        # 4. Agora sim, apaga o canhoto físico/digital com segurança
+        cursor.execute("DELETE FROM canhotos_digitais WHERE id = ?", (canhoto_id,))
+        
+        conn.commit()
+        conn.close()
+
+        print(f"✔️ [REVERSÃO DE STATUS] Registro {canhoto_id} excluído. Notas fiscais redefinidas para o status anterior.")
+        return jsonify({"status": "sucesso", "mensagem": "Registro excluído e faturamento restaurado!"})
+        
+    except Exception as e:
+        if 'conn' in locals():
+            conn.rollback()
+            conn.close()
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
+
+@app.route('/api/listar_canhotos', methods=['GET'])
+def listar_canhotos():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id, motorista, rg, nota_fiscal, transportadora, data_hora, assinatura_base64 FROM canhotos_digitais ORDER BY id DESC")
+    linhas = cursor.fetchall()
+    conn.close()
+    
+    resultado = []
+    for linha in linhas:
+        resultado.append({
+            "id": linha["id"],
+            "motorista": linha["motorista"],
+            "rg": linha["rg"],
+            "nota_fiscal": linha["nota_fiscal"],
+            "transportadora": linha["transportadora"],  
+            "data_hora": linha["data_hora"],
+            "assinatura": linha["assinatura_base64"]
+        })
+    return jsonify(resultado)
+
+
+@app.route('/canhoto')
+def tela_canhoto():
+    return render_template('canhoto.html')
+
+
+@app.route('/canhotos_assinados')
+def tela_canhotos_assinados():
+    lista_transp = ler_transportadoras_db()
+    return render_template('canhotos_assinados.html', transportadoras=lista_transp)
+
+
+# ============================================================
+# EXECUÇÃO DO SERVIDOR E INTERFACE NATIVA DESKTOP
+# ============================================================
+
+def rodar_flask():
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    except Exception as e:
+        with open("erro_executavel.txt", "w") as f:
+            f.write(f"Erro ao iniciar o Flask:\n{str(e)}\n\n")
+
+
+if __name__ == '__main__':
+    t = threading.Thread(target=rodar_flask)
+    t.daemon = True
+    t.start()
+    
+    print("\n" + "="*50)
+    print("SISTEMA LOGISTICO INTEGRADO COM SUCESSO!")
+    print("-> Torre de Controle ativa: http://127.0.0.1:5000/torre_controle")
+    print("="*50 + "\n")
+    
+    webview.create_window('Sistema Operacional Logístico', 'http://127.0.0.1:5000/torre_controle')
+    webview.start()

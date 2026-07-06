@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste SQL Server - Faturamento</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            background: #f4f7fb;
+            color: #172033;
+            font-family: Arial, sans-serif;
+        }
+
+        .page {
+            padding: 18px;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #10243f;
+        }
+
+        .subtitle {
+            margin: 5px 0 0;
+            color: #637089;
+            font-size: 13px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #d9fbe8;
+            color: #08633a;
+            border: 1px solid #a7ecc5;
+        }
+
+        .badge.off {
+            background: #ffe8e8;
+            color: #8a1f1f;
+            border-color: #ffc8c8;
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: 130px minmax(180px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) 130px 130px 115px auto;
+            gap: 8px;
+            align-items: end;
+            padding: 12px;
+            background: #fff;
+            border: 1px solid #d8e0ec;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #526079;
+            text-transform: uppercase;
+        }
+
+        input, select {
+            width: 100%;
+            min-height: 34px;
+            box-sizing: border-box;
+            border: 1px solid #c9d3e2;
+            border-radius: 6px;
+            padding: 0 9px;
+            font-size: 13px;
+            color: #142033;
+            background: #fff;
+        }
+
+        button {
+            min-height: 34px;
+            border: 0;
+            border-radius: 6px;
+            padding: 0 14px;
+            background: #0f62fe;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button.secondary {
+            background: #e7ecf5;
+            color: #24344d;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(130px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .metric {
+            background: #fff;
+            border: 1px solid #d8e0ec;
+            border-radius: 8px;
+            padding: 11px 12px;
+        }
+
+        .metric span {
+            display: block;
+            font-size: 11px;
+            color: #66738a;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .metric strong {
+            font-size: 20px;
+            color: #11223a;
+        }
+
+        .table-wrap {
+            height: calc(100vh - 230px);
+            min-height: 360px;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #d8e0ec;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #10243f;
+            color: #fff;
+            text-align: left;
+            padding: 9px 10px;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            border-bottom: 1px solid #edf1f7;
+            padding: 8px 10px;
+            white-space: nowrap;
+        }
+
+        tbody tr:hover {
+            background: #f2f7ff;
+        }
+
+        .empty {
+            padding: 28px;
+            text-align: center;
+            color: #6c778a;
+        }
+
+        @media (max-width: 1100px) {
+            .toolbar {
+                grid-template-columns: repeat(2, minmax(160px, 1fr));
+            }
+
+            .metrics {
+                grid-template-columns: repeat(2, minmax(130px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="topbar">
+            <div>
+                <h1>Teste de Performance SQL Server</h1>
+                <p class="subtitle">Consulta direta na tabela faturamento, sem leitura de Excel e sem SQLite.</p>
+            </div>
+            <div class="badge {% if not sqlserver_ativo %}off{% endif %}">
+                {% if sqlserver_ativo %}
+                    SQL Server ativo: {{ backend_info.host }} / {{ backend_info.database }}
+                {% else %}
+                    SQL Server nao esta ativo neste processo
+                {% endif %}
+            </div>
+        </header>
+
+        <section class="toolbar">
+            <div class="field">
+                <label for="nf">NF</label>
+                <input id="nf" type="text" placeholder="Ex: 66643">
+            </div>
+            <div class="field">
+                <label for="cliente">Cliente</label>
+                <input id="cliente" type="text" placeholder="Nome do cliente">
+            </div>
+            <div class="field">
+                <label for="transportadora">Transportadora</label>
+                <input id="transportadora" type="text" placeholder="Nome da transportadora">
+            </div>
+            <div class="field">
+                <label for="emissao_inicio">Emissao inicio</label>
+                <input id="emissao_inicio" type="text" placeholder="AAAA-MM-DD ou DD/MM/AAAA">
+            </div>
+            <div class="field">
+                <label for="emissao_fim">Emissao fim</label>
+                <input id="emissao_fim" type="text" placeholder="AAAA-MM-DD ou DD/MM/AAAA">
+            </div>
+            <div class="field">
+                <label for="limite">Limite</label>
+                <select id="limite">
+                    <option value="100">100 linhas</option>
+                    <option value="200" selected>200 linhas</option>
+                    <option value="500">500 linhas</option>
+                    <option value="1000">1000 linhas</option>
+                </select>
+            </div>
+            <button type="button" onclick="pesquisar()">Pesquisar</button>
+            <button type="button" class="secondary" onclick="limpar()">Limpar</button>
+        </section>
+
+        <section class="metrics">
+            <div class="metric">
+                <span>Tempo no SQL Server</span>
+                <strong id="tempoServidor">-</strong>
+            </div>
+            <div class="metric">
+                <span>Tempo total tela</span>
+                <strong id="tempoTela">-</strong>
+            </div>
+            <div class="metric">
+                <span>Total filtrado</span>
+                <strong id="totalFiltrado">-</strong>
+            </div>
+            <div class="metric">
+                <span>Linhas exibidas</span>
+                <strong id="linhasExibidas">-</strong>
+            </div>
+        </section>
+
+        <section class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>NF</th>
+                        <th>Emissao</th>
+                        <th>Cliente</th>
+                        <th>Municipio</th>
+                        <th>UF</th>
+                        <th>Transportadora</th>
+                        <th>Modalidade</th>
+                        <th>Volumes</th>
+                        <th>Pedido</th>
+                        <th>Valor</th>
+                        <th>Entrega</th>
+                        <th>Recebedor</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody">
+                    <tr><td colspan="12" class="empty">Clique em Pesquisar para consultar a base do SQL Server.</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <script>
+        const tbody = document.getElementById('tbody');
+
+        function valor(id) {
+            return document.getElementById(id).value.trim();
+        }
+
+        function escapeHtml(texto) {
+            return String(texto ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+            }[c]));
+        }
+
+        function atualizarMetricas(dados, tempoTela) {
+            document.getElementById('tempoServidor').textContent = `${dados.tempo_ms} ms`;
+            document.getElementById('tempoTela').textContent = `${tempoTela.toFixed(2)} ms`;
+            document.getElementById('totalFiltrado').textContent = Number(dados.total_filtrado).toLocaleString('pt-BR');
+            document.getElementById('linhasExibidas').textContent = Number(dados.retornados).toLocaleString('pt-BR');
+        }
+
+        function renderizar(linhas) {
+            if (!linhas.length) {
+                tbody.innerHTML = '<tr><td colspan="12" class="empty">Nenhum registro encontrado.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = linhas.map(r => `
+                <tr>
+                    <td><strong>${escapeHtml(r.nf)}</strong></td>
+                    <td>${escapeHtml(r.emissao)}</td>
+                    <td>${escapeHtml(r.cliente)}</td>
+                    <td>${escapeHtml(r.municipio)}</td>
+                    <td>${escapeHtml(r.uf)}</td>
+                    <td>${escapeHtml(r.transportadora)}</td>
+                    <td>${escapeHtml(r.modalidade)}</td>
+                    <td>${escapeHtml(r.volumes)}</td>
+                    <td>${escapeHtml(r.pedido)}</td>
+                    <td>${escapeHtml(r.valor_total_nf)}</td>
+                    <td>${escapeHtml(r.data_entrega || '-')}</td>
+                    <td>${escapeHtml(r.recebedor || '-')}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function pesquisar() {
+            tbody.innerHTML = '<tr><td colspan="12" class="empty">Consultando SQL Server...</td></tr>';
+            const params = new URLSearchParams({
+                nf: valor('nf'),
+                cliente: valor('cliente'),
+                transportadora: valor('transportadora'),
+                emissao_inicio: valor('emissao_inicio'),
+                emissao_fim: valor('emissao_fim'),
+                limite: valor('limite')
+            });
+
+            const inicioTela = performance.now();
+            const resp = await fetch(`/api/teste_sqlserver_faturamento?${params.toString()}`);
+            const dados = await resp.json();
+            const tempoTela = performance.now() - inicioTela;
+
+            if (!resp.ok) {
+                tbody.innerHTML = `<tr><td colspan="12" class="empty">${escapeHtml(dados.mensagem || 'Erro na consulta.')}</td></tr>`;
+                return;
+            }
+
+            atualizarMetricas(dados, tempoTela);
+            renderizar(dados.dados);
+        }
+
+        function limpar() {
+            ['nf', 'cliente', 'transportadora', 'emissao_inicio', 'emissao_fim'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            pesquisar();
+        }
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Enter') pesquisar();
+        });
+
+        pesquisar();
+    </script>
+</body>
+</html>

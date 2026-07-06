@@ -1,0 +1,77 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>🏢 Portal Mestre — Modelo Lateral</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); margin: 0; padding: 0; overflow: hidden; height: 100vh; display: flex; }
+        
+        .sidebar-esquerda { background: #1e293b; width: 60px; height: 100vh; border-right: 2px solid #334155; display: flex; flex-direction: column; justify-content: space-between; transition: width 0.2s ease-in-out; overflow: hidden; z-index: 1000; position: relative; }
+        .sidebar-esquerda:hover { width: 260px; }
+        
+        .bloco-itens-menu { display: flex; flex-direction: column; width: 260px; }
+        .menu-titulo-logo { padding: 15px 20px; font-weight: bold; color: #38bdf8; border-bottom: 1px solid #334155; white-space: nowrap; font-size: 12px; }
+        
+        .btn-link-lateral { display: flex; align-items: center; padding: 12px 20px; color: #94a3b8; text-decoration: none; font-size: 11px; font-weight: bold; transition: all 0.2s; white-space: nowrap; border-left: 3px solid transparent; }
+        .btn-link-lateral:hover { background: #243249; color: #38bdf8; border-left-color: #38bdf8; }
+        .btn-link-lateral.ativo-lateral { background: #0f172a; color: #38bdf8; border-left-color: #38bdf8; }
+        .icone-menu { font-size: 16px; margin-right: 20px; text-align: center; width: 20px; min-width: 20px; }
+
+        .btn-link-lateral.destaque-tv { color: #10b981; border-left-color: transparent; }
+        .btn-link-lateral.destaque-tv:hover { background: #0d2e22; color: #10b981; border-left-color: #10b981; }
+        
+        .corpo-conteudo-direito { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .faixa-topo-simples { background: #0f172a; border-bottom: 1px solid #334155; height: 45px; display: flex; align-items: center; padding: 0 20px; font-size: 11px; color: #64748b; }
+        .conteudo-iframe { flex-grow: 1; width: 100%; border: none; background-color: #0f172a; }
+
+        .sep-menu { height: 1px; background: #334155; margin: 4px 20px; width: 220px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="sidebar-esquerda">
+        <div class="bloco-itens-menu">
+            <div class="menu-titulo-logo"><span class="icone-menu">🏢</span> MODELO 2: SIDEBAR</div>
+            <a href="#" class="btn-link-lateral ativo-lateral" onclick="navegarLateral(this, '/monitor_tv')"><span class="icone-menu">🚀</span> Torre de Controle (Dashboard)</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/devolucoes')"><span class="icone-menu">🚚</span> Gestão de Devoluções</a>
+            <a href="/validar_canhoto" class="btn btn-primary fw-bold">📸 Esteira de Canhotos (ZIP)</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/relatorio_faturamento_local')"><span class="icone-menu">📊</span> Faturamento e Entregas</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/canhoto_campo')"><span class="icone-menu">📊</span> Baixa Canhotos por Foto</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/canhotos_assinados')"><span class="icone-menu">📊</span> Tela canhotos assinados</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/gerenciar_transportadoras')"><span class="icone-menu">🚛</span> Cad. Transportadoras</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/gestor_emails')"><span class="icone-menu">📬</span> Triagem de E-mails</a>
+            <a href="#" class="btn-link-lateral" onclick="navegarLateral(this, '/manual')"><span class="icone-menu">📖</span> Manual do Usuário</a>
+            <a href="#" class="btn-link-lateral text-warning" onclick="navegarLateral(this, '/gerenciar_usuarios')"><span class="icone-menu">⚙</span> Gerenciar Acessos</a>
+
+            <div class="sep-menu"></div>
+
+            <a href="painel_rotacao.html" target="_blank" class="btn-link-lateral destaque-tv">
+                <span class="icone-menu">📺</span> Painel TV — Rotação de Telas
+            </a>
+        </div>
+        <div style="width: 260px;">
+            <a href="/logout" class="btn-link-lateral text-danger" style="border-top: 1px solid #334155;"><span class="icone-menu">🔒</span> Encerrar Sessão</a>
+        </div>
+    </div>
+
+    <div class="corpo-conteudo-direito">
+        <div class="faixa-topo-simples">
+            📢 Módulo de Visualização Lateral Ativo — A barra expande ao passar o ponteiro do mouse.
+        </div>
+        <iframe id="frameLateral" class="conteudo-iframe" src="/monitor_tv"></iframe>
+    </div>
+
+    <script>
+        function navegarLateral(elemento, url) {
+            document.querySelectorAll('.btn-link-lateral').forEach(item => item.classList.remove('ativo-lateral'));
+            elemento.classList.add('ativo-lateral');
+            document.getElementById('frameLateral').src = url;
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

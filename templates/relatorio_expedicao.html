@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Expedição</title>
+    <style>
+        html, body { margin: 0; padding: 0; width: 100%; min-height: 100vh; font-family: Arial, sans-serif; background-color: #f4f7f6; overflow-x: hidden; overflow-y: auto; }
+        body { padding: 20px; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start; }
+        .container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0px 0px 20px rgba(0,0,0,0.1); width: 100%; max-width: 100%; min-height: calc(100vh - 40px); box-sizing: border-box; display: flex; flex-direction: column; }
+        h2 { margin: 0 0 15px 0; color: #333; font-size: 24px; font-weight: bold; }
+        
+        .acoes-topo { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 15px; gap: 15px; width: 100%; flex-shrink: 0; }
+        .filtro-form { display: flex; gap: 12px; flex-grow: 1; align-items: flex-end; flex-wrap: wrap; }
+        .campo-busca { display: flex; flex-direction: column; gap: 4px; }
+        .campo-busca label { font-size: 12px; font-weight: bold; color: #555; }
+        .campo-busca input { padding: 10px; width: 150px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+        
+        .bloco-datas { display: flex; align-items: flex-end; gap: 10px; background-color: #f8fafc; padding: 5px 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .btn-busca { background-color: #1e3a8a; color: white; border: none; padding: 0 20px; cursor: pointer; border-radius: 4px; font-size: 14px; font-weight: bold; height: 40px; display: flex; align-items: center; }
+        .btn-busca:hover { background-color: #1e40af; }
+        .btn-limpar { background-color: #6c757d; color: white; border: none; padding: 0 15px; cursor: pointer; border-radius: 4px; font-size: 13px; font-weight: bold; height: 40px; display: flex; align-items: center; justify-content: center; text-decoration: none; white-space: nowrap; }
+        .btn-limpar:hover { background-color: #5a6268; }
+        .btn-exportar-filtrado { background-color: #28a745; color: white; border: none; padding: 0 20px; cursor: pointer; border-radius: 4px; font-size: 13px; font-weight: bold; height: 40px; display: flex; align-items: center; justify-content: center; text-decoration: none; white-space: nowrap; }
+        .btn-exportar-filtrado:hover { background-color: #218838; }
+
+        /* Estilo do Botão Voltar Corrigido e Alinhado com o Padrão Torre */
+        .btn-voltar { display: inline-flex; align-items: center; margin-bottom: 15px; color: #007bff; background: transparent; border: none; font-weight: bold; font-size: 16px; cursor: pointer; outline: none; padding: 0; flex-shrink: 0; }
+        .btn-voltar:hover { text-decoration: underline; color: #0056b3; }
+
+        .table-wrapper { width: 100%; flex: 1 1 auto; min-height: 280px; overflow-x: scroll; overflow-y: scroll; border: 1px solid #ddd; border-radius: 6px; background: white; box-sizing: border-box; }
+        .table-wrapper::-webkit-scrollbar { width: 12px; height: 14px; display: block !important; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 6px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 6px; border: 2px solid #f1f1f1; }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #1e40af; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 2200px; table-layout: auto; }
+        th, td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; white-space: nowrap; color: #1e293b; }
+        th { background-color: #1e3a8a; color: #f8fafc; position: sticky; top: 0; font-weight: bold; z-index: 2; }
+        tbody tr:nth-child(even) td { background-color: #f8fafc; color: #1e293b; }
+        tbody tr:nth-child(odd) td { background-color: #ffffff; color: #1e293b; }
+        tbody tr:hover td { background-color: #e0f2fe !important; color: #0f172a !important; }
+        .aviso-vazio { text-align: center; padding: 30px; color: #4b5563; font-style: italic; font-size: 15px; }
+
+        .bloco-atualizacao { background: #eff6ff; border: 2px solid #2563eb; border-radius: 8px; padding: 14px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
+        .bloco-atualizacao h4 { margin: 0; font-size: 13px; color: #1e3a8a; text-transform: uppercase; }
+        .info-auto { font-size: 12px; color: #64748b; line-height: 1.5; }
+        .info-auto strong { color: #334155; }
+        .linha-upload { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+        .campo-upload { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 240px; }
+        .campo-upload label { font-size: 12px; font-weight: bold; color: #555; }
+        .campo-upload input[type="file"] { font-size: 12px; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 4px; background: #fff; cursor: pointer; }
+        .btn-importar { background: #059669; color: white; border: none; padding: 0 16px; height: 40px; border-radius: 4px; font-size: 13px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .btn-importar:hover { background: #047857; }
+        .btn-importar:disabled { background: #94a3b8; cursor: wait; }
+        .status-import { font-size: 12px; font-weight: bold; min-height: 16px; }
+        .status-import.ok { color: #059669; }
+        .status-import.erro { color: #dc2626; }
+        .status-import.info { color: #1e3a8a; }
+    </style>
+</head>
+<body class="portal-page embedded">
+    <div class="container">
+        <button class="btn-voltar" onclick="window.location.href='/torre_controle';">← Voltar ao Painel</button>
+
+        <h2>🔍 Consulta de Notas Expedidas e Logística</h2>
+
+        <div class="bloco-atualizacao">
+            <h4>📂 Atualização da base de expedição</h4>
+            <div class="info-auto">
+                <strong>Automática (servidor):</strong>
+                {{ arquivo_exp_auto or 'não detectada em Downloads do servidor' }}
+                &nbsp;|&nbsp;
+                <strong>Base em uso:</strong>
+                {{ arquivo_exp_ativo or 'nenhuma — importe manualmente abaixo' }}
+                {% if fonte_expedicao == 'manual' %}<span style="color:#059669;"> (upload deste computador)</span>
+                {% elif fonte_expedicao == 'automatica' %}<span style="color:#64748b;"> (servidor)</span>{% endif %}
+                {% if atualizacao_manual.get('expedicao') %}
+                <br><strong>Último upload manual:</strong> {{ atualizacao_manual.expedicao.arquivo }} em {{ atualizacao_manual.expedicao.data_hora }}
+                {% endif %}
+            </div>
+            <div class="linha-upload">
+                <div class="campo-upload">
+                    <label>📦 Planilha «Notas_Expedidas» — selecione na pasta Downloads deste computador</label>
+                    <input type="file" id="arqExpedicaoManual" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                </div>
+                <button type="button" class="btn-importar" id="btnImportarExp" onclick="enviarExpedicaoManual()">⬆ Importar Base de Expedição</button>
+            </div>
+            <div id="statusImportacao" class="status-import"></div>
+        </div>
+        
+        <div class="acoes-topo">
+            <form action="/relatorio_expedicao" method="GET" class="filtro-form" id="formExpedicao">
+                
+                <div class="bloco-datas">
+                    <div class="campo-busca">
+                        <label>📅 Data Início:</label>
+                        <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}">
+                    </div>
+                    <div class="campo-busca">
+                        <label>📅 Data Fim:</label>
+                        <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}">
+                    </div>
+                    <button type="button" class="btn-limpar" style="height: 38px; background-color: #e2e8f0; color: #4b5563;" onclick="limparApenasDatas()">❌ Limpar Período</button>
+                </div>
+                
+                <div class="campo-busca">
+                    <label>🔢 N° Nota Fiscal:</label>
+                    <input type="text" id="busca_nf" name="busca_nf" placeholder="Filtrar Nota" value="{{ filtro_nf }}" oninput="gerenciarLimpezaAoDigitar()">
+                </div>
+                <div class="campo-busca">
+                    <label>👤 Cliente:</label>
+                    <input type="text" id="busca_cliente" name="busca_cliente" placeholder="Filtrar Cliente" value="{{ filtro_cliente }}" oninput="gerenciarLimpezaAoDigitar()">
+                </div>
+                <div class="campo-busca">
+                    <label>🚛 Transportadora:</label>
+                    <input type="text" id="busca_transp" name="busca_transp" placeholder="Filtrar Transp." value="{{ filtro_transp }}" oninput="gerenciarLimpezaAoDigitar()">
+                </div>
+                
+                <button type="submit" class="btn-busca">Pesquisar Base</button>
+                <button type="button" class="btn-exportar-filtrado" onclick="baixarPlanilhaFiltrada()">📊 Exportar Filtro Atual</button>
+                <a href="/relatorio_expedicao" class="btn-limpar">🔄 Resetar Tudo</a>
+            </form>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        {% if colunas %}
+                            {% for coluna in colunas %}
+                                <th>{{ coluna | upper }}</th>
+                            {% endfor %}
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if dados %}
+                        {% for linha in dados %}
+                        <tr>
+                            {% for coluna in colunas %}
+                                <td>{{ linha[coluna] }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="50" class="aviso-vazio" style="text-align: center;">
+                            {% if erro %}
+                                ⚠️ {{ erro }}
+                            {% else %}
+                                💡 Digite um período de datas para ver as notas expedidas, ou busque por <b>Nota Fiscal</b>, <b>Cliente</b> ou <b>Transportadora</b> para varrer o histórico.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function limparApenasDatas() {
+            document.getElementById('data_inicio').value = "";
+            document.getElementById('data_fim').value = "";
+        }
+
+        function gerenciarLimpezaAoDigitar() {
+            const campoNota = document.getElementById('busca_nf').value.trim();
+            if (campoNota !== "") {
+                document.getElementById('data_inicio').value = "";
+                document.getElementById('data_fim').value = "";
+            }
+        }
+
+        function enviarExpedicaoManual() {
+            const input = document.getElementById('arqExpedicaoManual');
+            const btn = document.getElementById('btnImportarExp');
+            const status = document.getElementById('statusImportacao');
+
+            if (!input.files || !input.files.length) {
+                status.className = 'status-import erro';
+                status.textContent = 'Selecione o arquivo Excel na pasta Downloads deste computador.';
+                input.click();
+                return;
+            }
+
+            const fd = new FormData();
+            fd.append('arquivo', input.files[0]);
+            btn.disabled = true;
+            status.className = 'status-import info';
+            status.textContent = 'Enviando e validando planilha de expedição...';
+
+            fetch(window.location.origin + '/api/importar_expedicao_manual', {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin'
+            })
+                .then(async (res) => {
+                    const texto = await res.text();
+                    let data = {};
+                    try {
+                        data = texto ? JSON.parse(texto) : {};
+                    } catch (e) {
+                        if (res.status === 404) {
+                            throw new Error('API de upload não encontrada. Reinicie o servidor via «Gestor Projetos» (porta 5000).');
+                        }
+                        throw new Error('Resposta inválida do servidor (HTTP ' + res.status + '). Reinicie o app na pasta Copia.');
+                    }
+                    if (!res.ok && !data.mensagem && res.status === 404) {
+                        data.mensagem = 'API de upload não encontrada — reinicie o servidor na pasta «Controle_ocorrencias - Copia».';
+                    }
+                    return { ok: res.ok, data };
+                })
+                .then(({ ok, data }) => {
+                    btn.disabled = false;
+                    if (ok && data.status === 'sucesso') {
+                        status.className = 'status-import ok';
+                        status.textContent = data.mensagem;
+                        window.location.reload();
+                    } else {
+                        status.className = 'status-import erro';
+                        status.textContent = data.mensagem || 'Falha na importação.';
+                    }
+                })
+                .catch((err) => {
+                    btn.disabled = false;
+                    status.className = 'status-import erro';
+                    status.textContent = err.message || 'Erro de comunicação com o servidor.';
+                });
+        }
+
+        function baixarPlanilhaFiltrada() {
+            const inicio = document.getElementById('data_inicio').value;
+            const fim = document.getElementById('data_fim').value;
+            const nf = document.getElementById('busca_nf').value;
+            const cliente = document.getElementById('busca_cliente').value;
+            const transp = document.getElementById('busca_transp').value;
+            
+            const url = `/exportar_expedicao_filtrada?data_inicio=${inicio}&data_fim=${fim}&busca_nf=${nf}&busca_cliente=${cliente}&busca_transp=${transp}`;
+            
+            alert('O download do relatório personalizado foi iniciado! Verifique na sua pasta Downloads.');
+            window.location.href = url;
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Coletas Pendentes — Relatório</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <style>
+        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: flex-end; }
+        .campo-busca { display: flex; flex-direction: column; gap: 5px; }
+        .checkbox-container { display: flex; align-items: center; gap: 8px; min-height: 38px; color: var(--portal-muted); font-size: 0.82rem; }
+        .txt-area-email { width: 100%; height: 140px; margin-top: 10px; padding: 12px; font-family: var(--portal-mono); font-size: 0.82rem; resize: vertical; box-sizing: border-box; }
+        .secao-email { margin-top: 20px; border-left: 4px solid var(--portal-accent) !important; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <header class="portal-page-header">
+        <div>
+            <h1>Painel de Coletas</h1>
+            <p class="subtitle">Monitoramento de retiradas pendentes e concluídas.</p>
+        </div>
+        <a href="#" class="portal-btn portal-btn-ghost" data-voltar-portal>Voltar ao início</a>
+    </header>
+
+    <div class="portal-stats">
+        <span class="portal-stat">Pendentes: <strong>{{ pendentes }}</strong></span>
+        <span class="portal-stat">Concluídas: <strong>{{ efetuadas }}</strong></span>
+    </div>
+
+    <form action="/relatorio_coletas" method="GET" class="portal-toolbar">
+        <div class="field campo-busca">
+            <label class="portal-label" for="busca_cliente">Cliente</label>
+            <input type="text" id="busca_cliente" name="busca_cliente" class="portal-input" value="{{ filtro_cliente }}" placeholder="Nome do cliente">
+        </div>
+        <div class="field campo-busca">
+            <label class="portal-label" for="busca_nf">Nota fiscal</label>
+            <input type="text" id="busca_nf" name="busca_nf" class="portal-input" value="{{ filtro_nf }}" placeholder="Nº da NF">
+        </div>
+        <div class="field campo-busca">
+            <label class="portal-label" for="busca_transp">Transportadora</label>
+            <input type="text" id="busca_transp" name="busca_transp" class="portal-input" value="{{ filtro_transp }}" placeholder="Transportadora">
+        </div>
+        <div class="field campo-busca">
+            <label class="portal-label" for="busca_data">Data</label>
+            <input type="date" id="busca_data" name="busca_data" class="portal-input" value="{{ filtro_data }}">
+        </div>
+        <div class="checkbox-container">
+            <input type="checkbox" name="apenas_pendentes" id="pendentes" {% if filtro_apenas_pendentes == 'on' %}checked{% endif %}>
+            <label for="pendentes">Apenas pendentes</label>
+        </div>
+        <button type="submit" class="portal-btn portal-btn-primary">Filtrar</button>
+    </form>
+
+    <div class="portal-table-wrap">
+        <table class="portal-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Nota Fiscal</th>
+                    <th>Transportadora</th>
+                    <th>Data Solicitação</th>
+                    <th>Status</th>
+                    <th>Prazo / Dias</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for col in coletas %}
+                <tr>
+                    <td>{{ col['Cliente'] }}</td>
+                    <td>{{ col['Nota Fiscal'] }}</td>
+                    <td>{{ col['Transportadora'] }}</td>
+                    <td>{{ col['Data Solicitação'] }}</td>
+                    <td><strong>{{ col['Status'] }}</strong></td>
+                    <td class="{{ col['ClasseAlerta'] }}">{{ col['AlertaDias'] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="portal-empty">Nenhuma movimentação para os filtros atuais.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="portal-card secao-email">
+        <h3 style="margin:0 0 8px; font-size:0.95rem;">Texto para e-mail</h3>
+        <p style="font-size:0.78rem; color:var(--portal-muted); margin:0 0 10px;">Montado com base nos filtros ativos.</p>
+        <textarea id="textoEmail" class="txt-area-email portal-input" readonly>{{ corpo_email_padrao }}</textarea>
+        <button type="button" class="portal-btn portal-btn-primary" style="margin-top:10px;" onclick="copiarTexto()">Copiar texto</button>
+    </div>
+
+    <script>
+        function copiarTexto() {
+            var copyText = document.getElementById('textoEmail');
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert('Texto copiado para a área de transferência.');
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

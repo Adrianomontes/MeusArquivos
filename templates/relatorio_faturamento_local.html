@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>📊 Painel de Faturamento e Controle de Entregas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; color: #1e293b; font-family: system-ui, -apple-system, sans-serif; padding: 20px; }
+        
+        /* 🎨 LINKS DE NAVEGAÇÃO SUPERIOR */
+        .nav-topo { font-size: 14px; font-weight: bold; text-decoration: none; color: #0284c7; }
+        .nav-topo:hover { color: #0369a1; text-decoration: underline; }
+        
+        /* 📊 ESTILIZAÇÃO DOS CARDS DE INDICADORES MALHADOS */
+        .card-indicador { border-radius: 6px; padding: 12px 15px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-label { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; }
+        .card-valor { font-size: 24px; font-weight: bold; margin-top: 2px; }
+        
+        .bg-total-fat { background-color: #1e3a8a; } /* Azul Escuro */
+        .bg-total-mov { background-color: #10b981; } /* Verde */
+        .bg-pendentes { background-color: #b91c1c; }  /* Vermelho */
+        .bg-eficiencia { background-color: #115e59; } /* Verde Petróleo */
+        .bg-valor-filtro { background-color: #b45309; } /* Laranja/Marrom */
+        .bg-notas-filtro { background-color: #4b5563; } /* Cinza */
+
+        /* 🔍 BLOCO DE FILTROS E BAIXA DE CANHOTO */
+        .secao-controle { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .form-label-custom { font-size: 11px; font-weight: bold; color: #475569; margin-bottom: 3px; display: block; }
+        .form-control-custom { font-size: 12px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 8px; }
+        .form-control-custom:focus { border-color: #0284c7; box-shadow: none; outline: none; }
+
+        /* 📋 TABELA MATRIZ OPERACIONAL */
+        .tabela-wrapper { 
+            width: 100%; 
+            background: #1e293b; 
+            border-radius: 8px; 
+            border: 1px solid #334155; 
+            overflow-x: auto; /* Permite a rolagem horizontal */
+            overflow-y: hidden;
+            margin-bottom: 30px;
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            /* 🎯 MUDANÇA: Aumentamos para 1600px para garantir que ela passe do tamanho do monitor e force a rolagem */
+            min-width: 1600px; 
+            table-layout: fixed; /* Força o navegador a respeitar o tamanho das colunas */
+        }
+
+        /* 🎯 NOVO AJUSTE: Aplica o distanciamento correto nas células para os dados respirarem */
+        th, td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 1px solid #334155; 
+            font-size: 12px; 
+            vertical-align: middle; 
+            /* 🎯 IMPEDE O TEXTO DE QUEBRAR LINHA: Força a expansão para os lados */
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis; /* Se o texto for gigante, põe '...' no final */
+        }
+        th { background-color: #1e3a8a; color: white; font-size: 11px; font-weight: bold; padding: 10px 8px; text-transform: uppercase; border-bottom: 2px solid #172554; }
+        td { padding: 10px 8px; font-size: 12px; border-bottom: 1px solid #e2e8f0; color: #334155; vertical-align: middle; }
+        tr:hover { background-color: #f8fafc; }
+        
+        /* Badges de Status */
+        .badge-status { font-weight: bold; font-size: 10px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; display: inline-block; }
+        .badge-nao-exp { background-color: #fee2e2; color: #991b1b; }
+        .badge-expedido { background-color: #e0f2fe; color: #0369a1; }
+        .badge-entregue { background-color: #dcfce7; color: #166534; }
+
+        .btn-estornar { background-color: #ef4444; color: white; border: none; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        .btn-estornar:hover { background-color: #dc2626; }
+        .btn-buscar-localizar { background-color: #0284c7; color: white; border: none; font-weight: bold; font-size: 12px; padding: 6px 15px; border-radius: 4px; }
+        .btn-buscar-localizar:hover { background-color: #0369a1; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a href="/devolucoes" class="nav-topo">← Voltar ao Painel de Devoluções</a>
+            <h2 class="m-0 fw-bold" style="font-size: 20px; color: #1e293b;">📊 Painel de Faturamento e Controle de Entregas</h2>
+        </div>
+
+        <div class="row g-2 mb-3">
+            <div class="col-md-2">
+                <div class="card-indicador bg-total-fat">
+                    <div class="card-label">🔢 Total Faturado</div>
+                    <div class="card-valor">{{ total_faturadas }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card-indicador bg-total-mov">
+                    <div class="card-label">🟢 Total Movimentado</div>
+                    <div class="card-valor">{{ total_expedidas }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card-indicador bg-pendentes">
+                    <div class="card-label">🔴 Pendentes Logística</div>
+                    <div class="card-valor">{{ total_em_aberto }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card-indicador bg-eficiencia">
+                    <div class="card-label">📉 Eficiência Geral</div>
+                    <div class="card-valor">{{ taxa_eficiencia }}%</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card-indicador bg-valor-filtro">
+                    <div class="card-label">💰 Valor do Filtro</div>
+                    <div class="card-valor" style="font-size: 18px; padding-top: 5px;">{{ financeiro_filtrado }}</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card-indicador bg-notas-filtro">
+                    <div class="card-label">📄 Notas no Filtro</div>
+                    <div class="card-valor">{{ total_faturadas_filtro }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="secao-controle">
+            <form method="GET" action="/relatorio_faturamento" class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label-custom">📅 DATA INÍCIO:</label>
+                    <input type="date" name="data_inicio" value="{{ data_inicio }}" class="form-control form-control-custom w-100">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">📅 DATA FIM:</label>
+                    <input type="date" name="data_fim" value="{{ data_fim }}" class="form-control form-control-custom w-100">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">🔢 N° NOTA FISCAL:</label>
+                    <input type="text" name="busca_nf" value="{{ filtro_nf }}" class="form-control form-control-custom w-100" placeholder="Filtrar Nota">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">👤 CLIENTE:</label>
+                    <input type="text" name="busca_cliente" value="{{ filtro_cliente }}" class="form-control form-control-custom w-100" placeholder="Filtrar Cliente">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">🚛 TRANSPORTADORA:</label>
+                    <input type="text" name="busca_transp" value="{{ filtro_transp }}" class="form-control form-control-custom w-100" placeholder="Filtrar Transp.">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label-custom">🚦 STATUS LOGÍSTICO:</label>
+                    <select name="busca_status" class="form-select form-control-custom w-100">
+                        <option value="">Todos os Status</option>
+                        <option value="NÃO EXPEDIDO" {% if busca_status == 'NÃO EXPEDIDO' %}selected{% endif %}>NÃO EXPEDIDO</option>
+                        <option value="EXPEDIDO" {% if busca_status == 'EXPEDIDO' %}selected{% endif %}>EXPEDIDO</option>
+                        <option value="ENTREGUE" {% if busca_status == 'ENTREGUE' %}selected{% endif %}>ENTREGUE</option>
+                    </select>
+                </div>
+                <div class="col-12 text-end mt-2">
+                    <a href="/relatorio_faturamento" class="btn btn-secondary btn-sm fw-bold me-2" style="padding: 5px 15px;">🔄 Resetar Tudo</a>
+                    <button type="submit" class="btn btn-primary btn-sm fw-bold px-4" style="background-color: #1e3a8a; border: none; padding: 5px 25px;">Pesquisar Filtros</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="secao-controle" style="background-color: #eff6ff; border-color: #bfdbfe;">
+            <div style="font-size: 11px; font-weight: bold; color: #1e40af; margin-bottom: 5px;">📥 DIGITE A NF PARA EFETUAR A BAIXA DO CANHOTO OU REALIZAR CONSULTA:</div>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input type="text" id="campoNfBaixaDireta" class="form-control form-control-custom w-100 fw-bold" placeholder="N° Nota Fiscal">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn-buscar-localizar w-100" onclick="dispararBaixaOuConsulta()">🔍 Localizar Documento</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        {% for col in colunas %}
+                        <th>{{ col }}</th>
+                        {% endfor %}
+                        <th style="text-align:center;">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if not dados %}
+                    <tr><td colspan="20" class="text-center text-muted py-4">Nenhuma nota localizada para os filtros correntes.</td></tr>
+                    {% else %}
+                    {% for linha in dados %}
+                    <tr>
+                        <td><strong>{{ linha['Nota Fiscal'] }}</strong></td>
+                        <td>{{ linha['Emissão'] }}</td>
+                        <td><small>{{ linha['Cliente'][:30] }}</small></td>
+                        <td><small>{{ linha['Endereço'][:20] }}</small></td>
+                        <td>{{ linha['Município'] }}</td>
+                        <td>{{ linha['UF'] }}</td>
+                        <td>{{ linha['CEP'] }}</td>
+                        <td class="text-primary fw-bold"><small>{{ linha['Transportadora'] }}</small></td>
+                        <td><small>{{ linha['Modalidade'] }}</small></td>
+                        <td>{{ linha['Volumes'] }}</td>
+                        <td>{{ linha['Espécie'] }}</td>
+                        <td>{{ linha['Peso Bruto'] }}</td>
+                        <td><code>{{ linha['Pedido'] }}</code></td>
+                        <td class="fw-bold text-dark">R$ {{ linha['Valor Total'] }}</td>
+                        
+                        <td>
+                            {% if linha['STATUS EXPEDIÇÃO'] == 'ENTREGUE' %}
+                            <span class="badge-status badge-entregue">ENTREGUE</span>
+                            {% elif linha['STATUS EXPEDIÇÃO'] == 'EXPEDIDO' %}
+                            <span class="badge-status badge-expedido">EXPEDIDO</span>
+                            {% else %}
+                            <span class="badge-status badge-nao-exp">NÃO EXPEDIDO</span>
+                            {% endif %}
+                        </td>
+                        
+                        <td>{{ linha['Data Expedição'] }}</td>
+                        <td>{{ linha['Data Entrega'] or '-' }}</td>
+                        <td><small>{{ linha['Recebedor'] or '-' }}</small></td>
+                        <td class="text-muted"><small><em>{{ linha['Assinatura / Obs'] or '-' }}</em></small></td>
+                        
+                        <td style="text-align:center;">
+                            <button type="button" class="btn-estornar" onclick="executarEstornoMestre('{{ linha['Nota Fiscal'] }}')">↩ Estornar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-center align-items-center gap-3 my-3">
+            <a href="/relatorio_faturamento?page={{ page - 1 }}&data_inicio={{ data_inicio }}&data_fim={{ data_fim }}&busca_nf={{ filtro_nf }}&busca_cliente={{ filtro_cliente }}&busca_transp={{ filtro_transp }}&busca_status={{ busca_status }}" class="btn btn-secondary btn-sm fw-bold {% if page <= 1 %}disabled{% endif %}" style="padding: 5px 15px;">◀ Voltar 100 Notas</a>
+            <span class="fw-bold text-secondary" style="font-size:12px;">Lote Atual: {{ page }}</span>
+            <a href="/relatorio_faturamento?page={{ page + 1 }}&data_inicio={{ data_inicio }}&data_fim={{ data_fim }}&busca_nf={{ filtro_nf }}&busca_cliente={{ filtro_cliente }}&busca_transp={{ filtro_transp }}&busca_status={{ busca_status }}" class="btn btn-secondary btn-sm fw-bold {% if not tem_mais %}disabled{% endif %}" style="padding: 5px 15px;">Carregar Mais 100 Notas ▶</a>
+        </div>
+    </div>
+
+    <script>
+        // Função do campo de baixa rápida/localização
+        function dispararBaixaOuConsulta() {
+            const nf = document.getElementById('campoNfBaixaDireta').value.trim();
+            if(!nf) { alert("Digite o número de uma NF para localizar!"); return; }
+            window.location.href = `/buscar_nf_baixa?nf_baixa=${encodeURIComponent(nf)}`;
+        }
+
+        // Intercepta o clique de enter na caixa de baixa rápida
+        document.getElementById('campoNfBaixaDireta').addEventListener('keydown', function(e) {
+            if(e.key === 'Enter') dispararBaixaOuConsulta();
+        });
+
+        // Dispara o estorno em lote assíncrono para o backend Python
+        function executarEstornoMestre(nf) {
+            if(!confirm(`🚨 ALERTA OPERACIONAL:\n\nDeseja realmente estornar a baixa da Nota Fiscal nº ${nf}?\nIsso redefinirá o documento de volta ao status de pendência original.`)) return;
+
+            fetch('/api/estornar_baixa_manual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nota_fiscal: nf })
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if(res.status === "sucesso") window.location.reload();
+            })
+            .catch(err => alert("Erro ao processar estorno: " + err));
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

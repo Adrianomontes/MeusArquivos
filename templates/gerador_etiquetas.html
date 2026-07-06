@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emissor de Etiquetas - Padrão Bunzl Grade de Precisão</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        /* Interface Operacional da Tela (Não afeta a impressão térmica) */
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f1f5f9; color: #1e293b; }
+        .container { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 1fr 500px; gap: 20px; }
+        .painel-config { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); height: fit-content; }
+        .painel-preview { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        h2, h3 { margin-top: 0; color: #0f172a; font-weight: 700; }
+        
+        .busca-container { display: flex; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .busca-container input { padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; flex-grow: 1; font-size: 14px; }
+        .btn { background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #0369a1; }
+        .btn-success { background: #16a34a; width: 100%; margin-top: 15px; padding: 12px; font-size: 16px; font-weight: bold; }
+        .btn-success:hover { background: #15803d; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        th { background: #f8fafc; font-weight: 600; }
+        .input-caixas { width: 70px; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-weight: bold; }
+        .total-container { margin-top: 20px; text-align: right; font-size: 16px; font-weight: bold; color: #0284c7; background: #f0f9ff; padding: 10px; border-radius: 6px; }
+        
+        /* 🎨 Painel de Configuração Unificado */
+        .seletor-padrao { background: #fffbeb; border: 1px solid #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .input-manual-codigo { padding: 8px 12px; border: 2px solid #0284c7; border-radius: 6px; font-size: 14px; font-weight: bold; width: 220px; text-align: center; background-color: #fff; }
+        .btn-injeta { background: #0284c7; color: white; border: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn-injeta:hover { background: #0369a1; }
+
+        /* 🔄 Barra de Rolagem na Tela do Sistema */
+        .area-etiquetas-print { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 25px; 
+            align-items: center; 
+            max-height: 75vh; 
+            overflow-y: auto; 
+            padding: 10px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
+        
+        /* ============================================================
+           🎯 ENGENHARIA DE DIAGRAMAÇÃO VERTICAL: PADRÃO OFICIAL 10x12cm
+           ============================================================ */
+        .etiqueta-zebra {
+            width: 100mm;
+            height: 120mm;
+            border: 1px solid #000;
+            background: white;
+            box-sizing: border-box;
+            position: relative;
+            color: black;
+            overflow: hidden;
+            padding: 4mm; 
+            flex-shrink: 0;
+        }
+
+        .grid-etiqueta-interna {
+            width: 112mm; 
+            height: 92mm; 
+            position: absolute;
+            top: 4mm;
+            left: 96mm; 
+            transform: rotate(90deg);
+            transform-origin: top left;
+            
+            display: grid;
+            grid-template-rows: 1fr 24mm; 
+            box-sizing: border-box;
+        }
+
+        .bloco-superior-grid {
+            display: grid;
+            grid-template-columns: 1fr 34mm; 
+            border-bottom: 1px solid #000; 
+            padding-bottom: 1mm;
+            height: 100%;
+        }
+
+        .quadrante-dados {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding-right: 2mm;
+            height: 100%;
+        }
+        .bloco-info { margin-bottom: 0.5mm; }
+        .campo-label { font-family: Arial, sans-serif; font-size: 10px; color: #333; margin: 0; text-transform: uppercase; font-weight: bold; }
+        .campo-valor { font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; margin: 0; line-height: 1.1; text-transform: uppercase; }
+        
+        .desc-material-titulo { font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; margin-top: 0.5mm; text-transform: uppercase; }
+        .desc-material-corpo { font-family: Arial, sans-serif; font-size: 15px; font-weight: 900; line-height: 1.1; text-transform: uppercase; color: #000; }
+        
+        .qtd-container { font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; border-top: 1px dashed #666; padding-top: 1mm; margin-top: auto; }
+
+        .quadrante-controle {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-start;
+            border-left: 1px solid #000; 
+            padding-left: 3mm;
+            height: 100%;
+        }
+        .vol-titulo, .nf-titulo { font-family: Arial, sans-serif; font-size: 14px; font-weight: 900; margin: 0; text-transform: uppercase; }
+        .vol-valor { font-family: Arial, sans-serif; font-size: 24px; font-weight: 900; margin: 0 0 2mm 0; line-height: 1; color: #000; }
+        .nf-valor { font-family: Arial, sans-serif; font-size: 24px; font-weight: 900; margin: 0; line-height: 1; color: #000; }
+
+        .bloco-inferior-barcode {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 1mm;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .barcode-svg {
+            max-width: 75mm; 
+            height: 14mm;
+        }
+
+        /* ============================================================
+           🖨️ DIRETRIZES DE IMPRESSÃO CORPORATIVA CRÍTICA (ANTI-CORTES)
+           ============================================================ */
+        @media print {
+            @page {
+                size: 100mm 120mm;
+                margin: 0mm !important;
+            }
+            
+            html, body { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                background: white !important; 
+                height: auto !important;
+                overflow: visible !important;
+            }
+
+            .painel-config, .busca-container, .btn, .total-container, h2, h3, .btn-success, div[style*="margin-bottom"], .seletor-padrao { 
+                display: none !important; 
+            }
+            
+            .container { display: block; max-width: 100%; padding: 0; margin: 0; }
+            .painel-preview { border: none; box-shadow: none; padding: 0; background: transparent; }
+            
+            .area-etiquetas-print { 
+                display: block !important; 
+                max-height: none !important; 
+                overflow: visible !important; 
+                padding: 0 !important;
+                border: none !important;
+                background: transparent !important;
+            }
+            
+            .etiqueta-zebra { 
+                page-break-after: always !important; 
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                border: none !important; 
+                width: 100mm !important;
+                height: 120mm !important;
+                margin: 0 !important;
+                padding: 4mm !important;
+                box-sizing: border-box !important;
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div style="margin-bottom: 15px; padding-left: 10px;">
+        <a href="#" style="text-decoration: none; font-weight: bold; color: #0284c7;" onclick="window.location.href = window.location.origin + '/'; return false;">← Voltar ao Painel Inicial</a>
+    </div>
+
+    <div class="container">
+        
+        <div class="painel-config">
+            <h2>🏷️ Configuração de Volumes por Item</h2>
+            
+            <div class="busca-container">
+                <input type="text" id="inputNF" placeholder="Digite o número da Nota Fiscal (Ex: 65801)" value="65801">
+                <button class="btn" onclick="buscarNota()">Buscar Itens</button>
+            </div>
+
+            <div class="seletor-padrao mb-3">
+                <label class="fw-bold text-dark d-block mb-2" style="font-size: 13px;">📊 SELECIONE O PADRÃO DO CÓDIGO DE BARRAS:</label>
+                <div class="d-flex gap-4">
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="padraoBarras" id="radCodItem" value="CodItem" checked onchange="renderizarEtiquetas()">
+                        <label class="form-check-label fw-bold" style="font-size:13px; cursor:pointer;" for="radCodItem">📦 Código do Item (Padrão)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="padraoBarras" id="radEan" value="EAN" onchange="renderizarEtiquetas()">
+                        <label class="form-check-label fw-bold" style="font-size:13px; cursor:pointer;" for="radEan">🔢 Código EAN (De-Para)</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="seletor-padrao">
+                <label class="fw-bold text-dark d-block mb-1" style="font-size: 13px;">📝 TEXTO DO PEDIDO DE COMPRA (PREENCHER NA LINHA PC):</label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="text" id="txtPedidoCompraManual" class="input-manual-codigo" placeholder="Digite o PC da Nota" value="">
+                    <button class="btn-injeta" onclick="aplicarPedidoCompraLote()">Preencher no Lote</button>
+                </div>
+                <small class="text-muted d-block mt-1" style="font-size: 11px;">Insira o número do PC acima e clique para injetar o texto ao lado do PV.</small>
+            </div>
+
+            <div id="dadosNota" style="display:none; margin-bottom: 15px; font-size: 14px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <p style="margin: 3px 0;"><b>Cliente:</b> <span id="txtCliente">-</span></p>
+                <p style="margin: 3px 0;"><b>Transp:</b> <span id="txtTransp">-</span></p>
+                <p style="margin: 3px 0;"><b>Pedido Venda (PV):</b> <span id="txtPedido">-</span></p>
+            </div>
+
+            <table id="tabelaItens">
+                <thead>
+                    <tr>
+                        <th>Descrição do Item</th>
+                        <th style="text-align: center; width: 110px;">Qtd Total NF</th>
+                        <th style="text-align: center; width: 130px;">Qtd de Caixas</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoItens">
+                    <tr><td colspan="3" style="text-align: center; color: #64748b;">Busque uma nota fiscal para carregar os itens.</td></tr>
+                </tbody>
+            </table>
+
+            <div class="total-container">
+                Total de Etiquetas a Imprimir: <span id="lblTotalEtiquetas">0</span>
+            </div>
+
+            <button class="btn btn-success" onclick="window.print()">🖨️ Enviar em Lote para Impressora</button>
+        </div>
+
+        <div class="painel-preview">
+            <h3>👁️ Pré-visualização do Lote (<span id="lblQtdPreview">0</span> Geradas)</h3>
+            <div class="area-etiquetas-print" id="previewLote">
+                <div style="color: #64748b; text-align: center; margin-top: 40px;">Insira as caixas para gerar o preview.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let dadosNotaAtual = null;
+
+        function buscarNota() {
+            const nf = document.getElementById('inputNF').value.trim();
+            if(!nf) return;
+
+            fetch(`/api/itens_nota/${nf}`)
+                .then(res => res.json())
+                .then(dados => {
+                    if (dados.status === "erro") {
+                        alert("❌ " + dados.mensagem);
+                        document.getElementById('txtCliente').innerText = "-";
+                        document.getElementById('txtTransp').innerText = "-";
+                        document.getElementById('txtPedido').innerText = "-";
+                        document.getElementById('dadosNota').style.display = 'none';
+                        document.getElementById('corpoItens').innerHTML = `<tr><td colspan="3" style="text-align: center; color: #ef4444; font-weight:600;">Nota Fiscal não localizada.</td></tr>`;
+                        dadosNotaAtual = null;
+                        renderizarEtiquetas();
+                        return;
+                    }
+
+                    dadosNotaAtual = dados;
+                    document.getElementById('txtCliente').innerText = dados.cliente || "-";
+                    document.getElementById('txtTransp').innerText = dados.transportadora || "-";
+                    document.getElementById('txtPedido').innerText = dados.pedido || "-";
+                    
+                    let pvOriginal = String(dados.pedido).replace(/PD/gi, '').trim();
+                    let pcOriginal = dados.pedido_compra ? String(dados.pedido_compra).replace(/PD/gi, '').trim() : "";
+                    
+                    if (pcOriginal !== "" && pcOriginal !== pvOriginal) {
+                        document.getElementById('txtPedidoCompraManual').value = dados.pedido_compra;
+                    } else {
+                        document.getElementById('txtPedidoCompraManual').value = "";
+                    }
+
+                    document.getElementById('dadosNota').style.display = 'block';
+
+                    const tabela = document.getElementById('corpoItens');
+                    tabela.innerHTML = "";
+                    
+                    dados.itens.forEach((item, index) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><b>${item.descricao}</b></td>
+                            <td style="text-align: center;">${item.qtd_total} UN</td>
+                            <td style="text-align: center;">
+                                <input type="number" class="input-caixas" value="1" min="0" oninput="renderizarEtiquetas()" id="caixas_${index}">
+                            </td>
+                        `;
+                        tabela.appendChild(tr);
+                    });
+                    renderizarEtiquetas();
+                })
+                .catch(err => {
+                    console.error("Erro ao buscar dados:", err);
+                    alert("❌ Ocorreu um erro ao buscar os dados da nota.");
+                });
+        }
+
+        function aplicarPedidoCompraLote() {
+            renderizarEtiquetas();
+        }
+
+        function renderizarEtiquetas() {
+            const areaPreview = document.getElementById('previewLote');
+            areaPreview.innerHTML = "";
+            
+            if(!dadosNotaAtual || !dadosNotaAtual.itens) {
+                areaPreview.innerHTML = `<div style="color: #64748b; text-align: center; margin-top: 40px;">Insira as caixas para gerar o preview.</div>`;
+                document.getElementById('lblTotalEtiquetas').innerText = "0";
+                document.getElementById('lblQtdPreview').innerText = "0";
+                return;
+            }
+
+            // Captura o padrão selecionado pelos botões de rádio (CodItem ou EAN)
+            const padraoSelecionado = document.querySelector('input[name="padraoBarras"]:checked').value;
+            const pcDigitado = document.getElementById('txtPedidoCompraManual').value.trim();
+
+            let listaEtiquetasFinais = [];
+            dadosNotaAtual.itens.forEach((item, index) => {
+                const inputElement = document.getElementById(`caixas_${index}`);
+                const qtdCaixasInput = inputElement ? (parseInt(inputElement.value) || 0) : 0;
+                
+                for(let i = 0; i < qtdCaixasInput; i++) {
+                    listaEtiquetasFinais.push({
+                        descricao: item.descricao,
+                        detalhes: item.qtd_total,
+                        codigo_item: item.codigo_item,
+                        codigo_ean: item.codigo_ean
+                    });
+                }
+            });
+
+            const totalGeralEtiquetas = listaEtiquetasFinais.length;
+            document.getElementById('lblTotalEtiquetas').innerText = totalGeralEtiquetas;
+            document.getElementById('lblQtdPreview').innerText = totalGeralEtiquetas;
+
+            if(totalGeralEtiquetas === 0) {
+                areaPreview.innerHTML = `<div style="color: #64748b; text-align: center; margin-top: 40px;">Insira as caixas para gerar o preview.</div>`;
+                return;
+            }
+
+            listaEtiquetasFinais.forEach((etiqueta, index) => {
+                const numeroVolume = index + 1;
+                const strVolume = String(numeroVolume).padStart(2, '0');
+                const strTotal = String(totalGeralEtiquetas).padStart(2, '0');
+                const nfDigitada = document.getElementById('inputNF').value.trim();
+
+                // 🎯 CAPTURA O CÓDIGO DO PRODUTO PARA AS BARRAS BASEADO NA SELEÇÃO:
+                let textoBarrasFinal = "";
+                if (padraoSelecionado === "EAN") {
+                    textoBarrasFinal = etiqueta.codigo_ean ? String(etiqueta.codigo_ean).trim() : "";
+                } else {
+                    textoBarrasFinal = etiqueta.codigo_item ? String(etiqueta.codigo_item).trim() : "";
+                }
+
+                // Fallback se o código retornado for nulo, em branco ou a string 'None'
+                if (!textoBarrasFinal || textoBarrasFinal === "None" || textoBarrasFinal === "") {
+                    textoBarrasFinal = etiqueta.codigo_item ? String(etiqueta.codigo_item).trim() : "00000000";
+                }
+
+                let pvExibicao = dadosNotaAtual.pedido ? dadosNotaAtual.pedido : "-";
+                let pcExibicao = pcDigitado !== "" ? pcDigitado : "-";
+
+                const idSvg = `barcode_${index}_${numeroVolume}`;
+
+                const divEtiqueta = document.createElement('div');
+                divEtiqueta.className = 'etiqueta-zebra';
+                divEtiqueta.innerHTML = `
+                    <div class="grid-etiqueta-interna">
+                        
+                        <div class="bloco-superior-grid">
+                            
+                            <div class="quadrante-dados">
+                                <div class="bloco-info">
+                                    <p class="campo-label">Cliente</p>
+                                    <p class="campo-valor">${dadosNotaAtual.cliente}</p>
+                                </div>
+                                
+                                <div class="bloco-info">
+                                    <p class="campo-label">Transportadora:</p>
+                                    <p class="campo-valor">${dadosNotaAtual.transportadora}</p>
+                                </div>
+                                
+                                <div class="bloco-info">
+                                    <p class="campo-label">Pedido Venda / Pedido Compra:</p>
+                                    <p class="campo-valor">PV: ${pvExibicao} / PC: ${pcExibicao}</p>
+                                </div>
+                                
+                                <div class="bloco-info">
+                                    <p class="desc-material-titulo">DESCRIÇÃO MATERIAL:</p>
+                                    <div class="desc-material-corpo">${etiqueta.descricao}</div>
+                                </div>
+                                
+                                <div class="qtd-container">
+                                    QUANTIDADE: ${etiqueta.detalhes} UNIDADES
+                                </div>
+                            </div>
+                            
+                            <div class="quadrante-controle">
+                                <div class="vol-titulo">Vol</div>
+                                <div class="vol-valor">${strVolume}/${strTotal}</div>
+                                <div class="nf-titulo">NF:</div>
+                                <div class="nf-valor">${nfDigitada}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bloco-inferior-barcode">
+                            <svg id="${idSvg}" class="barcode-svg"></svg>
+                        </div>
+
+                    </div>
+                `;
+                areaPreview.appendChild(divEtiqueta);
+
+                try {
+                    // Motor inteligente: usa o padrão EAN13 se for selecionado e tiver 13 dígitos numéricos, 
+                    // caso contrário, o versátil CODE128 garante o desenho estável na Zebra.
+                    let ehEanPuro = (padraoSelecionado === "EAN" && /^\d{13}$/.test(textoBarrasFinal));
+                    let formatoFinal = ehEanPuro ? "EAN13" : "CODE128";
+
+                    JsBarcode(`#${idSvg}`, textoBarrasFinal, {
+                        format: formatoFinal,
+                        width: 2,          
+                        height: 45,        
+                        displayValue: true,
+                        fontSize: 14,
+                        font: "Arial",
+                        background: "#ffffff",
+                        lineColor: "#000000",
+                        margin: 0
+                    });
+                } catch (e) {
+                    console.error("Erro ao gerar barras para: " + textoBarrasFinal, e);
+                }
+            });
+        }
+
+        window.onload = buscarNota;
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitor de Controle Operacional</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; overflow: hidden; height: 100vh; font-family: system-ui, -apple-system, sans-serif; }
+        .card-dashboard { background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 25px; height: 78vh; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+        .chart-container { width: 100%; height: 85%; position: relative; }
+        .input-localhost-rodape { background-color: #0f172a; border: 1px solid #475569; color: #38bdf8; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 6px; width: 140px; text-align: center; outline: none; }
+        .btn-config-rodape { background: #334155; border: 1px solid #475569; color: #94a3b8; font-size: 12px; padding: 4px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .btn-config-rodape:hover { background: #0284c7; color: #fff; border-color: #38bdf8; }
+        
++       /* ESTILOS ADICIONADOS PARA A NOVA TABELA COMPACTA DE AUDITORIA */
++       .tabela-auditoria-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
++       .tabela-auditoria { width: 100%; border-collapse: collapse; }
++       .tabela-auditoria th, .tabela-auditoria td { padding: 5px 8px; text-align: left; border-bottom: 1px solid #334155; font-size: 11px; word-break: break-word; }
++       .tabela-auditoria th { background-color: #0f172a; color: #38bdf8; font-size: 11px; font-weight: bold; border-bottom: 2px solid #475569; }
++       .tabela-auditoria tr:hover { background-color: #243249; }
+    </style>
+</head>
+<body class="d-flex flex-column justify-content-between p-4">
+
+    <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2">
+        <h2 class="fw-bold text-info">🖥️ COCKPIT OPERACIONAL - MONITOR DA EXPEDIÇÃO</h2>
+        <h4 id="clock" class="text-light fw-semibold">00:00:00</h4>
+    </div>
+
+    <div class="container-fluid my-2">
+        <div id="conteudo-dinamico" class="card-dashboard text-center">
+            <h3 class="text-secondary">Conectando ao banco de dados SQLite...</h3>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center text-secondary small">
+        <div>
+            <span>Sistema Integrado de Gestão de Transportes</span>
+            <span id="status-tela" class="badge bg-success px-3 py-2 ms-2">Modo Carrossel Ativo</span>
+        </div>
+        
+        <div class="d-flex align-items-center gap-2">
+            <label style="font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase;">🔗 Endereço:</label>
+            <input type="text" id="campoLocalhostRodape" class="input-localhost-rodape" value="localhost:5000" onchange="atualizarEnderecoServidor(this.value)">
+            <button type="button" class="btn-config-rodape" onclick="abrirGerenciadorTkinterDoRodape()">⚙️ Telas</button>
+        </div>
+    </div>
+
+    <script>
+        setInterval(() => {
+            document.getElementById('clock').innerHTML = new Date().toLocaleTimeString('pt-BR');
+        }, 1000);
+
+        let telasAtivas = [];
+        let indiceAtual = 0;
+        let graficoInstancia = null;
+
+        if (localStorage.getItem('monitor_ip_maquina')) {
+            document.getElementById('campoLocalhostRodape').value = localStorage.getItem('monitor_ip_maquina');
+        }
+
+        function atualizarEnderecoServidor(novoValor) {
+            localStorage.setItem('monitor_ip_maquina', novoValor.trim());
+        }
+
+        async function buscarTelasDoBanco() {
+            try {
+                let response = await fetch('/api/telas_ativas_monitor');
+                let dados = await response.json();
+                telasAtivas = dados.telas;
+                
+                if(telasAtivas.length === 0) {
+                    if (graficoInstancia) { graficoInstancia.destroy(); graficoInstancia = null; }
+                    document.getElementById('conteudo-dinamico').innerHTML = `
+                        <h1 class="display-4 text-warning fw-bold">⚠️ NENHUMA TELA SELECIONADA</h1>
+                        <p class="fs-5 text-muted">Vá ao Painel Central e clique em 'Configurar Telas' para flegar o que quer ver passar na TV.</p>
+                    `;
+                }
+            } catch (error) {
+                console.error("Erro ao sincronizar monitor:", error);
+            }
+        }
+
+        function alternarCarrossel() {
+            if (telasAtivas.length === 0) return;
+            if (indiceAtual >= telasAtivas.length) indiceAtual = 0;
+
+            const tela = telasAtivas[indiceAtual];
+            const container = document.getElementById('conteudo-dinamico');
+            document.getElementById('status-tela').innerText = `Exibindo Tela: ${indiceAtual + 1} de ${telasAtivas.length}`;
+
+            if (graficoInstancia) { graficoInstancia.destroy(); graficoInstancia = null; }
+
+            // ⚡ 1. SE RENDERIZAR O PAINEL DE MODAIS
+            if (tela.nome === "Painel de Faturamento por Modais") {
+                container.innerHTML = `
+                    <h3 class="mb-3 text-start w-100" style="color:#10b981;">🚚 DISTRIBUIÇÃO OPERACIONAL POR MODALIDADE (MÊS ATUAL)</h3>
+                    <div class="chart-container"><canvas id="canvasMonitor"></canvas></div>
+                `;
+                fetch('/api/dados_dashboard_expedicao')
+                    .then(r => r.json())
+                    .then(dados => {
+                        const ctx = document.getElementById('canvasMonitor').getContext('2d');
+                        graficoInstancia = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Nosso Carro', 'FOB', 'Cliente Retira', 'CIF', 'Não Mapeado'],
+                                datasets: [{
+                                    data: [dados.modalidades_qtd["NOSSO CARRO"]||0, dados.modalidades_qtd["FOB"]||0, dados.modalidades_qtd["CLIENTE RETIRA"]||0, dados.modalidades_qtd["CIF"]||0, dados.modalidades_qtd["OUTROS"]||0],
+                                    backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#64748b']
+                                }]
+                            },
+                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                        });
+                    });
+
+            // ⚡ 2. SE RENDERIZAR A TORRE DE CONTROLE (REVISADA PARA RECONHECER DADOS DE META DIÁRIA)
+            } else if (tela.nome && tela.nome.toUpperCase().includes("TORRE")) {
+-               // Versão antiga: Apenas gerava o gráfico cru sem os cards superiores
++               fetch('/api/dados_dashboard_expedicao')
++                   .then(r => r.json())
++                   .then(dados => {
++                       const faturamentoArray = dados.faturamento_diario || [];
++                       const ultimoRegistro = faturamentoArray[faturamentoArray.length - 1] || { valor: 0, meta: 467333.26, porcentagem: 0, falta: 467333.26 };
++                       const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
++
++                       container.innerHTML = `
++                           <h3 class="mb-2 text-start w-100 text-info" style="font-size: 18px;">🚀 TORRE DE CONTROLE — META VS REALIZADO</h3>
++                           
++                           +                           <div class="w-100 d-flex gap-3 mb-3">
++                               <div class="p-3 flex-fill rounded-3 text-start" style="background: #0f172a; border-left: 5px solid #10b981;">
++                                   <div style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;">Faturamento Realizado</div>
++                                   <div style="font-size: 20px; font-weight: bold; color: #fff; margin-top: 2px;">${formatarMoeda(ultimoRegistro.valor)}</div>
++                               </div>
++                               <div class="p-3 flex-fill rounded-3 text-start" style="background: #0f172a; border-left: 5px solid #3b82f6;">
++                                   <div style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;">Meta Alcançada</div>
++                                   <div style="font-size: 20px; font-weight: bold; color: #fff; margin-top: 2px;">${ultimoRegistro.porcentagem}%</div>
++                               </div>
++                               <div class="p-3 flex-fill rounded-3 text-start" style="background: #0f172a; border-left: 5px solid #ef4444;">
++                                   <div style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase;">Falta para Meta</div>
++                                   <div style="font-size: 20px; font-weight: bold; color: #ef4444; margin-top: 2px;">${formatarMoeda(ultimoRegistro.falta)}</div>
++                               </div>
++                           </div>
++
++                           <div class="chart-container" style="height: 60%;"><canvas id="canvasMonitor"></canvas></div>
++                       `;
++
++                       const ctx = document.getElementById('canvasMonitor').getContext('2d');
++                       graficoInstancia = new Chart(ctx, {
++                           type: 'line',
++                           data: {
++                               labels: faturamentoArray.map(i => i.data),
++                               datasets: [{ 
++                                   label: 'Faturamento Realizado',
++                                   data: faturamentoArray.map(i => i.valor), 
++                                   borderColor: '#38bdf8', 
++                                   backgroundColor: 'rgba(56, 189, 248, 0.08)', 
++                                   fill: true, 
++                                   tension: 0.25 
++                                }]
++                           },
++                           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
++                       });
++                   });
+
++           // ⚡ 3. SE RENDERIZAR O PAINEL DE AUDITORIA (BLOCO ADICIONADO PARA DESENHAR O GRID COMPACTO)
++           } else if (tela.nome && tela.nome.toUpperCase().includes("AUDITORIA")) {
++               container.innerHTML = `
++                   <h3 class="mb-2 text-start w-100" style="color:#38bdf8; font-size: 18px;">🕵️ PAINEL DE AUDITORIA OPERACIONAL (LARGURA FIXA)</h3>
++                   <div class="tabela-auditoria-wrapper">
++                       <table class="tabela-auditoria">
++                           <thead>
++                               <tr>
++                                   <th>NF</th><th>EMISSÃO</th><th>CLIENTE</th><th>MUNICÍPIO</th><th>UF</th><th>CEP</th><th>TRANSPORTADORA</th><th class="text-end">VALOR TOTAL</th>
++                               </tr>
++                           </thead>
++                           <tbody id="corpo-tabela-carrossel">
++                               <tr><td colspan="8" class="text-center text-muted py-4">Sincronizando faturamento corrente...</td></tr>
++                           </tbody>
++                       </table>
++                   </div>
++               `;
++
++               fetch('/api/dados_dashboard_expedicao')
++                   .then(r => r.json())
++                   .then(dados => {
++                       const tbody = document.getElementById('corpo-tabela-carrossel');
++                       const listaNotas = dados.notas_detalhadas || [];
++                       tbody.innerHTML = "";
++
++                       if (listaNotas.length === 0) {
++                           tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger font-monospace py-3">⚠️ Nenhuma nota localizada para o faturamento deste mês.</td></tr>`;
++                       } else {
++                           // Exibe as últimas 13 linhas para caber estritamente na TV sem vazar para baixo
++                           const notasLimitadas = listaNotas.slice(-13);
++                           
++                           notasLimitadas.forEach(n => {
++                               const formatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n.valor);
++                               tbody.innerHTML += `
++                                   <tr>
++                                       <td><strong>${n.nf}</strong></td>
++                                       <td>${n.data}</td>
++                                       <td>${n.cliente.substring(0, 22)}</td>
++                                       <td>${n.municipio.substring(0, 15)}</td>
++                                       <td><span class="badge bg-secondary" style="font-size:9px;">${n.uf}</span></td>
++                                       <td>${n.cep}</td>
++                                       <td>${n.transportadora.substring(0, 20)}</td>
++                                       <td class="text-end text-info font-weight-bold">${formatado}</td>
++                                   </tr>
++                               `;
++                           });
++                       }
++                   });
+
+            // ⚡ 4. SE RENDERIZAR QUALQUER OUTRA TELA PADRÃO (MANTIDO INTACTO)
+            } else {
+                container.innerHTML = `
+                    <h1 class="display-2">📋</h1>
+                    <h2 class="fw-bold text-light">${tela.nome}</h2>
+                    <p class="fs-5 text-secondary">${tela.descricao || ''}</p>
+                    <div class="spinner-border text-info mt-3" role="status"></div>
+                `;
+            }
+
+            indiceAtual++;
+        }
+
+        function abrirGerenciadorTkinterDoRodape() {
+            fetch('/api/abrir_gerenciador_monitor', { method: 'POST' })
+                .catch(err => console.error("Erro ao chamar gerenciador:", err));
+        }
+
+        buscarTelasDoBanco().then(() => { alternarCarrossel(); });
+        setInterval(buscarTelasDoBanco, 10000); 
+        setInterval(alternarCarrossel, 8000); // Rotaciona a cada 8 segundos na TV
+    </script>
+</body>
+</html>

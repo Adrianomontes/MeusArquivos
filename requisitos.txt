@@ -1,0 +1,6 @@
+flask
+pandas
+openpyxl
+pywebview
+requests
+pyodbc

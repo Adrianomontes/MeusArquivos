@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.env
+.venv/
+venv/
+env/
+
+# Segredos e sessão
+.flask_secret
+
+# Bancos de dados locais (grandes / sensíveis)
+*.db
+*.sqlite
+*.sqlite3
+
+# Build PyInstaller
+build/
+dist/
+dist_compile/
+build_compile/
+
+# Cache IBGE (regenerável pelo script)
+database/_tmp_*.json
+
+# Uploads e planilhas manuais
+uploads_manuais/
+*.xlsx
+*.xls
+
+# Logs e temporários
+*.log
+erro_executavel.txt
+_chat.txt
+
+# IDE / editor
+.cursor/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Windows
+Thumbs.db
+desktop.ini
+~$*
+
+# Assets baixados / lixo de template
+templates/painel_indicadores_files/

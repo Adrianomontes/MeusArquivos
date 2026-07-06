@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Custos Pessoais</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b1120;
+            --panel: #111827;
+            --panel-2: #172033;
+            --line: #2b3852;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --blue: #38bdf8;
+            --green: #22c55e;
+            --red: #fb7185;
+            --yellow: #facc15;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+        .page {
+            width: min(1420px, 100%);
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        h1 { font-size: 20px; margin: 0; color: #f8fafc; }
+        .sub { color: var(--muted); margin: 3px 0 0; }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--line);
+        }
+        .tab-btn {
+            border: 1px solid var(--line);
+            border-bottom: none;
+            background: var(--panel);
+            color: var(--muted);
+            padding: 8px 12px;
+            border-radius: 8px 8px 0 0;
+            font-weight: 700;
+        }
+        .tab-btn.active { color: var(--blue); background: var(--panel-2); }
+        .grid {
+            display: grid;
+            grid-template-columns: 370px 1fr;
+            gap: 12px;
+            align-items: start;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .panel h2 { font-size: 14px; margin: 0 0 10px; color: #f8fafc; }
+        label { color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+        input, select, textarea {
+            width: 100%;
+            background: #0f172a;
+            color: var(--text);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 7px 8px;
+            font-size: 12px;
+        }
+        textarea { min-height: 58px; resize: vertical; }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
+        }
+        .field-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .field { margin-bottom: 8px; }
+        .value-10 { max-width: 10ch; }
+        .btn-main, .btn-soft, .btn-danger-soft {
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 7px 10px;
+            color: #04111f;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .btn-main { background: var(--blue); }
+        .btn-soft { background: #26344f; border-color: var(--line); color: var(--text); }
+        .btn-danger-soft { background: rgba(251, 113, 133, 0.14); border-color: rgba(251, 113, 133, 0.35); color: #fecdd3; }
+        .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .metric {
+            background: #0f172a;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .metric .label { color: var(--muted); font-weight: 700; }
+        .metric .value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+        .credit { color: var(--green); }
+        .debit { color: var(--red); }
+        .saldo { color: var(--yellow); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            border-bottom: 1px solid var(--line);
+            padding: 8px 6px;
+            vertical-align: top;
+        }
+        th {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .table-wrap { overflow: auto; max-height: 520px; }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .hidden { display: none; }
+        .badge-pill {
+            display: inline-block;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #26344f;
+            color: #cbd5e1;
+            font-weight: 700;
+        }
+        .base-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .toast-line {
+            min-height: 18px;
+            color: var(--blue);
+            font-weight: 700;
+        }
+        @media (max-width: 1050px) {
+            .grid, .base-grid { grid-template-columns: 1fr; }
+            .cards, .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <div class="topbar">
+            <div>
+                <h1>Gerenciador de Custos Pessoais</h1>
+                <p class="sub">Lançamentos, bases, parcelamentos e despesas futuras.</p>
+            </div>
+            <div class="toast-line" id="msg"></div>
+        </div>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="lancamentos">Lançamentos</button>
+            <button class="tab-btn" data-tab="bases">Bases</button>
+            <button class="tab-btn" data-tab="agendamentos">Agendamentos</button>
+        </nav>
+
+        <section id="tab-lancamentos" class="tab-page">
+            <div class="grid">
+                <form class="panel" id="formLancamento">
+                    <h2>Novo lançamento</h2>
+                    <div class="field-row">
+                        <div>
+                            <label>Movimento</label>
+                            <select name="tipo_movimento">
+                                <option value="despesa">Despesa</option>
+                                <option value="credito">Crédito</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Valor</label>
+                            <input class="value-10" name="valor_total" maxlength="10" required placeholder="0,00">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Descrição</label>
+                        <input name="descricao" required maxlength="80" placeholder="Ex.: Mercado, aluguel, salário">
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Tipo de despesa</label>
+                            <select name="tipo_despesa_id" data-options="tipos"></select>
+                        </div>
+                        <div>
+                            <label>Origem</label>
+                            <select name="origem_id" data-options="origens"></select>
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Pessoa</label>
+                            <select name="pessoa_id" data-options="pessoas"></select>
+                        </div>
+                        <div>
+                            <label>Parcelas</label>
+                            <input class="value-10" type="number" min="1" max="120" name="parcelas_total" value="1">
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div>
+                            <label>Data lançamento</label>
+                            <input type="date" name="data_lancamento" required>
+                        </div>
+                        <div>
+                            <label>Previsão pagamento</label>
+                            <input type="date" name="data_prevista_pagamento" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Observação / justificativa</label>
+                        <textarea name="observacao" placeholder="Explique o motivo da despesa quando necessário"></textarea>
+                    </div>
+                    <button class="btn-main" type="submit">Salvar lançamento</button>
+                </form>
+
+                <div>
+                    <div class="cards">
+                        <div class="metric"><div class="label">Despesas</div><div class="value debit" id="totalDespesas">R$ 0,00</div></div>
+                        <div class="metric"><div class="label">Créditos</div><div class="value credit" id="totalCreditos">R$ 0,00</div></div>
+                        <div class="metric"><div class="label">Saldo</div><div class="value saldo" id="totalSaldo">R$ 0,00</div></div>
+                        <div class="metric"><div class="label">Registros</div><div class="value" id="totalRegistros">0</div></div>
+                    </div>
+
+                    <div class="panel">
+                        <h2>Filtros</h2>
+                        <div class="filters">
+                            <div><label>Tipo</label><select id="fTipo" data-options="tipos"></select></div>
+                            <div><label>Pessoa</label><select id="fPessoa" data-options="pessoas"></select></div>
+                            <div><label>Início</label><input type="date" id="fInicio"></div>
+                            <div><label>Fim</label><input type="date" id="fFim"></div>
+                            <div class="actions" style="align-self:end;"><button class="btn-soft" id="btnFiltrar" type="button">Filtrar</button></div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Previsão</th><th>Mov.</th><th>Descrição</th><th>Tipo</th><th>Pessoa</th><th>Parcela</th><th>Valor</th><th>Obs.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyLancamentos"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-bases" class="tab-page hidden">
+            <div class="base-grid">
+                <form class="panel base-form" data-base="tipo">
+                    <h2>Tipos de despesas</h2>
+                    <div class="field"><label>Novo tipo</label><input name="nome" maxlength="60" required></div>
+                    <button class="btn-main" type="submit">Adicionar</button>
+                </form>
+                <form class="panel base-form" data-base="origem">
+                    <h2>Origens</h2>
+                    <div class="field"><label>Nova origem</label><input name="nome" maxlength="60" required placeholder="Conta, cartão, carteira"></div>
+                    <button class="btn-main" type="submit">Adicionar</button>
+                </form>
+                <form class="panel base-form" data-base="pessoa">
+                    <h2>Pessoas</h2>
+                    <div class="field"><label>Nova pessoa</label><input name="nome" maxlength="60" required></div>
+                    <button class="btn-main" type="submit">Adicionar</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="tab-agendamentos" class="tab-page hidden">
+            <div class="grid">
+                <form class="panel" id="formAgendamento">
+                    <h2>Template de despesa futura</h2>
+                    <div class="field"><label>Nome do template</label><input name="nome" required maxlength="80"></div>
+                    <div class="field-row">
+                        <div><label>Movimento</label><select name="tipo_movimento"><option value="despesa">Despesa</option><option value="credito">Crédito</option></select></div>
+                        <div><label>Valor</label><input class="value-10" name="valor_total" maxlength="10" required placeholder="0,00"></div>
+                    </div>
+                    <div class="field"><label>Descrição</label><input name="descricao" required maxlength="80"></div>
+                    <div class="field-row">
+                        <div><label>Tipo</label><select name="tipo_despesa_id" data-options="tipos"></select></div>
+                        <div><label>Origem</label><select name="origem_id" data-options="origens"></select></div>
+                    </div>
+                    <div class="field-row">
+                        <div><label>Pessoa</label><select name="pessoa_id" data-options="pessoas"></select></div>
+                        <div><label>Dia venc.</label><input class="value-10" type="number" min="1" max="31" name="dia_vencimento" value="10"></div>
+                    </div>
+                    <div class="field-row">
+                        <div><label>Data início</label><input type="date" name="data_inicio" required></div>
+                        <div><label>Parcelas</label><input class="value-10" type="number" min="1" max="120" name="parcelas_total" value="1"></div>
+                    </div>
+                    <div class="field"><label>Observação</label><textarea name="observacao"></textarea></div>
+                    <button class="btn-main" type="submit">Salvar template</button>
+                </form>
+                <div class="panel">
+                    <h2>Templates cadastrados</h2>
+                    <div class="table-wrap">
+                        <table>
+                            <thead><tr><th>Nome</th><th>Descrição</th><th>Valor</th><th>Dia</th><th>Ação</th></tr></thead>
+                            <tbody id="tbodyAgendamentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const fmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+        const hoje = new Date().toISOString().slice(0, 10);
+        const msg = document.getElementById('msg');
+        document.querySelectorAll('input[type="date"]').forEach(el => el.value = hoje);
+
+        function aviso(texto) {
+            msg.textContent = texto;
+            setTimeout(() => msg.textContent = '', 3000);
+        }
+
+        function formJson(form) {
+            return Object.fromEntries(new FormData(form).entries());
+        }
+
+        async function postJson(url, data) {
+            const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            const json = await resp.json();
+            if (!resp.ok || json.ok === false) throw new Error(json.erro || 'Falha ao salvar.');
+            return json;
+        }
+
+        function fillSelect(select, items, emptyText = 'Todos') {
+            const current = select.value;
+            select.innerHTML = `<option value="">${emptyText}</option>` + items.map(i => `<option value="${i.id}">${i.nome}</option>`).join('');
+            select.value = current;
+        }
+
+        async function carregarOpcoes() {
+            const dados = await fetch('/api/custos/opcoes').then(r => r.json());
+            document.querySelectorAll('[data-options="tipos"]').forEach(s => fillSelect(s, dados.tipos, 'Selecione'));
+            document.querySelectorAll('[data-options="origens"]').forEach(s => fillSelect(s, dados.origens, 'Selecione'));
+            document.querySelectorAll('[data-options="pessoas"]').forEach(s => fillSelect(s, dados.pessoas, 'Selecione'));
+        }
+
+        async function carregarLancamentos() {
+            const params = new URLSearchParams();
+            if (fTipo.value) params.set('tipo_despesa_id', fTipo.value);
+            if (fPessoa.value) params.set('pessoa_id', fPessoa.value);
+            if (fInicio.value) params.set('data_inicio', fInicio.value);
+            if (fFim.value) params.set('data_fim', fFim.value);
+            const dados = await fetch('/api/custos/lancamentos?' + params).then(r => r.json());
+            totalDespesas.textContent = fmt.format(dados.resumo.despesas);
+            totalCreditos.textContent = fmt.format(dados.resumo.creditos);
+            totalSaldo.textContent = fmt.format(dados.resumo.saldo);
+            totalRegistros.textContent = dados.lancamentos.length;
+            tbodyLancamentos.innerHTML = dados.lancamentos.map(l => `
+                <tr>
+                    <td>${l.data_prevista_pagamento || ''}</td>
+                    <td><span class="badge-pill">${l.tipo_movimento}</span></td>
+                    <td>${l.descricao}</td>
+                    <td>${l.tipo_despesa || '-'}</td>
+                    <td>${l.pessoa || '-'}</td>
+                    <td>${l.parcela_numero}/${l.parcelas_total}</td>
+                    <td class="${l.tipo_movimento === 'credito' ? 'credit' : 'debit'}">${fmt.format(l.valor || 0)}</td>
+                    <td>${l.observacao || ''}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="8">Nenhum lançamento encontrado.</td></tr>';
+        }
+
+        async function carregarAgendamentos() {
+            const dados = await fetch('/api/custos/agendamentos').then(r => r.json());
+            tbodyAgendamentos.innerHTML = dados.agendamentos.map(a => `
+                <tr>
+                    <td>${a.nome}</td>
+                    <td>${a.descricao}<br><span class="badge-pill">${a.tipo_despesa || '-'}</span></td>
+                    <td>${fmt.format(a.valor_total || 0)}</td>
+                    <td>${a.dia_vencimento}</td>
+                    <td class="actions">
+                        <input class="value-10" type="number" min="1" value="3" id="meses-${a.id}" title="Meses futuros">
+                        <button class="btn-soft" onclick="lancarAgendamento(${a.id})">Lançar</button>
+                    </td>
+                </tr>
+            `).join('') || '<tr><td colspan="5">Nenhum template cadastrado.</td></tr>';
+        }
+
+        async function lancarAgendamento(id) {
+            const meses = document.getElementById(`meses-${id}`).value || 1;
+            const res = await postJson(`/api/custos/agendamentos/${id}/lancar`, { meses });
+            aviso(`${res.lancamentos_criados} despesa(s) futura(s) lançada(s).`);
+            await carregarLancamentos();
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-page').forEach(p => p.classList.add('hidden'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+        }));
+
+        document.querySelectorAll('.base-form').forEach(form => form.addEventListener('submit', async ev => {
+            ev.preventDefault();
+            await postJson('/api/custos/cadastrar_base', { base: form.dataset.base, nome: form.nome.value });
+            form.reset();
+            aviso('Base atualizada.');
+            await carregarOpcoes();
+        }));
+
+        formLancamento.addEventListener('submit', async ev => {
+            ev.preventDefault();
+            await postJson('/api/custos/lancamentos', formJson(formLancamento));
+            formLancamento.reset();
+            document.querySelectorAll('input[type="date"]').forEach(el => el.value = hoje);
+            aviso('Lançamento salvo.');
+            await carregarLancamentos();
+        });
+
+        formAgendamento.addEventListener('submit', async ev => {
+            ev.preventDefault();
+            await postJson('/api/custos/agendamentos', formJson(formAgendamento));
+            formAgendamento.reset();
+            document.querySelectorAll('input[type="date"]').forEach(el => el.value = hoje);
+            aviso('Template salvo.');
+            await carregarAgendamentos();
+        });
+
+        btnFiltrar.addEventListener('click', carregarLancamentos);
+
+        (async function init() {
+            await carregarOpcoes();
+            await carregarLancamentos();
+            await carregarAgendamentos();
+        })();
+    </script>
+</body>
+</html>

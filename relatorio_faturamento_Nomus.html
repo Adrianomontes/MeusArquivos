@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>💸 Painel de Faturamento Conciliado (Nomus Integrado)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: monospace; padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin: 0; font-size: 22px; text-transform: uppercase; }
+        
+        .barra-controle { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
+        
+        .tabela-wrapper { 
+            width: 100%; 
+            background: #1e293b; 
+            border-radius: 8px; 
+            border: 1px solid #334155; 
+            overflow-x: auto; /* Força o aparecimento da barra de rolagem horizontal */
+            overflow-y: hidden;
+            margin-bottom: 30px;
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            min-width: 1600px; /* Garante que a tabela se estenda para os lados forçando o scroll */
+            table-layout: fixed; 
+        }
+
+        /* 👑 CORREÇÃO GERAL DO TEXTO DAS CÉLULAS DA TABELA */
+        th, td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            font-size: 13px; 
+            vertical-align: middle; 
+            white-space: nowrap; /* Impede a quebra automática de linha */
+            overflow: hidden;
+            text-overflow: ellipsis; 
+        }
+        
+        /* 🎨 CABEÇALHO COM CONTRASTE PROFISSIONAL */
+        th { 
+            background-color: #0f172a; 
+            color: #38bdf8 !important; /* Ciano de Alta Visibilidade */
+            font-weight: bold;
+            border-bottom: 2px solid #334155;
+            text-transform: uppercase;
+        }
+        
+        /* 🎯 CORREÇÃO DO CONFLITO: Força o fundo escuro e as letras em branco fosco legível */
+        td {
+            background-color: #1e293b;
+            color: #ffffff !important; 
+            border-bottom: 1px solid #334155;
+        }
+        
+        /* 🟢 CONFIGURAÇÃO DE CONTRASTE DAS LINHAS REGULARES */
+        .linha-ok td {
+            border-bottom: 1px solid #334155;
+        }
+        .linha-ok:hover td { 
+            background-color: #293548 !important; /* Clareia a linha sutilmente no hover */
+        }
+        
+        /* 🚨 CONFIGURAÇÃO DE CONTRASTE DAS LINHAS DE OCORRÊNCIA */
+        .linha-alerta td { 
+            background-color: #451a03 !important; /* Fundo âmbar escuro de atenção */
+        }
+        .linha-alerta:hover td { 
+            background-color: #5c2205 !important; 
+        }
+
+        /* DESTAQUES DINÂMICOS DE INFORMAÇÃO */
+        .txt-nf { color: #38bdf8 !important; font-weight: bold; } /* NF em Ciano */
+        .txt-cliente { color: #f8fafc !important; font-weight: bold; } /* Cliente em Branco Puro */
+        .txt-valor { color: #fbbf24 !important; font-weight: bold; } /* Valor em Amarelo Ouro */
+
+        .badge-farol { font-weight: bold; padding: 4px 8px; border-radius: 4px; font-size: 11px; text-transform: uppercase; display: inline-block; }
+        .farol-verde { background-color: #10b981; color: #fff; }
+        .farol-laranja { background-color: #ef4444; color: #fff; animation: blinker 2s linear infinite; }
+
+        @keyframes blinker { 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3">
+            <h1>💸 CONCILIAÇÃO DE FATURAMENTO DIÁRIO (NOMUS ERP ➔ PÁTIO LOGÍSTICO)</h1>
+        </div>
+
+        <div class="barra-controle">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-4 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">📄 BUSCAR NOTA:</span>
+                    <input type="text" id="filtroNota" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Digitar número da NF..." oninput="filtrarTabelaConciliacao()">
+                </div>
+                <div class="col-md-5 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">👤 CLIENTE:</span>
+                    <input type="text" id="filtroCliente" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Razão social..." oninput="filtrarTabelaConciliacao()">
+                </div>
+                <div class="col-md-3 text-end">
+                    <button type="button" class="btn btn-success btn-sm fw-bold w-100" onclick="exportarFaturamentoParaExcel()" style="background-color: #16a34a; border: none; padding: 7px 15px;">
+                        📊 Exportar Auditoria (.xlsx)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tabela-wrapper">
+            <table id="tabelaConciliacao">
+                <thead>
+                    <tr>
+                        <th style="width: 220px; text-align: center;">FAROL DE AUDITORIA</th>
+                        <th style="width: 120px;">NF-e</th>
+                        <th style="width: 450px;">RAZÃO SOCIAL DO CLIENTE</th>
+                        <th style="width: 180px;">VALOR NOTA</th>
+                        <th style="width: 630px;">STATUS / MOTIVO DA TRATATIVA NO PÁTIO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in faturamentos %}
+                    <tr class="{{ 'linha-alerta' if '🚨' in item.status else 'linha-ok' }}">
+                        <td style="text-align: center;">
+                            <span class="badge-farol {{ 'farol-laranja' if '🚨' in item.status else 'farol-verde' }}">
+                                {{ item.status }}
+                            </span>
+                        </td>
+                        <td><strong class="txt-nf">{{ item.nf }}</strong></td>
+                        <td class="txt-cliente">{{ item.cliente }}</td>
+                        <td class="txt-valor">R$ {{ item.valor }}</td>
+                        <td style="color: {{ '#f43f5e' if '🚨' in item.status else '#38bdf8' }} !important; font-weight: bold;">
+                            {{ item.detalhe }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4" style="background-color: #1e293b;">⚠️ Nenhum dado de faturamento integrado para exibição hoje.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function filtrarTabelaConciliacao() {
+            const notaBusca = document.getElementById('filtroNota').value.toLowerCase().trim();
+            const clienteBusca = document.getElementById('filtroCliente').value.toLowerCase().trim();
+            const linhas = document.querySelectorAll('#tabelaConciliacao tbody tr');
+
+            linhas.forEach(linha => {
+                if(linha.cells.length < 2) return;
+                
+                const txtNF = linha.cells[1].textContent.toLowerCase();
+                const txtCliente = linha.cells[2].textContent.toLowerCase();
+
+                const bateNota = notaBusca === "" || txtNF.includes(notaBusca);
+                const bateCliente = clienteBusca === "" || txtCliente.includes(clienteBusca);
+
+                linha.style.display = (bateNota && bateCliente) ? "" : "none";
+            });
+        }
+
+        function exportarFaturamentoParaExcel() {
+            const tabela = document.getElementById("tabelaConciliacao");
+            const wb = XLSX.utils.table_to_book(tabela, { sheet: "Conciliacao_Faturamento" });
+            XLSX.writeFile(wb, `auditoria_faturamento_logistico.xlsx`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Coletas FOB — Relatório</title>
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+</head>
+<body class="portal-page embedded">
+
+    <header class="portal-page-header">
+        <div>
+            <h1>Base Coletas FOB</h1>
+            <p class="subtitle">Consulta e exportação das solicitações registradas na central FOB.</p>
+        </div>
+        <a href="/exportar" class="portal-btn portal-btn-success" onclick="notificarDownload()">Exportar Excel</a>
+    </header>
+
+    <form action="/relatorio" method="GET" class="portal-toolbar">
+        <div class="field">
+            <label class="portal-label" for="busca_cliente">Cliente</label>
+            <input type="text" id="busca_cliente" name="busca_cliente" class="portal-input" placeholder="Nome do cliente" value="{{ filtro_cliente }}">
+        </div>
+        <div class="field">
+            <label class="portal-label" for="busca_nf">Nota fiscal</label>
+            <input type="text" id="busca_nf" name="busca_nf" class="portal-input" placeholder="Número da NF" value="{{ filtro_nf }}">
+        </div>
+        <button type="submit" class="portal-btn portal-btn-primary">Pesquisar</button>
+        {% if filtro_cliente or filtro_nf %}
+        <a href="/relatorio" class="portal-btn portal-btn-ghost">Limpar filtros</a>
+        {% endif %}
+    </form>
+
+    <div class="portal-table-wrap">
+        <table class="portal-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Nota Fiscal</th>
+                    <th>Data</th>
+                    <th>Tratativa</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for oco in ocorrencias %}
+                <tr>
+                    <td>{{ oco['Cliente'] }}</td>
+                    <td>{{ oco['Nota Fiscal'] }}</td>
+                    <td>{{ oco['Data'] }}</td>
+                    <td>{{ oco['Tratativa'] }}</td>
+                    <td>{{ oco['Motivo'] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="portal-empty">Nenhum registro encontrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function notificarDownload() {
+            alert('Download iniciado. Verifique a pasta Downloads.');
+        }
+
+        function voltarPortal() {
+            if (window.parent && typeof window.parent.navegarPorUrl === 'function') {
+                window.parent.navegarPorUrl('/tela_boas_vindas', 'Início');
+            }
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

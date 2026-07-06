@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>🕵️ Auditoria de APIs Nativas — Nomus ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; font-size: 20px; text-transform: uppercase; }
+        .pnl-btn { background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; display: flex; gap: 15px; }
+        .table-wrapper { width: 100%; height: calc(100vh - 200px); overflow: scroll; border: 1px solid #334155; border-radius: 6px; background: #0f172a; display: none; }
+        .table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { border: 1px solid #334155; padding: 8px 10px; white-space: nowrap; color: #ffffff !important; }
+        th { background-color: #1e293b !important; color: #38bdf8 !important; position: sticky; top: 0; font-weight: bold; z-index: 10; }
+        tr:nth-child(even) td { background-color: #141e30 !important; }
+        tr:nth-child(odd) td { background-color: #0f172a !important; }
+        .btn-audit { font-weight: bold; font-size: 12px; padding: 8px 16px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <h1>🕵️ ANALISADOR DE DADOS BRUTOS (CONEXÃO DIRETA COM A NUVEM NOMUS)</h1>
+        <p style="color: #64748b; font-size: 11px; margin-top: -5px;">Use esta tela para validar os nomes exatos das colunas e as datas devolvidas pelo ERP.</p>
+
+        <div class="pnl-btn">
+            <button class="btn btn-primary btn-audit" onclick="carregarDadosBrutos('/api/dados_brutos_faturamento', 'API 1: FATURAMENTO COMERCIAL')">📊 Inspecionar API 1 (Faturamento)</button>
+            <button class="btn btn-warning btn-audit text-dark" onclick="carregarDadosBrutos('/api/dados_brutos_expedicao', '📦 API 2: NOTAS EXPEDIDAS')">📦 Inspecionar API 2 (Expedição)</button>
+        </div>
+
+        <h3 id="tituloTabelaBruta" style="font-size: 14px; color: #fbbf24; margin-bottom: 10px;">Aguardando seleção de inspeção...</h3>
+        
+        <div class="table-wrapper" id="containerTabelaBruta">
+            <table id="tabelaAuditoriaBruta">
+                <thead id="cabecalhoAuditoria"></thead>
+                <tbody id="corpoAuditoria"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function carregarDadosBrutos(endpoint, nomeApi) {
+            document.getElementById('tituloTabelaBruta').innerText = `⏳ Solicitando resposta em tempo real para ${nomeApi}...`;
+            const container = document.getElementById('containerTabelaBruta');
+            container.style.display = "none";
+
+            fetch(endpoint)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === "erro") {
+                        document.getElementById('tituloTabelaBruta').innerText = `❌ ${res.mensagem}`;
+                        return;
+                    }
+
+                    document.getElementById('tituloTabelaBruta').innerText = `✔️ Exibindo os 50 primeiros registros nativos de: ${nomeApi}`;
+                    
+                    // Monta Cabeçalho
+                    const thead = document.getElementById('cabecalhoAuditoria');
+                    thead.innerHTML = "<tr>";
+                    res.colunas.forEach(col => {
+                        thead.innerHTML += `<th>${col}</th>`;
+                    });
+                    thead.innerHTML += "</tr>";
+
+                    // Monta Corpo
+                    const tbody = document.getElementById('corpoAuditoria');
+                    tbody.innerHTML = "";
+                    res.dados.forEach(linha => {
+                        let tr = "<tr>";
+                        res.colunas.forEach(col => {
+                            tr += `<td>${linha[col]}</td>`;
+                        });
+                        tr += "</tr>";
+                        tbody.innerHTML += tr;
+                    });
+
+                    container.style.display = "block";
+                })
+                .catch(err => {
+                    document.getElementById('tituloTabelaBruta').innerText = "❌ Falha crítica ao processar requisição no servidor.";
+                });
+        }
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>📬 Gestor Operacional de E-mails</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 20px; font-size: 22px; text-transform: uppercase; }
+        .card-form { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-label { color: #38bdf8; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        .form-control, .form-select { background-color: #0f172a; border: 1px solid #475569; color: #fff; font-size: 12px; }
+        .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        
+        .btn-salvar { background: #10b981; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-salvar:hover { background: #059669; }
+        .btn-limpar { background: #64748b; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 15px; border-radius: 6px; cursor: pointer; }
+        
+        .barra-pesquisa { background: #111827; padding: 15px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 15px; }
+        .tabela-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 11px; vertical-align: top; }
+        th { background-color: #0f172a; color: #38bdf8; font-weight: bold; }
+        tr:hover { background-color: #243249; }
+        
+        .status-badge { font-weight: bold; padding: 2px 6px; border-radius: 4px; font-size: 10px; text-transform: uppercase; display: inline-block; }
+        .status-pendente { background-color: #ef4444; color: #fff; }
+        .status-analise { background-color: #f59e0b; color: #000; }
+        .status-concluido { background-color: #10b981; color: #fff; }
+        
+        .box-conteudo { background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 6px 10px; margin-top: 4px; color: #94a3b8; font-size: 11px; word-break: break-all; max-height: 80px; overflow-y: auto; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-3">
+            <h1>📬 TRIAGEM E GESTÃO ESTRATÉGICA DE E-MAILS</h1>
+            <button type="button" class="btn-limpar" onclick="resetarFormulario()">➕ Novo Registro / Limpar</button>
+        </div>
+
+        <!-- FORMULÁRIO DE LANÇAMENTO / IMPORTAÇÃO -->
+        <div class="card-form" id="cardForm">
+            <form id="formEmail" class="row g-3">
+                <input type="hidden" id="id_email" value="">
+
+                <div class="col-md-4">
+                    <label class="form-label">👤 REMETENTE (QUEM ENVIOU):</label>
+                    <input type="text" id="remetente" class="form-control" required placeholder="Ex: sac@transportadora.com.br">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">📌 ASSUNTO DO E-MAIL:</label>
+                    <input type="text" id="assunto" class="form-control" required placeholder="Ex: SOLICITAÇÃO DE ESTORNO DE FRETE - NF 5543">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🚦 STATUS ATUAL DA TRATATIVA:</label>
+                    <select id="status" class="form-select" required>
+                        <option value="PENDENTE">🔴 PENDENTE</option>
+                        <option value="EM ANÁLISE">🟡 EM ANÁLISE</option>
+                        <option value="CONCLUÍDO">🟢 CONCLUÍDO</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">📝 CONTEÚDO BRUTO / CORPO DO E-MAIL (COPIADO DO OUTLOOK):</label>
+                    <textarea id="conteudo_email" class="form-control" rows="3" placeholder="Cole aqui o texto ou descrição do e-mail recebido..."></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">🛠️ AÇÕES TOMADAS / TRATATIVA FINAL DA OPERAÇÃO:</label>
+                    <textarea id="acoes_tomadas" class="form-control" rows="3" placeholder="Descreva quais providências foram ou serão tomadas (Ex: Solicitado coleta reversa via Jamef...)"></textarea>
+                </div>
+                <div class="col-12 text-end">
+                    <button type="submit" id="btnAcaoForm" class="btn-salvar">💾 Gravar Registro no Gestor</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- BARRA DE FILTROS DINÂMICOS -->
+        <div class="barra-pesquisa">
+            <div class="row g-3">
+                <div class="col-md-4 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">🔍 FILTRAR ASSUNTO:</span>
+                    <input type="text" id="buscaAssunto" class="form-control form-control-sm" placeholder="Buscar por palavra no assunto...">
+                </div>
+                <div class="col-md-4 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">👤 FILTRAR REMETENTE:</span>
+                    <input type="text" id="buscaRemetente" class="form-control form-control-sm" placeholder="Buscar por e-mail ou empresa...">
+                </div>
+                <div class="col-md-4 d-flex align-items-center gap-2">
+                    <span style="color: #38bdf8; font-weight: bold; font-size: 11px; white-space: nowrap;">🚦 STATUS:</span>
+                    <select id="buscaStatus" class="form-select form-select-sm">
+                        <option value="">TODOS OS STATUS</option>
+                        <option value="PENDENTE">PENDENTE</option>
+                        <option value="EM ANÁLISE">EM ANÁLISE</option>
+                        <option value="CONCLUÍDO">CONCLUÍDO</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID DE EMAILS -->
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">DATA/HORA</th>
+                        <th style="width: 20%;">REMETENTE</th>
+                        <th style="width: 22%;">ASSUNTO</th>
+                        <th style="width: 20%;">CONTEÚDO DO E-MAIL</th>
+                        <th style="width: 20%;">AÇÕES OPERACIONAIS TOMADAS</th>
+                        <th style="width: 5%;">STATUS</th>
+                        <th style="width: 5%; text-align:center;">AÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoGridEmails">
+                    <!-- Injetado dinamicamente via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('buscaAssunto').addEventListener('input', acionarFiltros);
+        document.getElementById('buscaRemetente').addEventListener('input', acionarFiltros);
+        document.getElementById('buscaStatus').addEventListener('change', acionarFiltros);
+
+        function acionarFiltros() {
+            atualizarGrid(
+                document.getElementById('buscaAssunto').value,
+                document.getElementById('buscaRemetente').value,
+                document.getElementById('buscaStatus').value
+            );
+        }
+
+        function atualizarGrid(assunto = "", remetente = "", status = "") {
+            let url = `/api/listar_emails_gestor?assunto=${encodeURIComponent(assunto)}&remetente=${encodeURIComponent(remetente)}&status=${encodeURIComponent(status)}`;
+            
+            fetch(url)
+                .then(r => r.json())
+                .then(dados => {
+                    const tbody = document.getElementById('corpoGridEmails');
+                    tbody.innerHTML = "";
+                    
+                    if (dados.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Nenhum e-mail registrado para os filtros aplicados.</td></tr>`;
+                        return;
+                    }
+
+                    dados.forEach(item => {
+                        let classeStatus = "status-pendente";
+                        if (item.status === "EM ANÁLISE") classeStatus = "status-analise";
+                        if (item.status === "CONCLUÍDO") classeStatus = "status-concluido";
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><small>${item.data_hora}</small></td>
+                                <td style="color:#38bdf8; font-weight:bold;">${item.remetente}</td>
+                                <td><strong>${item.assunto}</strong></td>
+                                <td><div class="box-conteudo">${item.conteudo_email || '-'}</div></td>
+                                <td><div class="box-conteudo" style="color:#f8fafc; border-color:#10b981;">${item.acoes_tomadas || 'Nenhuma ação registrada ainda.'}</div></td>
+                                <td style="vertical-align:middle;"><span class="status-badge ${classeStatus}">${item.status}</span></td>
+                                <td style="text-align:center; vertical-align:middle;">
+                                    <button type="button" class="btn-editar-grid" onclick='carregarParaEdicao(${JSON.stringify(item)})'>✏️ Editar</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        function carregarParaEdicao(item) {
+            document.getElementById('id_email').value = item.id;
+            document.getElementById('remetente').value = item.remetente;
+            document.getElementById('assunto').value = item.assunto;
+            document.getElementById('status').value = item.status;
+            document.getElementById('conteudo_email').value = item.conteudo_email;
+            document.getElementById('acoes_tomadas').value = item.acoes_tomadas;
+
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#eab308";
+            btn.innerHTML = "🔄 Atualizar Tratativa";
+            document.getElementById('cardForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetarFormulario() {
+            document.getElementById('id_email').value = "";
+            document.getElementById('formEmail').reset();
+            const btn = document.getElementById('btnAcaoForm');
+            btn.style.backgroundColor = "#10b981";
+            btn.innerHTML = "💾 Gravar Registro no Gestor";
+        }
+
+        document.getElementById('formEmail').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const payload = {
+                id: document.getElementById('id_email').value,
+                remetente: document.getElementById('remetente').value,
+                assunto: document.getElementById('assunto').value,
+                status: document.getElementById('status').value,
+                conteudo_email: document.getElementById('conteudo_email').value,
+                acoes_tomadas: document.getElementById('acoes_tomadas').value
+            };
+
+            fetch('/api/salvar_email_gestor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if (res.status === "sucesso") {
+                    resetarFormulario();
+                    acionarFiltros();
+                }
+            });
+        });
+
+        // Execução inicial
+        atualizarGrid();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

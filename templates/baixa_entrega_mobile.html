@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Baixa de Entrega</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <style>
+        .form-mobile { max-width: 480px; margin: 0 auto; }
+        .campo { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+        canvas { border: 1px solid var(--portal-border); border-radius: 8px; background: #fff; width: 100%; height: 180px; }
+        .btn-row { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="form-mobile">
+        <header class="portal-page-header" style="border:none; padding-bottom:0;">
+            <div>
+                <h1>Baixa de Entrega</h1>
+                <p class="subtitle">Registro manual com assinatura do recebedor.</p>
+            </div>
+        </header>
+
+        <div class="portal-card">
+            <form method="POST" id="form_entrega">
+                <div class="campo">
+                    <label class="portal-label" for="nf">Número da NF</label>
+                    <input type="text" id="nf" name="nf" class="portal-input" required placeholder="Digite a NF">
+                </div>
+                <div class="campo">
+                    <label class="portal-label" for="data_entrega">Data da entrega</label>
+                    <input type="date" id="data_entrega" name="data_entrega" class="portal-input" value="{{ data_hoje }}" required>
+                </div>
+                <div class="campo">
+                    <label class="portal-label" for="recebedor">Nome de quem recebeu</label>
+                    <input type="text" id="recebedor" name="recebedor" class="portal-input" required placeholder="Nome completo">
+                </div>
+                <div class="campo">
+                    <label class="portal-label">Assinatura do recebedor</label>
+                    <canvas id="assinatura"></canvas>
+                    <div class="btn-row">
+                        <button type="button" class="portal-btn portal-btn-secondary" onclick="limparAssinatura()">Limpar assinatura</button>
+                        <button type="submit" class="portal-btn portal-btn-success">Confirmar entrega</button>
+                    </div>
+                    <input type="hidden" name="assinatura_base64" id="assinatura_base64">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script>
+        const canvas = document.getElementById('assinatura');
+        const signaturePad = new SignaturePad(canvas);
+
+        function limparAssinatura() { signaturePad.clear(); }
+
+        document.getElementById('form_entrega').addEventListener('submit', function(e) {
+            if (signaturePad.isEmpty()) {
+                if (!confirm('Nenhuma assinatura foi feita. Deseja continuar mesmo assim?')) {
+                    e.preventDefault();
+                    return;
+                }
+            } else {
+                document.getElementById('assinatura_base64').value = signaturePad.toDataURL();
+            }
+        });
+
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * ratio;
+            canvas.height = rect.height * ratio;
+            canvas.getContext('2d').scale(ratio, ratio);
+            signaturePad.clear();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

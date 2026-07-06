@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema Integrado de Canhotos</title>
+
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --radius: 12px;
+
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #10b981;
+      --success-hover: #059669;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --info: #06b6d4;
+      --nav-bg: #0f172a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+    body {
+      background-color: var(--bg);
+      height: 100vh;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: hidden;
+      color: var(--text);
+    }
+
+    /* Barra Superior Unificada Style Desktop */
+    .barra-navegacao-topo {
+      display: flex;
+      align-items: center;
+      background: var(--nav-bg);
+      padding: 12px 24px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      gap: 24px;
+    }
+
+    .btn-voltar-topo {
+      text-decoration: none;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+    .btn-voltar-topo:hover {
+      color: #f8fafc;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-grow: 1;
+    }
+
+    .nav-btn {
+      padding: 10px 20px;
+      background-color: #1e293b;
+      color: #94a3b8;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover { background-color: #334155; color: #f8fafc; }
+    .nav-btn.active {
+      background-color: var(--primary);
+      color: #fff;
+    }
+
+    /* Estrutura das Páginas */
+    .page-content {
+      flex: 1;
+      display: none;
+      min-height: 0;
+    }
+    .page-content.active { display: block; }
+
+    /* Grid do Painel de Lançamento */
+    .p1-grid {
+      height: calc(100vh - 110px);
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 16px;
+      min-height: 0;
+    }
+    .p1-col-left, .p1-col-right {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0;
+    }
+
+    /* Cards Estilizados */
+    .box {
+      background: var(--card);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .config-box { border-top: 4px solid var(--success); }
+    .form-box { border-top: 4px solid var(--primary); flex: 1; }
+    .search-box { border-top: 4px solid var(--info); flex: 1; }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: #0f172a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .counter { font-size: 12px; color: var(--muted); background: #f1f5f9; padding: 2px 8px; border-radius: 20px; }
+
+    .form-group { margin-bottom: 12px; width: 100%; }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    input[type="text"], input[type="date"], input[type="file"], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      background: #fff;
+      transition: all 0.15s ease;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    textarea { resize: none; height: 50px; }
+    .row { display: flex; gap: 12px; }
+    .row .form-group { flex: 1; margin-bottom: 0; }
+
+    /* Botões Modernos */
+    button {
+      padding: 10px 16px;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    button:hover { filter: brightness(0.95); }
+    button:active { transform: scale(0.98); }
+
+    .btn-folder { background-color: var(--success); width: auto; }
+    .btn-folder:hover { background-color: var(--success-hover); }
+    .btn-submit { background-color: var(--primary); width: 100%; padding: 12px; font-size: 14px; margin-top: 8px; }
+    .btn-submit:hover { background-color: var(--primary-hover); }
+
+    .btn-link { background-color: #64748b; font-size: 11px; padding: 4px 8px; border-radius: 4px; width: auto; display: none; margin-top: 6px; }
+    .btn-clear { background-color: #64748b; }
+    .btn-export { background-color: var(--success); }
+    .btn-export:hover { background-color: var(--success-hover); }
+    
+    .btn-view-image { background-color: var(--primary); padding: 6px 12px; font-size: 11px; border-radius: 6px; }
+    .btn-delete { background-color: #fff; color: var(--danger); border: 1px solid var(--danger); padding: 6px 12px; font-size: 11px; border-radius: 6px; }
+    .btn-delete:hover { background-color: rgba(239, 68, 68, 0.05); }
+    .btn-attach-later { background-color: var(--warning); color: #0f172a; padding: 6px 12px; font-size: 11px; border-radius: 6px; }
+
+    /* Preview e Status */
+    .preview-container { display: flex; gap: 8px; margin-top: 6px; }
+    .preview-img { width: 50px; height: 50px; border: 1px solid var(--border); border-radius: 6px; object-fit: cover; }
+
+    .status { padding: 10px; border-radius: 8px; display: none; font-weight: 600; font-size: 12px; text-align: center; margin-top: 10px; }
+    .success { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+    /* Histórico Lateral */
+    #resultadoBusca { flex: 1; margin-top: 10px; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 10px; }
+    .search-item { border: 1px solid var(--border); padding: 12px; border-radius: 8px; background: #f8fafc; transition: all 0.2s; }
+    .search-item.pendente { border-left: 4px solid var(--warning); background: #fffbeb; }
+    .search-item.salvo { border-left: 4px solid var(--success); }
+
+    /* Tela de Relatório Geral */
+    .p2-container { height: calc(100vh - 110px); display: flex; flex-direction: column; gap: 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; min-height: 0; }
+    .table-wrapper { flex: 1; overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: #fff; min-height: 0; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; text-align: left; }
+    thead th { position: sticky; top: 0; background: #f8fafc; z-index: 1; padding: 12px 16px; border-bottom: 2px solid var(--border); color: #475569; font-weight: 700; white-space: nowrap; }
+    tbody td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    tbody tr:hover { background: #f8fafc; }
+    .tr-pendente { background-color: #fffdf0; }
+
+    /* Modal Visualizador */
+    .modal-visualizador { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.8); z-index: 1000; justify-content: center; align-items: center; padding: 24px; backdrop-filter: blur(4px); }
+    .modal-conteudo { max-width: 800px; width: 100%; background: white; padding: 20px; border-radius: 16px; position: relative; display: flex; flex-direction: column; align-items: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+    .modal-conteudo img { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; border: 1px solid var(--border); }
+    .modal-fechar { position: absolute; top: 14px; right: 20px; color: var(--muted); font-size: 24px; font-weight: 700; cursor: pointer; }
+    .modal-fechar:hover { color: var(--text); }
+    .modal-titulo { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--text); width: 100%; text-align: left; }
+
+    @media (max-width: 1024px) { 
+      .p1-grid { grid-template-columns: 1fr; height: auto; overflow-y: auto; } 
+      body { overflow-y: auto; height: auto; }
+      .p2-container { height: auto; } 
+    }
+  </style>
+</head>
+<body class="portal-page embedded">
+
+  <div class="barra-navegacao-topo">
+    <a href="#" class="btn-voltar-topo" onclick="window.location.href = window.location.origin + '/'; return false;">← Voltar ao Painel</a>
+    <div class="nav-tabs">
+      <button id="btnTab1" class="nav-btn active" onclick="mudarPagina(1)" type="button">1. Lançamento de Canhoto</button>
+      <button id="btnTab2" class="nav-btn" onclick="mudarPagina(2)" type="button">2. Relatório Geral Local</button>
+    </div>
+  </div>
+
+  <div id="page1" class="page-content active">
+    <div class="p1-grid">
+      
+      <div class="p1-col-left">
+        <div class="box config-box">
+          <h3>1. Diretório Local e Nuvem</h3>
+          <div class="row" style="align-items: center; margin-bottom: 10px;">
+            <button id="dirBtn" class="btn-folder" type="button">📁 Vincular Pasta do Sistema</button>
+            <span id="dirStatus" style="font-size: 12px; color: var(--success); display:none; font-weight:700; margin-left: 10px;">✓ Conectado</span>
+          </div>
+          <div class="row">
+            <div class="form-group" style="margin-bottom: 0;">
+              <input type="text" id="urlWebhook" placeholder="URL do Webhook Cloud (Opcional)">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <input type="text" id="urlExcel" placeholder="Link do Excel Online Sharepoint">
+              <button id="openExcelBtn" class="btn-link" type="button">➔ Abrir Link do Excel</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="box form-box">
+          <h3>2. Dados do Lançamento <span id="sessaoContador" class="counter">Sessão: <b>0</b></span></h3>
+          <form id="registroForm" autocomplete="off">
+            <div class="row">
+              <div class="form-group">
+                <label for="nota">Nº da Nota Fiscal:</label>
+                <input type="text" id="nota" required placeholder="Aproxime o leitor de código de barras...">
+              </div>
+              <div class="form-group">
+                <label for="motorista">Motorista / Conferente:</label>
+                <input type="text" id="motorista" placeholder="Nome do responsável...">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="form-group">
+                <label for="cliente">Nome do Cliente / Razão Social:</label>
+                <input type="text" id="cliente" required placeholder="Nome do destinatário...">
+              </div>
+              <div class="form-group">
+                <label for="dataEntrega">Data de Entrega:</label>
+                <input type="date" id="dataEntrega" required>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 6px;">
+              <label for="imagemCanhoto">Anexar Cópia Digitalizada/Foto do Canhoto:</label>
+              <input type="file" id="imagemCanhoto" accept="image/*">
+            </div>
+
+            <div class="preview-container" id="previewContainer"></div>
+            <div id="statusMessage" class="status"></div>
+
+            <button type="submit" id="btnSalvar" class="btn-submit">💾 Gravar e Confirmar Canhoto</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="p1-col-right">
+        <div class="box search-box">
+          <h3>3. Consulta do Histórico</h3>
+          <div class="form-group">
+            <input type="text" id="buscaNota" placeholder="Digite a NF para busca rápida...">
+          </div>
+          <div id="resultadoBusca">
+            <p style="color: var(--muted); font-style: italic; font-size: 12px; text-align: center; margin-top: 20px;">Insira um número para pesquisar...</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="page2" class="page-content">
+    <div class="p2-container">
+      <h3>Histórico Consolidado de Notas (Navegador)</h3>
+      <div class="table-wrapper">
+        <table id="tabelaRegistros">
+          <thead>
+            <tr>
+              <th>Nº Nota Fiscal</th>
+              <th>Cliente / Destinatário</th>
+              <th>Motorista</th>
+              <th>Data Entrega</th>
+              <th>Status do Arquivo</th>
+              <th style="width: 220px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn-clear" onclick="limparHistorico()" type="button">Limpar Visão Local</button>
+        <button class="btn-export" onclick="exportarParaExcel()" type="button">📊 Exportar Planilha (.CSV)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="visualizadorModal" class="modal-visualizador" onclick="fecharModalVisualizador()">
+    <div class="modal-conteudo" onclick="event.stopPropagation()">
+      <span class="modal-fechar" onclick="fecharModalVisualizador()">&times;</span>
+      <div id="modalTitulo" class="modal-titulo">Visualizando Documento</div>
+      <img id="modalImagem" src="" alt="Canhoto">
+    </div>
+  </div>
+
+  <input type="file" id="inputAtualizarArquivo" accept="image/*" style="display:none;">
+
+  <script>
+    let diretorioDestino = null;
+    let contadorSessao = 0;
+    let registrosHistorico = JSON.parse(localStorage.getItem('registrosCanhotos')) || [];
+    let notaSendoAtualizada = null;
+
+    let barcodeBuffer = "";
+    let lastKeyTime = Date.now();
+    let scannerMode = false;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById('dataEntrega').valueAsDate = new Date();
+      atualizarTabela();
+      configurarLinksAdicionais();
+      configurarSelecadorTardio();
+      configurarLeitorCodigoBarras();
+    });
+
+    function mudarPagina(numeroPagina) {
+      document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`page${numeroPagina}`).classList.add('active');
+      document.getElementById(`btnTab${numeroPagina}`).classList.add('active');
+    }
+
+    function configurarLinksAdicionais() {
+      const urlExcelInput = document.getElementById('urlExcel');
+      const openExcelBtn = document.getElementById('openExcelBtn');
+      urlExcelInput.addEventListener('input', () => {
+        openExcelBtn.style.display = urlExcelInput.value.trim() !== "" ? 'inline-flex' : 'none';
+      });
+      openExcelBtn.addEventListener('click', () => {
+        const url = urlExcelInput.value.trim();
+        if(url) window.open(url, '_blank');
+      });
+    }
+
+    function configurarLeitorCodigoBarras() {
+      window.addEventListener("keydown", (e) => {
+        const currentTime = Date.now();
+        const delta = currentTime - lastKeyTime;
+        lastKeyTime = currentTime;
+
+        if (delta > 120) {
+          barcodeBuffer = "";
+          scannerMode = false;
+        } else if (delta < 45) {
+          scannerMode = true;
+        }
+
+        if (scannerMode && e.key.length === 1) { e.preventDefault(); }
+        if (e.key !== "Enter" && e.key.length === 1) { barcodeBuffer += e.key; }
+
+        if (e.key === "Enter") {
+          if (barcodeBuffer.trim().length >= 8) {
+            e.preventDefault();
+            let codigoExtraido = barcodeBuffer.trim();
+            let numeroNotaFinal = codigoExtraido;
+
+            if (codigoExtraido.length === 44 && !isNaN(codigoExtraido)) {
+              let trechoNota = codigoExtraido.substring(25, 34);
+              numeroNotaFinal = parseInt(trechoNota, 10).toString();
+            }
+
+            numeroNotaFinal = numeroNotaFinal.replace(/['"]/g, "");
+            document.getElementById("nota").value = numeroNotaFinal;
+            exibirStatus(`Código de barras lido com sucesso! Nota: ${numeroNotaFinal}`, "success");
+            document.getElementById("cliente").focus();
+          }
+          barcodeBuffer = "";
+          scannerMode = false;
+        }
+      });
+    }
+
+    document.getElementById('dirBtn').addEventListener('click', async () => {
+      try {
+        diretorioDestino = await window.showDirectoryPicker({ mode: 'readwrite' });
+        document.getElementById('dirStatus').style.display = 'inline-block';
+        document.getElementById('dirStatus').innerText = `✓ Vinculada (${diretorioDestino.name})`;
+        exibirStatus("Pasta local mapeada com sucesso!", "success");
+        atualizarTabela();
+      } catch (err) {
+        exibirStatus("Acesso à pasta local cancelado ou negado.", "error");
+      }
+    });
+
+    document.getElementById('imagemCanhoto').addEventListener('change', (e) => {
+      const container = document.getElementById('previewContainer');
+      container.innerHTML = '';
+      if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          const img = document.createElement('img');
+          img.src = event.target.result;
+          img.className = 'preview-img';
+          container.appendChild(img);
+        }
+        reader.readAsDataURL(e.target.files[0]);
+      }
+    });
+
+    document.getElementById('registroForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nota = document.getElementById('nota').value.trim().replace(/['"]/g, "");
+      const motorista = document.getElementById('motorista').value.trim() || "Não Informado";
+      const cliente = document.getElementById('cliente').value.trim();
+      const dataEntrega = document.getElementById('dataEntrega').value;
+      const fileInput = document.getElementById('imagemCanhoto');
+
+      let novoNomeArquivo = "Pendente ⚠️";
+      let possuiImagem = fileInput.files.length > 0;
+
+      if (possuiImagem && !diretorioDestino) {
+        exibirStatus("Atenção: Mapeie a pasta física do sistema antes de anexar imagens.", "error");
+        return;
+      }
+
+      try {
+        if (possuiImagem) {
+          const arquivoOriginal = fileInput.files[0];
+          const dot = arquivoOriginal.name.lastIndexOf('.');
+          const extensao = dot >= 0 ? arquivoOriginal.name.slice(dot) : ".jpg";
+          novoNomeArquivo = `${nota}${extensao}`;
+
+          const arquivoHandle = await diretorioDestino.getFileHandle(novoNomeArquivo, { create: true });
+          const writable = await arquivoHandle.createWritable();
+          await writable.write(arquivoOriginal);
+          await writable.close();
+        }
+
+        const novoRegistro = { nota, motorista, cliente, dataEntrega, arquivo: novoNomeArquivo, temFoto: possuiImagem };
+        registrosHistorico.unshift(novoRegistro);
+        localStorage.setItem('registrosCanhotos', JSON.stringify(registrosHistorico));
+
+        contadorSessao++;
+        document.getElementById('sessaoContador').innerHTML = `Sessão: <b>${contadorSessao}</b>`;
+
+        const urlWebhook = document.getElementById('urlWebhook').value.trim();
+        if (urlWebhook) {
+          fetch(urlWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(novoRegistro)
+          }).catch(() => console.log("Webhook em background offline. Ignorado."));
+        }
+
+        exibirStatus(possuiImagem ? `Sucesso! Nota ${nota} salva e imagem vinculada.` : `Registro da Nota ${nota} salvo sem imagem.`, "success");
+
+        document.getElementById('nota').value = '';
+        document.getElementById('cliente').value = '';
+        document.getElementById('imagemCanhoto').value = '';
+        document.getElementById('previewContainer').innerHTML = '';
+        document.getElementById('dataEntrega').valueAsDate = new Date();
+
+        atualizarTabela();
+        document.getElementById('buscaNota').dispatchEvent(new Event('input'));
+      } catch (err) {
+        exibirStatus("Erro operacional ao gravar o arquivo físico.", "error");
+      }
+    });
+
+    function iniciarVinculoTardio(numeroNota) {
+      if (!diretorioDestino) {
+        alert("Mapeie a pasta local nas configurações antes de anexar.");
+        mudarPagina(1);
+        return;
+      }
+      notaSendoAtualizada = numeroNota;
+      document.getElementById('inputAtualizarArquivo').click();
+    }
+
+    function configurarSelecadorTardio() {
+      const inputTardio = document.getElementById('inputAtualizarArquivo');
+      inputTardio.addEventListener('change', async (e) => {
+        if (!e.target.files || e.target.files.length === 0 || !notaSendoAtualizada) return;
+
+        const arquivoOriginal = e.target.files[0];
+        const dot = arquivoOriginal.name.lastIndexOf('.');
+        const extensao = dot >= 0 ? arquivoOriginal.name.slice(dot) : ".jpg";
+        const novoNomeArquivo = `${notaSendoAtualizada}${extensao}`;
+
+        try {
+          const arquivoHandle = await diretorioDestino.getFileHandle(novoNomeArquivo, { create: true });
+          const writable = await arquivoHandle.createWritable();
+          await writable.write(arquivoOriginal);
+          await writable.close();
+
+          registrosHistorico = registrosHistorico.map(reg => {
+            if (reg.nota === notaSendoAtualizada) {
+              return { ...reg, arquivo: novoNomeArquivo, temFoto: true };
+            }
+            return reg;
+          });
+
+          localStorage.setItem('registrosCanhotos', JSON.stringify(registrosHistorico));
+          exibirStatus(`Canhoto da Nota ${notaSendoAtualizada} anexado com sucesso!`, "success");
+
+          notaSendoAtualizada = null;
+          inputTardio.value = '';
+          atualizarTabela();
+          document.getElementById('buscaNota').dispatchEvent(new Event('input'));
+        } catch (err) {
+          alert("Erro crítico ao vincular arquivo tardio.");
+        }
+      });
+    }
+
+    async function abrirImagemLocal(nomeArquivo) {
+      if (!diretorioDestino) {
+        alert("Vincule a pasta local nas configurações para abrir o arquivo.");
+        mudarPagina(1);
+        return;
+      }
+      try {
+        const arquivoHandle = await diretorioDestino.getFileHandle(nomeArquivo);
+        const file = await arquivoHandle.getFile();
+        const objectURL = URL.createObjectURL(file);
+
+        document.getElementById('modalTitulo').innerText = `Visualizando Arquivo Local: ${nomeArquivo}`;
+        const imgModal = document.getElementById('modalImagem');
+        imgModal.src = objectURL;
+        document.getElementById('visualizadorModal').style.display = 'flex';
+      } catch (err) {
+        alert("Arquivo físico não foi localizado dentro do diretório vinculado.");
+      }
+    }
+
+    function fecharModalVisualizador() {
+      document.getElementById('visualizadorModal').style.display = 'none';
+      const imgModal = document.getElementById('modalImagem');
+      if(imgModal.src.startsWith('blob:')) URL.revokeObjectURL(imgModal.src);
+      imgModal.src = "";
+    }
+
+    function atualizarTabela() {
+      const tbody = document.querySelector('#tabelaRegistros tbody');
+      tbody.innerHTML = '';
+
+      registrosHistorico.forEach(reg => {
+        const tr = document.createElement('tr');
+        if (!reg.temFoto) tr.className = 'tr-pendente';
+
+        tr.innerHTML = `
+          <td><b>${reg.nota}</b></td>
+          <td>${reg.cliente}</td>
+          <td>${reg.motorista}</td>
+          <td>${reg.dataEntrega.split('-').reverse().join('/')}</td>
+          <td style="color: ${reg.temFoto ? 'var(--success)' : 'var(--danger)'}; font-weight: 700;">
+            ${reg.temFoto ? '💾 ' + reg.arquivo : reg.arquivo}
+          </td>
+          <td>
+            <div style="display:flex; gap: 6px;">
+              ${reg.temFoto ? 
+                `<button type="button" class="btn-view-image" onclick="abrirImagemLocal('${reg.arquivo}')">Ver Imagem</button>` : 
+                `<button type="button" class="btn-attach-later" onclick="iniciarVinculoTardio('${reg.nota}')">Anexar Canhoto</button>`
+              }
+              <button type="button" class="btn-delete" onclick="excluirRegistro('${reg.nota}', '${String(reg.dataEntrega)}')">Excluir</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('buscaNota').addEventListener('input', (e) => {
+      const termo = e.target.value.trim();
+      const painelResultado = document.getElementById('resultadoBusca');
+
+      if(termo === "") {
+        painelResultado.innerHTML = '<p style="color:var(--muted); font-style:italic; font-size:12px; text-align:center; margin-top:20px;">Insira um número para pesquisar...</p>';
+        return;
+      }
+
+      const achados = registrosHistorico.filter(r => r.nota.includes(termo));
+
+      if(achados.length === 0) {
+        painelResultado.innerHTML = '<p style="color:var(--danger); font-weight:700; font-size:12px; text-align:center; margin-top:20px;">Nenhum registro localizado.</p>';
+      } else {
+        painelResultado.innerHTML = achados.map(r => `
+          <div class="search-item ${r.temFoto ? 'salvo' : 'pendente'}">
+            <p style="font-size:13px; margin-bottom:4px;"><b>NF:</b> ${r.nota} &nbsp;|&nbsp; <b>Data:</b> ${r.dataEntrega.split('-').reverse().join('/')}</p>
+            <p style="font-size:12px; color:#475569; margin-bottom:2px;"><b>Cliente:</b> ${r.cliente}</p>
+            <p style="font-size:12px; color:#475569; margin-bottom:6px;"><b>Motorista:</b> ${r.motorista}</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+              <span style="color:${r.temFoto ? 'var(--success)' : 'var(--danger)'}; font-size:11px; font-weight:700;">
+                ${r.temFoto ? '💾 Digitalizado' : '⚠️ Falta Canhoto'}
+              </span>
+              ${r.temFoto
+                ? `<button type="button" class="btn-view-image" onclick="abrirImagemLocal('${r.arquivo}')">Ver Imagem</button>`
+                : `<button type="button" class="btn-attach-later" onclick="iniciarVinculoTardio('${r.nota}')">Anexar Agora</button>`
+              }
+            </div>
+          </div>
+        `).join('');
+      }
+    });
+
+    function exportarParaExcel() {
+      if (registrosHistorico.length === 0) {
+        alert("Não existem registros na memória para gerar exportação.");
+        return;
+      }
+      let linhasCsv = ["Nota Fiscal;Cliente;Motorista / Conferente;Data de Entrega;Status do Arquivo"];
+      registrosHistorico.forEach(reg => {
+        const dataFormatada = reg.dataEntrega.split('-').reverse().join('/');
+        linhasCsv.push(`${reg.nota};${reg.cliente.replace(/;/g, ',')};${reg.motorista.replace(/;/g, ',')};${dataFormatada};${reg.temFoto ? reg.arquivo : "Pendente"}`);
+      });
+
+      const conteudoCsv = "\uFEFF" + linhasCsv.join("\n");
+      const blob = new Blob([conteudoCsv], { type: 'text/csv;charset=utf-8;' });
+      const urlTemporaria = URL.createObjectURL(blob);
+
+      const linkDownload = document.createElement("a");
+      linkDownload.setAttribute("href", urlTemporaria);
+      linkDownload.setAttribute("download", `relatorio_canhotos_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(linkDownload);
+      linkDownload.click();
+      document.body.removeChild(linkDownload);
+      URL.revokeObjectURL(urlTemporaria);
+    }
+
+    function limparHistorico() {
+      if(confirm("Deseja limpar o histórico visual do navegador? Os arquivos salvos na sua pasta física NÃO serão apagados.")) {
+        registrosHistorico = [];
+        localStorage.removeItem('registrosCanhotos');
+        atualizarTabela();
+        document.getElementById('resultadoBusca').innerHTML = '<p style="color:var(--muted); font-style:italic; font-size:12px; text-align:center; margin-top:20px;">Insira um número para pesquisar...</p>';
+      }
+    }
+
+    function exibirStatus(msg, classe) {
+      const statusBox = document.getElementById('statusMessage');
+      statusBox.innerText = msg;
+      statusBox.className = `status ${classe}`;
+      statusBox.style.display = 'block';
+      clearTimeout(window.__statusTimer);
+      window.__statusTimer = setTimeout(() => { statusBox.style.display = 'none'; }, 6000);
+    }
+
+    function excluirRegistro(nota, dataEntrega) {
+      const idx = registrosHistorico.findIndex(r => r.nota === nota && String(r.dataEntrega) === String(dataEntrega));
+      if (idx === -1) return;
+
+      const reg = registrosHistorico[idx];
+      if (!confirm(`Remover a nota ${reg.nota} (${reg.cliente}) da lista de visualização local?`)) return;
+
+      registrosHistorico.splice(idx, 1);
+      localStorage.setItem('registrosCanhotos', JSON.stringify(registrosHistorico));
+
+      atualizarTabela();
+      document.getElementById('buscaNota').dispatchEvent(new Event('input'));
+      exibirStatus(`Registro da Nota ${reg.nota} removido da lista visual.`, "success");
+    }
+  </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

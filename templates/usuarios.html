@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+
+    <title>⚙️ Painel Mestre de Usuários e Permissões</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: var(--portal-font); padding: 20px; }
+        h1 { color: #38bdf8; border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 20px; font-size: 22px; text-transform: uppercase; }
+        .card-form { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-label { color: #38bdf8; font-weight: bold; font-size: 12px; margin-bottom: 4px; }
+        .form-control, .form-select { background-color: #0f172a; border: 1px solid #475569; color: #fff; font-size: 12px; }
+        .form-control:focus, .form-select:focus { background-color: #0f172a; color: #fff; border-color: #38bdf8; box-shadow: none; }
+        
+        .btn-salvar { background: #10b981; color: white; border: none; font-weight: bold; font-size: 13px; padding: 8px 20px; border-radius: 6px; cursor: pointer; }
+        .btn-salvar:hover { background: #059669; }
+        
+        .tabela-wrapper { width: 100%; background: #1e293b; border-radius: 8px; border: 1px solid #334155; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 12px; }
+        th { background-color: #0f172a; color: #38bdf8; font-weight: bold; }
+        tr:hover { background-color: #243249; }
+        
+        .badge-nivel { font-weight: bold; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
+        .bg-admin { background-color: #ef4444; color: white; }
+        .bg-diretor { background-color: #a855f7; color: white; }
+        .bg-comercial { background-color: #3b82f6; color: white; }
+        .bg-sac { background-color: #f59e0b; color: black; }
+        .bg-financeiro { background-color: #10b981; color: white; }
+        
+        .btn-edit { background: #3b82f6; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        .btn-del { background: #ef4444; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; margin-left: 5px; }
+    </style>
+</head>
+<body class="portal-page embedded">
+
+    <div class="container-fluid">
+        <h1>⚙️ GERENCIAMENTO HIERÁRQUICO DE PERFIS E AUTONOMIA</h1>
+
+        <!-- FORMULÁRIO DE CADASTRO -->
+        <div class="card-form">
+            <form id="formUsuario" class="row g-3">
+                <input type="hidden" id="id_usuario" value="">
+                
+                <div class="col-md-3">
+                    <label class="form-label">👤 NOME DO OPERADOR:</label>
+                    <input type="text" id="nome_user" class="form-control" required placeholder="Ex: João Silva">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🔑 LOGIN DE ACESSO (ÚNICO):</label>
+                    <input type="text" id="login_user" class="form-control" required placeholder="Ex: joao.log">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🔒 SENHA OPERACIONAL:</label>
+                    <input type="password" id="senha_user" class="form-control" placeholder="Digite a senha (ou deixe em branco para manter)">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">🚦 NÍVEL HIERÁRQUICO (AUTONOMIA):</label>
+                    <select id="nivel_user" class="form-select" required>
+                        <option value="SAC">SAC (Apenas Leitura/Baixa)</option>
+                        <option value="COMERCIAL">COMERCIAL (Visualizar e Baixar)</option>
+                        <option value="FINANCEIRO">FINANCEIRO (Visualizar e Baixar)</option>
+                        <option value="DIRETOR">DIRETOR (Edição Completa)</option>
+                        <option value="ADMIN">ADMINISTRADOR (Acesso Total + Exclusão)</option>
+                    </select>
+                </div>
+                <div class="col-12 text-end">
+                    <button type="button" class="btn btn-secondary btn-sm me-2" onclick="limparFormulario()">Limpar</button>
+                    <button type="submit" class="btn-salvar">💾 Gravar Regra de Acesso</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- GRID DE USUÁRIOS -->
+        <div class="tabela-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>NOME</th>
+                        <th>LOGIN</th>
+                        <th>NÍVEL HIERÁRQUICO</th>
+                        <th style="text-align: center; width: 15%;">AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoUsuarios"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function listarUsuarios() {
+            fetch('/api/listar_usuarios')
+                .then(r => r.json())
+                .then(dados => {
+                    const tbody = document.getElementById('corpoUsuarios');
+                    tbody.innerHTML = "";
+                    dados.forEach(u => {
+                        let classeBadge = "bg-sac";
+                        if(u.nivel === "ADMIN") classeBadge = "bg-admin";
+                        if(u.nivel === "DIRETOR") classeBadge = "bg-diretor";
+                        if(u.nivel === "COMERCIAL") classeBadge = "bg-comercial";
+                        if(u.nivel === "FINANCEIRO") classeBadge = "bg-financeiro";
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${u.nome}</strong></td>
+                                <td><code>${u.login}</code></td>
+                                <td><span class="badge-nivel ${classeBadge}">${u.nivel}</span></td>
+                                <td style="text-align: center;">
+                                    <button class="btn-edit" onclick='carregarEdicao(${JSON.stringify(u)})'>✏️</button>
+                                    <button class="btn-del" onclick="excluirUsuario(${u.id}, '${u.nome}')">❌</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                });
+        }
+
+        function carregarEdicao(u) {
+            document.getElementById('id_usuario').value = u.id;
+            document.getElementById('nome_user').value = u.nome;
+            document.getElementById('login_user').value = u.login;
+            document.getElementById('nivel_user').value = u.nivel;
+            document.getElementById('senha_user').placeholder = "Digite apenas se desejar ALTERAR a senha";
+        }
+
+        function limparFormulario() {
+            document.getElementById('id_usuario').value = "";
+            document.getElementById('formUsuario').reset();
+            document.getElementById('senha_user').placeholder = "Digite a senha";
+        }
+
+        document.getElementById('formUsuario').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const payload = {
+                id: document.getElementById('id_usuario').value,
+                nome: document.getElementById('nome_user').value,
+                login: document.getElementById('login_user').value,
+                senha: document.getElementById('senha_user').value,
+                nivel: document.getElementById('nivel_user').value
+            };
+
+            fetch('/api/salvar_usuario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if(res.status === "sucesso") { limparFormulario(); listarUsuarios(); }
+            });
+        });
+
+        function excluirUsuario(id, nome) {
+            if(!confirm(`Deseja revogar o acesso de ${nome}?`)) return;
+            fetch('/api/salvar_usuario', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, acao: 'excluir' })
+            })
+            .then(r => r.json())
+            .then(res => {
+                alert(res.mensagem);
+                if(res.status === "sucesso") listarUsuarios();
+            });
+        }
+
+        listarUsuarios();
+    </script>
+    <script src="/static/js/portal-nav.js"></script>
+</body>
+</html>

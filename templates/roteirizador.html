@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <link href="/static/css/portal-theme.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotas e Transportadoras</title>
+    <style>
+        html, body { margin: 0; padding: 0; min-height: 100vh; background: #0f172a; color: #e2e8f0; font-family: var(--portal-font, 'Segoe UI', sans-serif); }
+        body { padding: 14px; box-sizing: border-box; }
+        .wrap { max-width: 1680px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+        h1 { margin: 0; font-size: 20px; color: #38bdf8; }
+        .sub { font-size: 12px; color: #94a3b8; margin-top: 4px; line-height: 1.5; }
+        .btn-voltar { background: transparent; border: none; color: #38bdf8; font-weight: 700; cursor: pointer; padding: 0; margin-bottom: 4px; font-size: 13px; }
+        .abas { display: flex; gap: 6px; flex-wrap: wrap; }
+        .aba { padding: 8px 16px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #94a3b8; font-weight: 700; font-size: 12px; cursor: pointer; }
+        .aba.ativa { background: #2563eb; border-color: #2563eb; color: #fff; }
+        .painel-aba { display: none; }
+        .painel-aba.ativa { display: block; }
+        .grid-2 { display: grid; grid-template-columns: 360px 1fr; gap: 12px; align-items: start; }
+        @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+        .box { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .box h2 { margin: 0 0 10px; font-size: 13px; color: #38bdf8; text-transform: uppercase; }
+        label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 3px; font-weight: 600; }
+        input, select, textarea { width: 100%; box-sizing: border-box; padding: 7px 10px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #fff; font-size: 12px; margin-bottom: 8px; }
+        .btn { border: none; border-radius: 6px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .btn-prim { background: #2563eb; color: #fff; }
+        .btn-verde { background: #059669; color: #fff; }
+        .btn-verm { background: #dc2626; color: #fff; }
+        .btn-sec { background: #475569; color: #fff; }
+        .btn-sm { padding: 4px 8px; font-size: 10px; }
+        .lista-rotas { max-height: 420px; overflow-y: auto; }
+        .item-rota { border: 1px solid #334155; border-radius: 6px; padding: 10px; margin-bottom: 8px; background: #0f172a; cursor: pointer; }
+        .item-rota.sel { border-color: #38bdf8; box-shadow: 0 0 0 1px #38bdf866; }
+        .item-rota h3 { margin: 0 0 4px; font-size: 13px; color: #38bdf8; }
+        .item-rota .meta { font-size: 11px; color: #94a3b8; }
+        .tag { display: inline-block; font-size: 10px; background: #334155; color: #cbd5e1; padding: 2px 6px; border-radius: 4px; margin: 2px 2px 0 0; }
+        .cards-topo { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 10px; }
+        .card-kpi { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 8px 12px; }
+        .card-kpi h3 { margin: 0 0 2px; font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+        .card-kpi .val { font-size: 18px; font-weight: 800; }
+        .rotas-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; min-height: 320px; }
+        .col-rota { flex: 0 0 270px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; max-height: 480px; display: flex; flex-direction: column; }
+        .col-rota.sem-rota { border-style: dashed; border-color: #64748b; }
+        .col-rota.drag-over { border-color: #38bdf8; }
+        .rota-head { padding: 10px; border-bottom: 1px solid #334155; background: #1e293b; }
+        .rota-head h3 { margin: 0 0 4px; font-size: 12px; color: #38bdf8; }
+        .rota-meta { font-size: 10px; color: #94a3b8; line-height: 1.4; }
+        .notas-list { flex: 1; overflow-y: auto; padding: 8px; min-height: 100px; }
+        .nf-card { background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 7px; margin-bottom: 5px; cursor: grab; font-size: 11px; }
+        .nf-card .nf-num { font-weight: 800; color: #60a5fa; }
+        .nf-card .nf-cli { color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tbl-fat { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .tbl-fat th, .tbl-fat td { border: 1px solid #334155; padding: 6px 8px; text-align: left; }
+        .tbl-fat th { background: #1e293b; color: #38bdf8; position: sticky; top: 0; }
+        .tbl-fat tbody tr:nth-child(even) td { background: #141c2b; }
+        .tbl-fat tbody tr:nth-child(odd) td { background: #0f172a; }
+        .tbl-wrap { max-height: 280px; overflow: auto; border: 1px solid #334155; border-radius: 6px; }
+        .status-bar { font-size: 11px; color: #94a3b8; }
+        .fluxo-help { background: #0c4a6e33; border: 1px solid #0369a1; border-radius: 8px; padding: 10px 12px; font-size: 12px; color: #bae6fd; line-height: 1.55; }
+        .fluxo-help ol { margin: 6px 0 0 18px; padding: 0; }
+    </style>
+</head>
+<body class="portal-page embedded">
+<div class="wrap">
+    <button type="button" class="btn-voltar" onclick="window.voltarPortal ? voltarPortal('/tela_boas_vindas','Início') : window.location.href='/portal_operacional'">← Voltar ao portal</button>
+    <div>
+        <h1>🗺️ Rotas por região e transportadora</h1>
+        <p class="sub">Cadastre onde cada transportadora atende · Na saída, o sistema aponta automaticamente · Ajuste notas incluindo ou excluindo</p>
+    </div>
+
+    <div class="fluxo-help">
+        <strong>Como funciona:</strong>
+        <ol>
+            <li><b>Cadastro</b> — Crie uma rota, escolha a transportadora e adicione municípios e/ou faixas de CEP (pode agrupar vários na mesma rota).</li>
+            <li><b>Saída do dia</b> — Clique em «Aplicar rotas»; as notas do faturamento entram nas colunas conforme as regras salvas.</li>
+            <li><b>Ajustes</b> — Inclua ou exclua notas na lista ou arraste entre colunas; fica salvo para as próximas saídas.</li>
+        </ol>
+    </div>
+
+    <div class="abas">
+        <button type="button" class="aba ativa" data-aba="cadastro">1 · Cadastro de rotas</button>
+        <button type="button" class="aba" data-aba="saida">2 · Montagem da saída</button>
+    </div>
+
+    <!-- ABA CADASTRO -->
+    <div id="abaCadastro" class="painel-aba ativa">
+        <div class="grid-2">
+            <div>
+                <div class="box">
+                    <h2>Nova / editar rota</h2>
+                    <input type="hidden" id="rotaId">
+                    <label>Nome da rota</label>
+                    <input type="text" id="rotaNome" placeholder="Ex: Interior SP — Rodonaves">
+                    <label>Transportadora que atende</label>
+                    <select id="rotaTransp"></select>
+                    <label>Observação (opcional)</label>
+                    <input type="text" id="rotaObs" placeholder="Turno, região, etc.">
+                    <button type="button" class="btn btn-verde" style="width:100%" id="btnSalvarRota">💾 Salvar rota</button>
+                    <button type="button" class="btn btn-sec btn-sm" id="btnNovaRota" style="margin-top:6px">+ Nova rota em branco</button>
+                </div>
+                <div class="box" id="boxCriterios" style="display:none">
+                    <h2>Área de atendimento (pode adicionar várias)</h2>
+                    <label>Tipo</label>
+                    <select id="critTipo">
+                        <option value="municipio">Município</option>
+                        <option value="faixa_cep">Faixa de CEP (início e fim)</option>
+                        <option value="prefixo_cep">Cabeça CEP (3 dígitos)</option>
+                    </select>
+                    <div id="camposMunicipio">
+                        <label>Município</label>
+                        <select id="critMunicipio"><option value="">— Selecione —</option></select>
+                    </div>
+                    <div id="camposFaixa" style="display:none">
+                        <label>CEP inicial</label>
+                        <input type="text" id="critCepIni" maxlength="9" placeholder="00000000">
+                        <label>CEP final</label>
+                        <input type="text" id="critCepFim" maxlength="9" placeholder="99999999">
+                    </div>
+                    <div id="camposPrefixo" style="display:none">
+                        <label>3 primeiros dígitos</label>
+                        <input type="text" id="critPrefixo" maxlength="3" placeholder="013">
+                    </div>
+                    <button type="button" class="btn btn-prim" style="width:100%" id="btnAddCriterio">➕ Adicionar à rota</button>
+                </div>
+            </div>
+            <div class="box">
+                <h2>Rotas salvas</h2>
+                <div class="lista-rotas" id="listaRotasCadastro">Carregando…</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA SAÍDA -->
+    <div id="abaSaida" class="painel-aba">
+        <div class="box" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+            <div style="flex:1; min-width:140px">
+                <label>Filtrar município</label>
+                <select id="filtroMunicipio"><option value="">— Todos —</option></select>
+            </div>
+            <div style="width:70px">
+                <label>UF</label>
+                <input type="text" id="filtroUf" maxlength="2">
+            </div>
+            <div style="flex:1; min-width:120px">
+                <label>Buscar NF</label>
+                <input type="text" id="filtroNf" placeholder="Número">
+            </div>
+            <button type="button" class="btn btn-prim" id="btnAplicarRotas">⚡ Aplicar rotas salvas</button>
+        </div>
+
+        <div class="cards-topo">
+            <div class="card-kpi"><h3>Rotas</h3><div class="val" id="kpiRotas">0</div></div>
+            <div class="card-kpi"><h3>Notas nas rotas</h3><div class="val" id="kpiNotas">0</div></div>
+            <div class="card-kpi"><h3>Sem rota</h3><div class="val" id="kpiSemRota">0</div></div>
+            <div class="card-kpi"><h3>Valor</h3><div class="val" id="kpiValor">R$ 0</div></div>
+        </div>
+
+        <p class="status-bar" id="statusBar">Cadastre rotas na aba 1, depois aplique aqui.</p>
+        <div class="rotas-scroll" id="rotasContainer"></div>
+
+        <div class="box" style="margin-top:10px">
+            <h2>Faturamento — incluir ou excluir nota em rota</h2>
+            <div class="tbl-wrap">
+                <table class="tbl-fat">
+                    <thead>
+                        <tr>
+                            <th>NF</th><th>Cliente</th><th>Município</th><th>UF</th><th>CEP</th><th>Transp. fat.</th><th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoFaturamento"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/portal-nav.js"></script>
+<script>
+let rotasSalvas = [];
+let rotaSelecionadaId = null;
+let rotasMontadas = [];
+let semRota = [];
+let dragNf = null;
+let dragOrigem = null;
+
+const fmtMoeda = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function apiGet(url) {
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+    return r.json();
+}
+async function apiPost(url, body) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(body || {}) });
+    if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+    return r.json();
+}
+async function apiDel(url) {
+    const r = await fetch(url, { method: 'DELETE', credentials: 'same-origin' });
+    if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+    return r.json();
+}
+
+document.querySelectorAll('.aba').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.aba').forEach(b => b.classList.remove('ativa'));
+        document.querySelectorAll('.painel-aba').forEach(p => p.classList.remove('ativa'));
+        btn.classList.add('ativa');
+        document.getElementById(btn.dataset.aba === 'cadastro' ? 'abaCadastro' : 'abaSaida').classList.add('ativa');
+    });
+});
+
+document.getElementById('critTipo').addEventListener('change', () => {
+    const t = document.getElementById('critTipo').value;
+    document.getElementById('camposMunicipio').style.display = t === 'municipio' ? 'block' : 'none';
+    document.getElementById('camposFaixa').style.display = t === 'faixa_cep' ? 'block' : 'none';
+    document.getElementById('camposPrefixo').style.display = t === 'prefixo_cep' ? 'block' : 'none';
+});
+
+function criterioLabel(c) {
+    if (c.tipo === 'municipio') return `${c.municipio}/${c.uf || '*'}`;
+    if (c.tipo === 'faixa_cep') return `CEP ${c.cep_inicio}–${c.cep_fim}`;
+    if (c.tipo === 'prefixo_cep') return `CEP ${c.prefixo_cep}xxx`;
+    return c.tipo;
+}
+
+function renderListaCadastro() {
+    const el = document.getElementById('listaRotasCadastro');
+    if (!rotasSalvas.length) {
+        el.innerHTML = '<p style="color:#64748b;font-size:12px">Nenhuma rota cadastrada. Preencha ao lado e salve.</p>';
+        return;
+    }
+    el.innerHTML = rotasSalvas.map(r => `
+        <div class="item-rota ${r.id === rotaSelecionadaId ? 'sel' : ''}" data-id="${r.id}">
+            <h3>${r.nome}</h3>
+            <div class="meta">🚛 ${r.transportadora}</div>
+            <div style="margin-top:6px">${(r.criterios || []).map(c => `<span class="tag">${criterioLabel(c)}</span>`).join('') || '<span class="tag">Sem área — use notas manuais na saída</span>'}</div>
+            <div style="margin-top:8px;display:flex;gap:4px">
+                <button type="button" class="btn btn-sec btn-sm btn-edit" data-id="${r.id}">Editar</button>
+                <button type="button" class="btn btn-verm btn-sm btn-del" data-id="${r.id}">Excluir</button>
+            </div>
+        </div>
+    `).join('');
+    el.querySelectorAll('.item-rota').forEach(item => {
+        item.addEventListener('click', e => {
+            if (e.target.closest('button')) return;
+            selecionarRota(Number(item.dataset.id));
+        });
+    });
+    el.querySelectorAll('.btn-edit').forEach(b => b.addEventListener('click', () => selecionarRota(Number(b.dataset.id))));
+    el.querySelectorAll('.btn-del').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Excluir esta rota e todas as regras?')) return;
+        await apiDel('/api/roteirizador/rotas_predefinidas/' + b.dataset.id);
+        if (rotaSelecionadaId === Number(b.dataset.id)) { rotaSelecionadaId = null; document.getElementById('boxCriterios').style.display = 'none'; }
+        await carregarRotasSalvas();
+    }));
+}
+
+function selecionarRota(id) {
+    rotaSelecionadaId = id;
+    const r = rotasSalvas.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('rotaId').value = r.id;
+    document.getElementById('rotaNome').value = r.nome;
+    document.getElementById('rotaTransp').value = r.transportadora;
+    document.getElementById('rotaObs').value = r.observacao || '';
+    document.getElementById('boxCriterios').style.display = 'block';
+    renderListaCadastro();
+    renderCriteriosRota(r);
+}
+
+function renderCriteriosRota(r) {
+    let box = document.getElementById('listaCriteriosAtivos');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'listaCriteriosAtivos';
+        box.className = 'box';
+        box.innerHTML = '<h2>Critérios desta rota</h2><div id="tagsCriterios"></div>';
+        document.getElementById('boxCriterios').after(box);
+    }
+    const tags = document.getElementById('tagsCriterios');
+    if (!r.criterios?.length) {
+        tags.innerHTML = '<span style="color:#64748b;font-size:11px">Adicione município ou faixa de CEP acima.</span>';
+        return;
+    }
+    tags.innerHTML = r.criterios.map(c => `
+        <span class="tag">${criterioLabel(c)}
+            <button type="button" style="border:none;background:transparent;color:#f87171;cursor:pointer;margin-left:4px" data-cid="${c.id}">✕</button>
+        </span>
+    `).join('');
+    tags.querySelectorAll('[data-cid]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            await apiDel('/api/roteirizador/criterios/' + btn.dataset.cid);
+            await carregarRotasSalvas();
+            selecionarRota(rotaSelecionadaId);
+        });
+    });
+}
+
+document.getElementById('btnNovaRota').addEventListener('click', () => {
+    rotaSelecionadaId = null;
+    document.getElementById('rotaId').value = '';
+    document.getElementById('rotaNome').value = '';
+    document.getElementById('rotaObs').value = '';
+    document.getElementById('boxCriterios').style.display = 'none';
+    const lc = document.getElementById('listaCriteriosAtivos');
+    if (lc) lc.remove();
+    renderListaCadastro();
+});
+
+document.getElementById('btnSalvarRota').addEventListener('click', async () => {
+    const resp = await apiPost('/api/roteirizador/rotas_predefinidas', {
+        id: document.getElementById('rotaId').value || null,
+        nome: document.getElementById('rotaNome').value,
+        transportadora: document.getElementById('rotaTransp').value,
+        observacao: document.getElementById('rotaObs').value,
+    });
+    if (resp.status !== 'sucesso') { alert(resp.mensagem || 'Erro'); return; }
+    rotaSelecionadaId = resp.id;
+    document.getElementById('rotaId').value = resp.id;
+    document.getElementById('boxCriterios').style.display = 'block';
+    await carregarRotasSalvas();
+    selecionarRota(resp.id);
+});
+
+document.getElementById('btnAddCriterio').addEventListener('click', async () => {
+    if (!rotaSelecionadaId) { alert('Salve a rota primeiro.'); return; }
+    const tipo = document.getElementById('critTipo').value;
+    const payload = { tipo };
+    if (tipo === 'municipio') {
+        const opt = document.getElementById('critMunicipio').selectedOptions[0];
+        if (!opt?.value) { alert('Selecione o município.'); return; }
+        payload.municipio = opt.value;
+        payload.uf = opt.dataset.uf || '';
+    } else if (tipo === 'faixa_cep') {
+        payload.cep_inicio = document.getElementById('critCepIni').value;
+        payload.cep_fim = document.getElementById('critCepFim').value;
+    } else {
+        payload.prefixo_cep = document.getElementById('critPrefixo').value;
+    }
+    const resp = await apiPost('/api/roteirizador/rotas_predefinidas/' + rotaSelecionadaId + '/criterios', payload);
+    if (resp.status !== 'sucesso') { alert(resp.mensagem || 'Erro'); return; }
+    await carregarRotasSalvas();
+    selecionarRota(rotaSelecionadaId);
+});
+
+function criarCardNota(nota, origemKey) {
+    const el = document.createElement('div');
+    el.className = 'nf-card';
+    el.draggable = true;
+    el.dataset.nf = nota.nf;
+    el.dataset.origem = origemKey;
+    el.innerHTML = `<div class="nf-num">NF ${nota.nf}</div><div class="nf-cli">${nota.cliente || '-'}</div><div style="font-size:10px;color:#64748b">${nota.municipio}/${nota.uf} · ${fmtMoeda(nota.valor)}</div>`;
+    el.addEventListener('dragstart', () => { dragNf = nota.nf; dragOrigem = origemKey; });
+    return el;
+}
+
+function configurarDrop(col, destinoKey) {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', async e => {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        if (!dragNf || dragOrigem === destinoKey) return;
+        await moverNota(dragNf, dragOrigem, destinoKey);
+        dragNf = null;
+        dragOrigem = null;
+    });
+}
+
+async function moverNota(nf, origemKey, destinoKey) {
+    const origemRotaId = origemKey.startsWith('rota-') ? parseInt(origemKey.replace('rota-', ''), 10) : null;
+    const destinoRotaId = destinoKey.startsWith('rota-') ? parseInt(destinoKey.replace('rota-', ''), 10) : null;
+    if (origemRotaId) await apiPost('/api/roteirizador/rotas_predefinidas/' + origemRotaId + '/notas', { nf, acao: 'excluir' });
+    if (destinoRotaId) await apiPost('/api/roteirizador/rotas_predefinidas/' + destinoRotaId + '/notas', { nf, acao: 'incluir' });
+    else if (origemRotaId) await apiPost('/api/roteirizador/rotas_predefinidas/' + origemRotaId + '/notas', { nf, acao: 'remover' });
+    await aplicarRotas(false);
+}
+
+function renderMontagem() {
+    const container = document.getElementById('rotasContainer');
+    container.innerHTML = '';
+    rotasMontadas.forEach(rota => {
+        const key = 'rota-' + rota.rota_predefinida_id;
+        const col = document.createElement('div');
+        col.className = 'col-rota';
+        col.innerHTML = `
+            <div class="rota-head">
+                <h3>${rota.nome}</h3>
+                <div class="rota-meta">🚛 <b>${rota.transportadora}</b><br>${rota.criterios_resumo || ''}<br>${rota.totais.qtd_notas} nota(s) · ${fmtMoeda(rota.totais.valor)}</div>
+            </div>
+            <div class="notas-list" data-zone="${key}"></div>`;
+        const list = col.querySelector('[data-zone]');
+        (rota.notas || []).forEach(n => list.appendChild(criarCardNota(n, key)));
+        configurarDrop(col, key);
+        container.appendChild(col);
+    });
+    const colSem = document.createElement('div');
+    colSem.className = 'col-rota sem-rota';
+    colSem.innerHTML = `<div class="rota-head"><h3>Sem rota</h3><div class="rota-meta">Notas fora das regras cadastradas</div></div><div class="notas-list" data-zone="sem-rota"></div>`;
+    const listSem = colSem.querySelector('[data-zone]');
+    semRota.forEach(n => listSem.appendChild(criarCardNota(n, 'sem-rota')));
+    configurarDrop(colSem, 'sem-rota');
+    container.appendChild(colSem);
+
+    const tg = rotasMontadas.reduce((a, r) => ({ notas: a.notas + r.totais.qtd_notas, valor: a.valor + r.totais.valor }), { notas: 0, valor: 0 });
+    document.getElementById('kpiRotas').textContent = rotasMontadas.length;
+    document.getElementById('kpiNotas').textContent = tg.notas;
+    document.getElementById('kpiSemRota').textContent = semRota.length;
+    document.getElementById('kpiValor').textContent = fmtMoeda(tg.valor);
+}
+
+async function renderFaturamento() {
+    const params = new URLSearchParams({
+        municipio: document.getElementById('filtroMunicipio').value,
+        uf: document.getElementById('filtroUf').value.toUpperCase(),
+        nf: document.getElementById('filtroNf').value,
+    });
+    const notas = await apiGet('/api/roteirizador/faturamento?' + params);
+    const tbody = document.getElementById('corpoFaturamento');
+    if (!notas.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b">Nenhuma nota em aberto.</td></tr>'; return; }
+    tbody.innerHTML = notas.slice(0, 200).map(n => `
+        <tr>
+            <td><b>${n.nf}</b></td><td>${n.cliente}</td><td>${n.municipio}</td><td>${n.uf}</td><td>${n.cep || '-'}</td><td>${n.transportadora_faturamento || '-'}</td>
+            <td style="white-space:nowrap">
+                <select class="sel-rota-acao" style="width:120px;margin:0 4px 0 0;padding:4px">
+                    ${rotasMontadas.map(r => `<option value="${r.rota_predefinida_id}">${r.nome}</option>`).join('')}
+                </select>
+                <button type="button" class="btn btn-verde btn-sm btn-inc-nf" data-nf="${n.nf}">Incluir</button>
+                <button type="button" class="btn btn-verm btn-sm btn-exc-nf" data-nf="${n.nf}">Excluir</button>
+            </td>
+        </tr>
+    `).join('');
+    tbody.querySelectorAll('.btn-inc-nf').forEach(btn => btn.addEventListener('click', async () => {
+        const tr = btn.closest('tr');
+        const rotaId = tr.querySelector('.sel-rota-acao')?.value;
+        if (!rotaId) return;
+        await apiPost('/api/roteirizador/rotas_predefinidas/' + rotaId + '/notas', { nf: btn.dataset.nf, acao: 'incluir' });
+        await aplicarRotas(false);
+    }));
+    tbody.querySelectorAll('.btn-exc-nf').forEach(btn => btn.addEventListener('click', async () => {
+        const tr = btn.closest('tr');
+        const rotaId = tr.querySelector('.sel-rota-acao')?.value;
+        if (!rotaId) return;
+        await apiPost('/api/roteirizador/rotas_predefinidas/' + rotaId + '/notas', { nf: btn.dataset.nf, acao: 'excluir' });
+        await aplicarRotas(false);
+    }));
+}
+
+async function aplicarRotas(recarregarFat = true) {
+    const bar = document.getElementById('statusBar');
+    bar.textContent = 'Aplicando rotas…';
+    const resp = await apiPost('/api/roteirizador/aplicar_rotas', {
+        municipio: document.getElementById('filtroMunicipio').value,
+        uf: document.getElementById('filtroUf').value.toUpperCase(),
+        nf: document.getElementById('filtroNf').value,
+    });
+    if (resp.status !== 'sucesso') { bar.textContent = resp.mensagem || 'Erro'; return; }
+    rotasMontadas = resp.rotas || [];
+    semRota = resp.sem_rota || [];
+    renderMontagem();
+    if (recarregarFat) await renderFaturamento();
+    bar.textContent = `${resp.total_geral.qtd_rotas} rota(s) · ${resp.total_geral.qtd_notas} nota(s) nas rotas · ${resp.total_geral.sem_rota} sem rota`;
+}
+
+document.getElementById('btnAplicarRotas').addEventListener('click', () => aplicarRotas(true));
+
+async function carregarRotasSalvas() {
+    rotasSalvas = await apiGet('/api/roteirizador/rotas_predefinidas');
+    renderListaCadastro();
+}
+
+async function carregarCombos() {
+    const [transps, munics] = await Promise.all([
+        apiGet('/api/roteirizador/transportadoras'),
+        apiGet('/api/roteirizador/municipios'),
+    ]);
+    ['rotaTransp', 'filtroMunicipio', 'critMunicipio'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const first = sel.innerHTML;
+        if (id === 'rotaTransp') {
+            sel.innerHTML = '<option value="">— Selecione —</option>';
+            transps.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+        } else if (id === 'filtroMunicipio') {
+            sel.innerHTML = '<option value="">— Todos —</option>';
+            munics.forEach(m => sel.innerHTML += `<option value="${m.municipio}">${m.municipio} / ${m.uf}</option>`);
+        } else {
+            sel.innerHTML = '<option value="">— Selecione —</option>';
+            munics.forEach(m => sel.innerHTML += `<option value="${m.municipio}" data-uf="${m.uf}">${m.municipio} / ${m.uf}</option>`);
+        }
+    });
+}
+
+(async () => {
+    try {
+        await carregarCombos();
+        await carregarRotasSalvas();
+    } catch (e) {
+        document.getElementById('statusBar').textContent = 'Erro: ' + e.message;
+    }
+})();
+</script>
+</body>
+</html>
