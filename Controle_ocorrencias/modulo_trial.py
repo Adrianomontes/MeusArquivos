@@ -246,7 +246,7 @@ background:#0f172a;color:#f8fafc;font-family:Segoe UI,sans-serif;padding:24px;te
 h1{color:#f59e0b;font-size:1.4rem;}p{color:#94a3b8;line-height:1.6;}a{color:#38bdf8;}</style></head>
 <body><div class="box"><h1>Período de avaliação encerrado</h1>
 <p>Sua licença trial expirou. Para continuar, contate a <strong>Animo Serviços Administrativos</strong>.</p>
-<p><strong>Diretor:</strong> Adriano Montes<br>
+<p><strong>Contato:</strong> Adriano Montes (Animo)<br>
 <a href="mailto:adrianomontes55@gmail.com">adrianomontes55@gmail.com</a></p>
 </div></body></html>
 """

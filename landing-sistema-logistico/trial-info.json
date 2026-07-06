@@ -1,0 +1,9 @@
+{
+  "versao": "v1",
+  "nome_arquivo": "SistemaLogisticoTrial-v1.zip",
+  "url_download": "https://github.com/Adrianomontes/sistema-gestao-logistico/raw/main/Controle_ocorrencias/trial_distribuicao/releases/SistemaLogisticoTrial-v1.zip",
+  "expira_em": "2026-08-04",
+  "dias_trial": 30,
+  "login_demo": "trial / trial123",
+  "observacao": "O executável lê trial.lic com assinatura criptográfica. Alterar a data no arquivo invalida a licença. Após expirar, o sistema redireciona para a tela 'Período de avaliação encerrado'."
+}
