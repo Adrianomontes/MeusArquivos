@@ -10,6 +10,10 @@ env/
 
 # Segredos e sessão
 .flask_secret
+trial_secret.key
+**/trial_secret.key
+*.lic
+trial_distribuicao/envios/
 
 # Bancos de dados locais (grandes / sensíveis)
 *.db

@@ -30,7 +30,21 @@ landing-sistema-logistico/
 
 Abra `landing-sistema-logistico/index.html` no navegador ou publique a pasta no seu servidor.
 
-## Controle de acesso (downloads)
+## Versão trial (envio a clientes)
+
+Fluxo: formulário no site → e-mail para adrianomontes55@gmail.com → você gera ZIP com exe trial.
+
+```powershell
+cd Controle_ocorrencias
+build_executavel_trial.bat
+py -3 scripts\montar_pacote_trial.py --email cliente@empresa.com --empresa "Empresa" --dias 15
+```
+
+Documentação interna: `Controle_ocorrencias/trial_distribuicao/GUIA_ADRIANO.txt`
+
+Limitações trial: banco `sistema_trial.db`, licença `trial.lic` com expiração, importação máx. 80 linhas, sem exportação completa.
+
+## Controle de acesso (downloads Git)
 
 - Lista de e-mails: `.github/access-control.json`
 - Documentação: `CONTROLE_ACESSO_GIT.md`

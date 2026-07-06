@@ -1,0 +1,49 @@
+GUIA INTERNO — ENVIO DE TRIAL (ADRIANO)
+=======================================
+
+FLUXO QUANDO ALGUÉM SOLICITA NO SITE
+------------------------------------
+1. Cliente preenche o formulário em landing-sistema-logistico/
+2. Você recebe e-mail em adrianomontes55@gmail.com (via FormSubmit)
+3. Na 1ª vez, o FormSubmit pede confirmação no seu e-mail — clique no link de ativação
+4. Avalie e, se aprovar, gere o pacote (passos abaixo)
+5. Envie SOMENTE o arquivo ZIP por e-mail — nunca o código-fonte
+
+GERAR PACOTE TRIAL
+------------------
+cd Controle_ocorrencias
+build_executavel_trial.bat
+
+py -3 scripts\montar_pacote_trial.py ^
+  --email cliente@empresa.com ^
+  --empresa "Nome da Empresa" ^
+  --dias 15
+
+Saída: trial_distribuicao\envios\trial_cliente_at_empresa_com.zip
+
+O ZIP contém:
+- SistemaLogisticoTrial.exe
+- trial.lic (assinado para o e-mail do cliente)
+- sistema_trial.db (demo)
+- LEIA-ME_CLIENTE.txt
+
+CHAVE SECRETA (IMPORTANTE)
+--------------------------
+Crie o arquivo scripts\trial_secret.key com uma senha longa aleatória.
+Sem ela, usa chave de desenvolvimento (menos segura).
+
+Gerar licença avulsa:
+py -3 scripts\gerar_licenca_trial.py --email cliente@x.com --dias 15
+
+O QUE NÃO ENVIAR
+----------------
+- Pasta Controle_ocorrencias (código-fonte)
+- sistema_operacional.db (banco real)
+- Repositório Git
+
+LIMITAÇÕES AUTOMÁTICAS NO TRIAL
+-------------------------------
+- Expira na data da licença
+- Banco sistema_trial.db separado
+- Máx. 80 linhas por importação
+- Bloqueio de exportações e /gerenciar_usuarios

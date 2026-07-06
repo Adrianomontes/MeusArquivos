@@ -1,0 +1,30 @@
+PACOTE TRIAL — INSTRUÇÕES PARA O CLIENTE
+=========================================
+Animo Serviços Administrativos · Diretor Adriano Montes
+Contato: adrianomontes55@gmail.com
+
+CONTEÚDO DO PACOTE
+------------------
+- SistemaLogisticoTrial.exe   (aplicativo)
+- trial.lic                   (licença com data de expiração — NÃO compartilhe)
+- sistema_trial.db            (banco demonstrativo — sem dados reais da Animo)
+- database/                   (base CEP/rotas, se incluída)
+
+COMO INSTALAR
+-------------
+1. Extraia todos os arquivos na MESMA pasta (ex.: C:\SistemaLogisticoTrial\)
+2. Não separe trial.lic do executável
+3. Execute SistemaLogisticoTrial.exe
+4. Login demonstrativo: usuário trial / senha trial123
+
+LIMITAÇÕES DA VERSÃO TRIAL
+--------------------------
+- Validade limitada (veja data em trial.lic)
+- Banco demonstrativo isolado (não use dados de produção)
+- Importações limitadas a 80 linhas por planilha
+- Exportações completas e gestão de usuários bloqueadas
+- Após expirar, o sistema solicita contratação da edição completa
+
+SUPORTE E LICENCIAMENTO
+-----------------------
+adrianomontes55@gmail.com

@@ -43,6 +43,18 @@ else:
     TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
     STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
+from modulo_trial import (
+    configurar_trial,
+    info_trial,
+    trial_ativo,
+    validar_limite_importacao_trial,
+    verificar_rota_trial,
+    PAGINA_TRIAL_EXPIRADO,
+    PAGINA_TRIAL_INVALIDO,
+)
+
+_TRIAL_CFG = configurar_trial(BASE_DIR)
+
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
 def registrar_log(acao, fluxo, detalhes):
@@ -76,7 +88,23 @@ def _load_secret_key():
 app.secret_key = _load_secret_key()
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-COOKIE_ACESSO_DIA = 'corax_acesso_dia'
+COOKIE_ACESSO_DIA = 'logistica_acesso_dia'
+
+NOME_SISTEMA = os.environ.get('NOME_SISTEMA', 'Sistema Logístico Integrado')
+TAGLINE_SISTEMA = os.environ.get(
+    'TAGLINE_SISTEMA',
+    'Controle logístico ponta a ponta — do pedido ao indicador, com acurácia e rastreio por NF.',
+)
+
+
+@app.context_processor
+def inject_brand_config():
+    """Variáveis de marca white-label disponíveis em todos os templates."""
+    return {
+        'nome_sistema': NOME_SISTEMA,
+        'tagline_sistema': TAGLINE_SISTEMA,
+        'trial_info': info_trial(),
+    }
 
 
 def _data_hoje_str():
@@ -90,7 +118,7 @@ def _segundos_ate_meia_noite():
 
 
 def _serializer_acesso_dia():
-    return URLSafeSerializer(app.secret_key, salt='corax-acesso-dia-v1')
+    return URLSafeSerializer(app.secret_key, salt='logistica-acesso-dia-v1')
 
 
 def _aplicar_sessao_usuario(usuario):
@@ -148,6 +176,9 @@ def _anexar_cookie_acesso_dia(response, usuario):
 @app.before_request
 def restaurar_acesso_diario():
     """Senha só no 1º acesso do dia; demais navegações reutilizam o cookie assinado."""
+    bloqueio_trial = verificar_rota_trial(request.path)
+    if bloqueio_trial is not None:
+        return bloqueio_trial
     app.permanent_session_lifetime = timedelta(seconds=_segundos_ate_meia_noite())
     if 'usuario_id' in session:
         return
@@ -155,7 +186,7 @@ def restaurar_acesso_diario():
     if payload:
         _aplicar_sessao_do_cookie(payload)
 
-DB_FILE = os.path.join(BASE_DIR, 'sistema_operacional.db')
+DB_FILE = _TRIAL_CFG.db_path
 database_adapter.configure(DB_FILE)
 PASTA_DOWNLOADS = os.path.join(os.path.expanduser('~'), 'Downloads')
 PASTA_UPLOADS_MANUAL = os.path.join(BASE_DIR, 'uploads_manuais')
@@ -549,56 +580,80 @@ def inicializar_banco():
 inicializar_banco()
 
 
+def _gravar_configuracao_painel(cursor, chave, valor):
+    """Grava chave/valor em configuracoes_painel (SQLite ou SQL Server)."""
+    if database_adapter.is_sqlserver():
+        cursor.execute("SELECT chave FROM configuracoes_painel WHERE chave = ?", (chave,))
+        if cursor.fetchone():
+            cursor.execute("UPDATE configuracoes_painel SET valor = ? WHERE chave = ?", (valor, chave))
+        else:
+            cursor.execute("INSERT INTO configuracoes_painel (chave, valor) VALUES (?, ?)", (chave, valor))
+    else:
+        cursor.execute("INSERT OR REPLACE INTO configuracoes_painel (chave, valor) VALUES (?, ?)", (chave, valor))
+
+
 def inicializar_banco_seguranca():
-    """Cria tabelas de segurança e usuário admin inicial apenas na primeira execução."""
+    """Cria tabelas de segurança e garante usuário admin com senha padrão de instalação."""
     import werkzeug.security as ws
 
-    if database_adapter.is_sqlserver():
-        print("[SEGURANCA] SQL Server ativo: usuarios migrados/gerenciados no banco SistemaLogistico.")
-        return
+    senha_padrao = os.environ.get('ADMIN_SENHA_INICIAL', 'admin123')
+    migracao_chave = 'admin_senha_padrao_v1'
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios_sistema (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            login TEXT UNIQUE NOT NULL,
-            senha_hash TEXT NOT NULL,
-            nivel_hierarquico TEXT NOT NULL
+    if not database_adapter.is_sqlserver():
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usuarios_sistema (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                login TEXT UNIQUE NOT NULL,
+                senha_hash TEXT NOT NULL,
+                nivel_hierarquico TEXT NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS logs_auditoria (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data_hora TEXT NOT NULL,
+                usuario TEXT NOT NULL,
+                nivel TEXT NOT NULL,
+                acao TEXT NOT NULL,
+                detalhes TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS configuracoes_painel (
+                chave TEXT PRIMARY KEY,
+                valor TEXT
+            )
+        """)
+        cursor.execute(
+            "INSERT OR IGNORE INTO configuracoes_painel (chave, valor) VALUES ('missao', ?)",
+            ('Nossa missão é movimentar o progresso com precisão logística e excelência operacional.',)
         )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS logs_auditoria (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            data_hora TEXT NOT NULL,
-            usuario TEXT NOT NULL,
-            nivel TEXT NOT NULL,
-            acao TEXT NOT NULL,
-            detalhes TEXT
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS configuracoes_painel (
-            chave TEXT PRIMARY KEY,
-            valor TEXT
-        )
-    """)
-    cursor.execute(
-        "INSERT OR IGNORE INTO configuracoes_painel (chave, valor) VALUES ('missao', ?)",
-        ('Nossa missão é movimentar o progresso com precisão logística e excelência operacional.',)
-    )
 
-    cursor.execute("SELECT COUNT(*) FROM usuarios_sistema")
-    if cursor.fetchone()[0] == 0:
-        senha_inicial = os.environ.get('ADMIN_SENHA_INICIAL') or os.urandom(6).hex()
-        senha_cripto = ws.generate_password_hash(senha_inicial)
+    cursor.execute("SELECT id, senha_hash FROM usuarios_sistema WHERE login = ?", ('admin',))
+    admin = cursor.fetchone()
+    if admin is None:
+        senha_cripto = ws.generate_password_hash(senha_padrao)
         cursor.execute(
             "INSERT INTO usuarios_sistema (nome, login, senha_hash, nivel_hierarquico) VALUES (?, ?, ?, ?)",
             ("Administrador", "admin", senha_cripto, "ADMIN"),
         )
-        print(f"✔️ [SEGURANÇA] Usuário admin inicial criado. Senha inicial: {senha_inicial}")
+        print(f"✔️ [SEGURANÇA] Usuário admin criado. Login: admin | Senha: {senha_padrao}")
+    else:
+        cursor.execute("SELECT valor FROM configuracoes_painel WHERE chave = ?", (migracao_chave,))
+        migracao = cursor.fetchone()
+        if not migracao and not ws.check_password_hash(admin['senha_hash'], senha_padrao):
+            senha_cripto = ws.generate_password_hash(senha_padrao)
+            cursor.execute(
+                "UPDATE usuarios_sistema SET senha_hash = ? WHERE login = ?",
+                (senha_cripto, 'admin'),
+            )
+            print(f"✔️ [SEGURANÇA] Senha do admin restaurada para o padrão de instalação ({senha_padrao}).")
+        if not migracao:
+            _gravar_configuracao_painel(cursor, migracao_chave, '1')
 
     conn.commit()
     conn.close()
@@ -2561,6 +2616,14 @@ def api_importar_faturamento_manual():
     nome_origem = arquivo.filename
     arquivo.save(ARQUIVO_FATURAMENTO_MANUAL)
     try:
+        if trial_ativo():
+            try:
+                qtd = len(pd.read_excel(ARQUIVO_FATURAMENTO_MANUAL))
+                limite_msg = validar_limite_importacao_trial(qtd)
+                if limite_msg:
+                    return jsonify({"status": "erro", "mensagem": limite_msg}), 403
+            except Exception:
+                pass
         importar_faturamento_para_sqlite(ARQUIVO_FATURAMENTO_MANUAL)
         invalidar_cache_faturamento()
         _cache_importacoes['faturamento'] = (ARQUIVO_FATURAMENTO_MANUAL, os.path.getmtime(ARQUIVO_FATURAMENTO_MANUAL))
@@ -2589,6 +2652,9 @@ def api_importar_expedicao_manual():
     try:
         arquivo.save(ARQUIVO_EXPEDICAO_MANUAL)
         df_bruto = pd.read_excel(ARQUIVO_EXPEDICAO_MANUAL)
+        limite_msg = validar_limite_importacao_trial(len(df_bruto))
+        if limite_msg:
+            return jsonify({"status": "erro", "mensagem": limite_msg}), 403
         df_tratado, col_nf, _ = normalizar_dataframe_expedicao(df_bruto)
         df_tratado[col_nf] = df_tratado[col_nf].apply(_limpar_numero_nf)
         df_tratado.to_excel(ARQUIVO_EXPEDICAO_MANUAL, index=False)
@@ -4632,6 +4698,13 @@ def api_excluir_transportadora_gerenciador():
     # ============================================================
 # ⚡ 6. CENTRAL MESTRE DE DOCUMENTAÇÃO E MANUAL DO USUÁRIO
 # ============================================================
+@app.route('/apresentacao', methods=['GET'])
+@app.route('/solucao', methods=['GET'])
+def apresentacao_comercial():
+    """Página comercial pública — fluxograma e proposta de valor (white-label)."""
+    return render_template('apresentacao.html')
+
+
 @app.route('/manual', methods=['GET'])
 def tela_manual_usuario():
     """Disponibiliza o manual do usuário estruturado via localhost."""
@@ -5219,32 +5292,48 @@ def api_custos_lancar_agendamento(agendamento_id):
 @app.route('/login', methods=['GET', 'POST'])
 def tela_login_sistema():
     """Autenticação via banco de usuários."""
+    import traceback
     import werkzeug.security as ws
 
     if request.method == 'POST':
-        dados = request.get_json() or {}
-        user_login = dados.get('login', '').strip()
-        user_senha = dados.get('senha', '').strip()
+        try:
+            dados = request.get_json(silent=True) or {}
+            user_login = str(dados.get('login', '')).strip()
+            user_senha = str(dados.get('senha', '')).strip()
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM usuarios_sistema WHERE login = ?", (user_login,))
-        usuario = cursor.fetchone()
-        conn.close()
+            if not user_login or not user_senha:
+                return jsonify({"status": "erro", "mensagem": "Informe usuário e senha."}), 400
 
-        if usuario and ws.check_password_hash(usuario['senha_hash'], user_senha):
-            _aplicar_sessao_usuario(usuario)
-            registrar_log_operacional("LOGIN", f"Usuário {user_login} autenticado.")
-            resp = make_response(jsonify({"status": "sucesso", "mensagem": "Acesso autorizado!"}))
-            return _anexar_cookie_acesso_dia(resp, usuario)
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM usuarios_sistema WHERE login = ?", (user_login,))
+            usuario = cursor.fetchone()
+            conn.close()
 
-        return jsonify({"status": "erro", "mensagem": "Usuário ou senha incorretos!"}), 401
+            senha_hash = usuario['senha_hash'] if usuario else None
+            if usuario and senha_hash and ws.check_password_hash(senha_hash, user_senha):
+                _aplicar_sessao_usuario(usuario)
+                registrar_log_operacional("LOGIN", f"Usuário {user_login} autenticado.")
+                resp = make_response(jsonify({"status": "sucesso", "mensagem": "Acesso autorizado!"}))
+                return _anexar_cookie_acesso_dia(resp, usuario)
+
+            return jsonify({"status": "erro", "mensagem": "Usuário ou senha incorretos!"}), 401
+        except Exception as exc:
+            log_path = os.path.join(BASE_DIR, 'erro_executavel.txt')
+            with open(log_path, 'w', encoding='utf-8') as f:
+                f.write(f"Erro no login:\n{exc}\n\n{traceback.format_exc()}")
+            return jsonify({
+                "status": "erro",
+                "mensagem": "Falha interna no login. Verifique erro_executavel.txt na pasta do sistema.",
+            }), 500
 
     if 'usuario_id' in session:
         return redirect('/portal_operacional')
     if _ler_cookie_acesso_dia():
         return redirect('/portal_operacional')
-    return render_template('login.html')
+    resp = make_response(render_template('login.html'))
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
 
 
 @app.route('/logout')
@@ -5447,21 +5536,32 @@ def teste_layout_blocos():
 # ============================================================
 # 🖼️ ROTAS EXCLUSIVAS DE IMAGENS OPERACIONAIS (ANTI-BLOQUEIO)
 # ============================================================
+@app.route('/cdn/logo_sistema', methods=['GET'])
+@app.route('/cdn/logo_cliente', methods=['GET'])
+def servir_logo_sistema():
+    """Logo white-label: logo_sistema.png, logo_cliente.png ou logo.png na pasta do app."""
+    for nome in ('logo_sistema.png', 'logo_cliente.png', 'logo.png'):
+        caminho = os.path.join(BASE_DIR, nome)
+        if os.path.exists(caminho):
+            return send_file(caminho, mimetype='image/png')
+    return '', 404
+
+
 @app.route('/cdn/logo_corax', methods=['GET'])
 def servir_logo_corax():
-    """Busca a logo da Corax local e serve para o iframe sem passar pela internet."""
-    caminho = os.path.join(BASE_DIR, 'logo_corax.png')
-    if os.path.exists(caminho):
-        return send_file(caminho, mimetype='image/png')
-    return "Remoto", 404
+    """Compatibilidade com rotas antigas — usa logo white-label."""
+    return servir_logo_sistema()
 
+
+@app.route('/cdn/logo_parceiro', methods=['GET'])
 @app.route('/cdn/logo_ultrasafe', methods=['GET'])
-def servir_logo_ultrasafe():
-    """Busca a logo da Ultra Safe local e serve para o iframe sem passar pela internet."""
-    caminho = os.path.join(BASE_DIR, 'logo_ultrasafe.png')
-    if os.path.exists(caminho):
-        return send_file(caminho, mimetype='image/png')
-    return "Remoto", 404
+def servir_logo_parceiro():
+    """Logo opcional de parceiro/implementador (logo_parceiro.png)."""
+    for nome in ('logo_parceiro.png', 'logo_ultrasafe.png'):
+        caminho = os.path.join(BASE_DIR, nome)
+        if os.path.exists(caminho):
+            return send_file(caminho, mimetype='image/png')
+    return '', 404
 
 # ============================================================
 # 🎯 API EXCLUSIVA PARA ALIMENTAR A LISTA DE DEVOLUÇÕES
@@ -5685,8 +5785,7 @@ def painel_curva_abc():
 
 @app.route('/api/logistica/curva_abc', methods=['GET'])
 def api_calcular_curva_abc_pareto_real():
-    """MÓDULO ADRIANO - VERSÃO ULTRA BLINDADA CONSOLIDADA: Preserva 100% da inteligência
-    do faturamento, Pareto e Corax, garantindo a exibição de itens inventariados novos."""
+    """Curva ABC consolidada: faturamento, Pareto e base de estoque operacional."""
     try:
         import sqlite3
         import re
@@ -5703,7 +5802,7 @@ def api_calcular_curva_abc_pareto_real():
             texto_str = texto_str.replace('[', '').replace(']', '').replace('"', '')
             return re.sub(r'[^A-Z0-9]', '', texto_str)
         
-        # 1️⃣ LEITURA DO ARQUIVO DA CORAX TRATADA CONTRA QUEDAS
+        # 1️⃣ Leitura da base de estoque (arquivo operacional)
         try:
             arquivo_estoque = buscar_ultimo_estoque_downloads()
             if arquivo_estoque:
@@ -5725,7 +5824,7 @@ def api_calcular_curva_abc_pareto_real():
                     except Exception: saldo_num = 0
                     estoque_bruto_lista.append({"chave_limpa": chave_excel_limpa, "saldo": saldo_num})
         except Exception as e_file:
-            print(f"⚠️ [AVISO CORAX IGNORADO PARA NÃO TRAVAR O AUDITOR]: {str(e_file)}")
+            print(f"⚠️ [AVISO] Base de estoque ignorada para não travar o auditor: {str(e_file)}")
 
         # 2️⃣ CONSULTA DO HISTÓRICO DE VENDAS TRATADA
         vendas_por_item = {}
@@ -6068,6 +6167,18 @@ registrar_rotas_roteirizador(app, {
 })
 
 
+@app.route('/trial-expirado')
+def pagina_trial_expirado():
+    return PAGINA_TRIAL_EXPIRADO
+
+
+@app.route('/trial-invalido')
+def pagina_trial_invalido():
+    from flask import render_template_string
+    mensagem = info_trial().get('mensagem', 'Licença trial inválida ou ausente.')
+    return render_template_string(PAGINA_TRIAL_INVALIDO, mensagem=mensagem)
+
+
 if __name__ == '__main__':
     import time
     import argparse
@@ -6086,6 +6197,11 @@ if __name__ == '__main__':
 
     print('\n' + '=' * 56)
     print('SISTEMA LOGÍSTICO INTEGRADO — SERVIDOR ATIVO')
+    if trial_ativo():
+        ti = info_trial()
+        print(f'  *** EDIÇÃO TRIAL — {ti.get("dias_restantes", 0)} dia(s) restante(s) ***')
+        if ti.get('empresa'):
+            print(f'  Licenciado para: {ti.get("empresa")} ({ti.get("email")})')
     print(f'  Máquina local:  http://127.0.0.1:{porta}/')
     print(f'  Rede (LAN):     http://{ip_rede}:{porta}/')
     print('  Outros PCs na rede devem usar o endereço LAN acima.')

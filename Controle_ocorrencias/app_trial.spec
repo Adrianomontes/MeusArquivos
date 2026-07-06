@@ -1,5 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller — Sistema Logístico Integrado (rede + desktop)
+# PyInstaller — Sistema Logístico TRIAL (somente para envio a clientes)
+
+import os
+
+os.environ['EDICAO_TRIAL'] = '1'
 
 block_cipher = None
 
@@ -40,7 +44,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='SistemaLogistico',
+    name='SistemaLogisticoTrial',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

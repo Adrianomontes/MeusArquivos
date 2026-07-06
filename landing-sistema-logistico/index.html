@@ -192,6 +192,30 @@
             background: var(--bg); color: var(--text);
             font-size: .9rem;
         }
+        .trial-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .trial-form-grid textarea,
+        .trial-form-grid button {
+            grid-column: 1 / -1;
+        }
+        .trial-form-grid input,
+        .trial-form-grid textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: .9rem;
+            font-family: inherit;
+        }
+        @media (max-width: 600px) {
+            .trial-form-grid { grid-template-columns: 1fr; }
+        }
         .download-msg {
             font-size: .85rem; padding: 12px 14px;
             border-radius: 8px; display: none;
@@ -239,13 +263,10 @@ const CONFIG = {
     email: 'adrianomontes55@gmail.com',
     telefone: '',
     whatsapp: '',
-    urlDemo: '#contato',
-    urlDownloadRelease: 'https://github.com/Adrianomontes/MeusArquivos/releases'
+    urlDemo: '#contato'
 };
-/* Mesma lista de .github/access-control.json — manter sincronizado */
-const EMAILS_AUTORIZADOS_DOWNLOAD = [
-    'adrianomontes55@gmail.com'
-];
+/* E-mail que recebe solicitações de trial (FormSubmit) */
+const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 </script>
 
 <nav class="nav">
@@ -381,20 +402,27 @@ const EMAILS_AUTORIZADOS_DOWNLOAD = [
     </section>
 
     <section id="download">
-        <h2>Download do sistema</h2>
+        <h2>Solicitar versão trial</h2>
         <div class="download-box">
             <p>
-                O download é restrito a <strong style="color:var(--text)">e-mails autorizados</strong>.
-                Após a liberação, você também recebe convite como colaborador no repositório privado no GitHub.
+                Preencha o formulário abaixo. A solicitação será enviada para
+                <strong style="color:var(--text)">adrianomontes55@gmail.com</strong>.
+                Após análise, você recebe por e-mail um pacote com o executável trial
+                (<strong>somente o .exe</strong>, banco demonstrativo e licença com prazo de validade).
             </p>
-            <div class="download-form">
-                <input type="email" id="email-download" placeholder="Seu e-mail corporativo" autocomplete="email">
-                <button type="button" class="btn btn-primary" id="btn-verificar-download">Verificar acesso</button>
-            </div>
+            <form id="form-solicitar-trial" class="trial-form-grid">
+                <input type="text" name="nome" id="trial-nome" placeholder="Seu nome" required autocomplete="name">
+                <input type="email" name="email" id="trial-email" placeholder="E-mail corporativo" required autocomplete="email">
+                <input type="text" name="empresa" id="trial-empresa" placeholder="Empresa / CD" required>
+                <input type="tel" name="telefone" id="trial-telefone" placeholder="Telefone / WhatsApp" autocomplete="tel">
+                <textarea name="mensagem" id="trial-mensagem" rows="3" placeholder="Descreva sua operação (opcional)"></textarea>
+                <button type="submit" class="btn btn-primary" id="btn-solicitar-trial">Enviar solicitação de trial</button>
+            </form>
             <div class="download-msg" id="download-msg"></div>
-            <div class="hero-cta" style="justify-content:flex-start;margin-top:12px;display:none;" id="download-links">
-                <a href="#" class="btn btn-ok" id="link-release" target="_blank" rel="noopener">Baixar release autorizado</a>
-            </div>
+            <p style="margin-top:16px;font-size:.78rem;color:var(--muted);">
+                A versão trial inclui banco demonstrativo, expira em dias definidos na licença e não permite exportação completa.
+                Contato direto: <a href="mailto:adrianomontes55@gmail.com" id="link-email-inline">adrianomontes55@gmail.com</a>
+            </p>
         </div>
     </section>
 
@@ -434,7 +462,6 @@ const EMAILS_AUTORIZADOS_DOWNLOAD = [
     document.getElementById('footer-diretor').textContent = CONFIG.diretor;
     document.getElementById('contato-empresa').textContent = CONFIG.empresa;
     document.getElementById('contato-diretor').textContent = CONFIG.diretor;
-    document.getElementById('link-release').href = CONFIG.urlDownloadRelease;
 
     function setLogo(el, sigla) {
         const img = new Image();
@@ -471,28 +498,39 @@ const EMAILS_AUTORIZADOS_DOWNLOAD = [
             encodeURIComponent('Olá! Gostaria de agendar uma demonstração do ' + CONFIG.nomeSistema + '.');
     }
 
-    document.getElementById('btn-verificar-download').addEventListener('click', function() {
-        var email = (document.getElementById('email-download').value || '').trim().toLowerCase();
+    document.getElementById('form-solicitar-trial').addEventListener('submit', function(ev) {
+        ev.preventDefault();
+        var form = document.getElementById('form-solicitar-trial');
+        var btn = document.getElementById('btn-solicitar-trial');
         var msg = document.getElementById('download-msg');
-        var links = document.getElementById('download-links');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
         msg.className = 'download-msg';
-        links.style.display = 'none';
-        if (!email || email.indexOf('@') < 1) {
-            msg.textContent = 'Informe um e-mail válido.';
-            msg.classList.add('err');
-            return;
-        }
-        var autorizado = EMAILS_AUTORIZADOS_DOWNLOAD.some(function(e) {
-            return e.toLowerCase() === email;
-        });
-        if (autorizado) {
-            msg.textContent = 'Acesso liberado. Use o link abaixo para baixar (requer login GitHub como colaborador do repositório privado).';
+
+        var fd = new FormData(form);
+        fd.append('_subject', 'Solicitação TRIAL — Sistema Logístico Integrado');
+        fd.append('_captcha', 'false');
+        fd.append('_template', 'table');
+
+        fetch('https://formsubmit.co/ajax/' + encodeURIComponent(EMAIL_SOLICITACOES), {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: fd
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+            msg.textContent = 'Solicitação enviada! Adriano Montes (Animo) analisará e responderá em ' + CONFIG.email + ' com o pacote trial se aprovado.';
             msg.classList.add('ok');
-            links.style.display = 'flex';
-        } else {
-            msg.textContent = 'E-mail não autorizado. Solicite acesso a ' + CONFIG.email + ' informando sua empresa e operação.';
+            form.reset();
+        })
+        .catch(function() {
+            msg.textContent = 'Não foi possível enviar agora. Escreva diretamente para ' + CONFIG.email;
             msg.classList.add('err');
-        }
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = 'Enviar solicitação de trial';
+        });
     });
 })();
 </script>
