@@ -168,8 +168,22 @@
             overflow: auto;
             max-height: 85vh;
             margin-top: 16px;
+            -webkit-overflow-scrolling: touch;
         }
-        .fluxo-wrap img { display: block; width: 100%; min-width: 800px; }
+        .fluxo-wrap picture,
+        .fluxo-wrap img {
+            display: block;
+            width: 100%;
+            min-width: 800px;
+            height: auto;
+        }
+        .fluxo-hint {
+            display: none;
+            margin: 10px 0 0;
+            font-size: .8rem;
+            color: var(--muted);
+            text-align: center;
+        }
         .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
         .pill {
             font-size: .75rem; padding: 6px 12px; border-radius: 6px;
@@ -297,6 +311,25 @@
             .nav-links { display: none; }
             .hero { padding: 40px 16px 32px; }
         }
+        @media (max-width: 768px) {
+            .fluxo-wrap {
+                max-height: none;
+                overflow-x: auto;
+                overflow-y: visible;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                padding: 0;
+            }
+            .fluxo-wrap picture,
+            .fluxo-wrap img {
+                min-width: 0;
+                width: 1040px;
+                max-width: none;
+                border-radius: 0;
+                border: none;
+            }
+            .fluxo-hint { display: block; }
+        }
     </style>
 </head>
 <body>
@@ -409,8 +442,14 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
             <span class="pill">Indicadores</span>
         </div>
         <div class="fluxo-wrap">
-            <img src="assets/fluxograma-operacional-completo.svg" alt="Fluxograma operacional logístico completo — 10 fases integradas">
+            <picture>
+                <source media="(max-width: 768px)" srcset="assets/fluxograma-operacional-completo.png" type="image/png">
+                <img src="assets/fluxograma-operacional-completo.svg"
+                     alt="Fluxograma operacional logístico completo — 10 fases integradas"
+                     width="1040" height="3180" loading="lazy">
+            </picture>
         </div>
+        <p class="fluxo-hint">No celular: deslize para os lados e role a página para ver todas as 10 fases.</p>
     </section>
 
     <section id="modulos">
