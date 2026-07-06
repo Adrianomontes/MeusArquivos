@@ -1,0 +1,10 @@
+LANDING MULTI ESCAPE ERP
+========================
+
+Publicada em: docs/multiscape/  (GitHub Pages)
+
+URL: https://adrianomontes.github.io/sistema-gestao-logistico/multiscape/
+
+Edite CONFIG no index.html e sincronize com landing-multiscape/.
+
+Controle de e-mails trial: .github/access-control-multiscape.json

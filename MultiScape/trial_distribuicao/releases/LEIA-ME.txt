@@ -1,0 +1,16 @@
+PACOTE TRIAL — Multi Escape ERP v1
+==================================
+
+Coloque aqui o arquivo ZIP para download na landing:
+
+  MultiEscapeTrial-v1.zip
+
+Conteúdo sugerido do ZIP:
+  - MultiEscape_ERP_Trial.exe  (ou MultiEscape_ERP.exe + trial.lic)
+  - trial.lic                  (gerado com scripts/gerar_licenca_trial.py)
+  - LEIA-ME.txt
+
+Gerar licença (30 dias):
+  py MultiScape\scripts\gerar_licenca_trial.py --email cliente@oficina.com.br --empresa "Oficina"
+
+URL na landing aponta para este arquivo no GitHub raw.

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ERP para oficinas mecânicas: clientes, veículos, orçamentos PDF, fornecedores, contas a pagar e receber, fluxo de caixa. Trial 30 dias.">
+    <meta property="og:title" content="Multi Escape ERP">
+    <meta property="og:description" content="Gestão completa para oficinas mecânicas — desktop Windows, offline, SQLite.">
+    <title>Multi Escape ERP — Gestão para oficinas mecânicas</title>
+    <style>
+        :root {
+            --bg: #1B2631; --surface: #212F3D; --surface2: #17202A;
+            --border: #34495E; --text: #ECF0F1; --muted: #95A5A6;
+            --accent: #2E86C1; --ok: #27AE60; --primary: #1A5276;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+        a { color: var(--accent); }
+        .nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 12px 24px; background: rgba(27,38,49,.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+        .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 700; font-size: .95rem; }
+        .nav-logo { width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .7rem; color: #fff; }
+        .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+        .nav-links a { color: var(--muted); text-decoration: none; font-size: .82rem; padding: 6px 10px; border-radius: 6px; }
+        .nav-links a:hover { color: var(--text); background: var(--surface); }
+        .nav-outro { font-size: .75rem; color: var(--muted); margin-left: 8px; }
+        .hero { padding: 56px 24px 40px; text-align: center; background: radial-gradient(ellipse at top, rgba(46,134,193,.18), transparent 55%), var(--bg); border-bottom: 1px solid var(--border); }
+        .hero-badge { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(46,134,193,.4); border-radius: 999px; padding: 6px 14px; margin-bottom: 16px; }
+        .hero h1 { margin: 0 0 12px; font-size: clamp(1.75rem, 4.5vw, 2.5rem); font-weight: 800; }
+        .hero .tagline { max-width: 700px; margin: 0 auto 28px; color: var(--muted); font-size: 1.05rem; }
+        .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn { display: inline-flex; align-items: center; padding: 12px 22px; border-radius: 8px; font-weight: 700; font-size: .9rem; text-decoration: none; border: none; cursor: pointer; }
+        .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(46,134,193,.35); }
+        .btn-ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+        .btn-ok { background: var(--ok); color: #fff; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px 48px; }
+        section { padding: 44px 0; border-bottom: 1px solid var(--border); }
+        h2 { color: var(--ok); font-size: 1rem; text-transform: uppercase; letter-spacing: .05em; margin: 0 0 16px; padding-left: 12px; border-left: 4px solid var(--ok); }
+        .lead { color: var(--muted); font-size: .92rem; max-width: 820px; margin: 0 0 20px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .card h3 { margin: 0 0 8px; font-size: .95rem; color: var(--accent); }
+        .card p { margin: 0; font-size: .84rem; color: var(--muted); }
+        .card-icon { font-size: 1.6rem; margin-bottom: 8px; }
+        .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+        .pill { font-size: .75rem; padding: 6px 12px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 24px; }
+        .stat { text-align: center; padding: 16px; background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); }
+        .stat strong { display: block; font-size: 1.5rem; color: var(--accent); }
+        .stat span { font-size: .75rem; color: var(--muted); }
+        .destaque { background: linear-gradient(135deg, rgba(39,174,96,.1), rgba(46,134,193,.1)); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+        .download-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 600px; }
+        .download-box p { margin: 0 0 16px; color: var(--muted); font-size: .88rem; }
+        .trial-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .trial-form-grid textarea, .trial-form-grid button { grid-column: 1 / -1; }
+        .trial-form-grid input, .trial-form-grid textarea { width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: .9rem; font-family: inherit; }
+        .form-hint { font-size: .78rem; color: var(--muted); margin: -4px 0 8px; grid-column: 1 / -1; }
+        .download-msg { font-size: .85rem; padding: 12px 14px; border-radius: 8px; display: none; }
+        .download-msg.ok { display: block; background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.35); color: #82e0aa; }
+        .download-msg.err { display: block; background: rgba(192,57,43,.15); border: 1px solid rgba(192,57,43,.4); color: #f1948a; }
+        #trial-download-painel { display: none; margin-top: 14px; }
+        #trial-download-painel.visivel { display: block; }
+        .trial-expira { font-size: .8rem; color: #f39c12; margin-top: 8px; }
+        .contato-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; max-width: 520px; }
+        .footer-tech { font-size: .78rem; color: var(--muted); margin-top: 10px; max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+        footer { text-align: center; padding: 32px 20px 40px; color: var(--muted); font-size: .8rem; border-top: 1px solid var(--border); }
+        .logo-slot { width: 64px; height: 64px; border-radius: 14px; background: linear-gradient(135deg, var(--primary), var(--accent)); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; color: #fff; margin-bottom: 16px; }
+        @media (max-width: 600px) { .trial-form-grid { grid-template-columns: 1fr; } .nav-links { display: none; } }
+    </style>
+</head>
+<body>
+
+<script>
+const CONFIG = {
+    nomeSistema: 'Multi Escape ERP',
+    tagline: 'Gestão completa para oficinas mecânicas — clientes, orçamentos em PDF, peças, financeiro e fluxo de caixa em um único sistema desktop.',
+    siglaLogo: 'ME',
+    empresa: 'Animo Serviços Administrativos',
+    cargo: 'Desenvolvedor',
+    diretor: 'Adriano Montes',
+    email: 'adrianomontes55@gmail.com',
+    telefone: '',
+    whatsapp: '',
+    urlLogistica: '../',
+    trialControleUrl: 'https://raw.githubusercontent.com/Adrianomontes/sistema-gestao-logistico/main/.github/access-control-multiscape.json',
+    trialInfoUrl: 'trial-info.json',
+    leadApiUrl: '',
+    rodapeTech: 'Desenvolvemos nossos produtos com as melhores ferramentas de IA do mercado, em linguagem Python e bancos de dados SQLite e MySQL.'
+};
+const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
+</script>
+
+<nav class="nav">
+    <a href="#" class="nav-brand">
+        <span class="nav-logo">ME</span>
+        <span>Multi Escape ERP</span>
+    </a>
+    <div class="nav-links">
+        <a href="#proposta">Proposta</a>
+        <a href="#modulos">Módulos</a>
+        <a href="#download">Trial 30 dias</a>
+        <a href="#contato">Contato</a>
+        <a href="../" class="nav-outro">← Logística</a>
+    </div>
+    <a href="#download" class="btn btn-primary" style="padding:8px 16px;font-size:.82rem;">Testar grátis</a>
+</nav>
+
+<header class="hero">
+    <div class="logo-slot">ME</div>
+    <div class="hero-badge" id="hero-badge">Oficinas mecânicas · Pequenas empresas</div>
+    <h1 id="hero-titulo">Multi Escape ERP</h1>
+    <p class="tagline" id="hero-tagline">Do orçamento ao recebimento — controle da oficina sem planilhas.</p>
+    <div class="hero-cta">
+        <a href="#download" class="btn btn-primary">Solicitar trial 30 dias</a>
+        <a href="#modulos" class="btn btn-ghost">Ver módulos</a>
+    </div>
+    <div class="stats">
+        <div class="stat"><strong>11</strong><span>áreas integradas</span></div>
+        <div class="stat"><strong>PDF</strong><span>orçamento profissional</span></div>
+        <div class="stat"><strong>0</strong><span>internet obrigatória</span></div>
+        <div class="stat"><strong>Win</strong><span>executável desktop</span></div>
+    </div>
+</header>
+
+<div class="wrap">
+    <section id="proposta">
+        <h2>Para quem é</h2>
+        <p class="lead">
+            Pensado para <strong style="color:var(--text)">oficinas mecânicas, auto centers e pequenas empresas automotivas</strong>
+            que precisam organizar clientes, veículos, orçamentos, compras de peças e o financeiro em um só lugar —
+            com interface simples, banco SQLite local e backup automático.
+        </p>
+        <div class="grid-3">
+            <div class="card"><div class="card-icon">👥</div><h3>CRM automotivo</h3><p>Cadastro de clientes, placas, marcas com logos e histórico de serviços.</p></div>
+            <div class="card"><div class="card-icon">📝</div><h3>Orçamentos</h3><p>Peças, mão de obra, parcelamento, taxas de cartão e PDF para o cliente.</p></div>
+            <div class="card"><div class="card-icon">💰</div><h3>Financeiro</h3><p>Contas a pagar e receber geradas na aprovação, fluxo de caixa mensal.</p></div>
+        </div>
+    </section>
+
+    <section id="modulos">
+        <h2>Módulos do sistema</h2>
+        <p class="lead">Tudo em abas no mesmo programa — instalado no Windows da oficina.</p>
+        <div class="pill-row">
+            <span class="pill">Clientes &amp; veículos</span>
+            <span class="pill">Novo orçamento</span>
+            <span class="pill">Consultar orçamentos</span>
+            <span class="pill">Fornecedores &amp; peças</span>
+            <span class="pill">Marcas &amp; motores</span>
+            <span class="pill">Taxas de cartão</span>
+            <span class="pill">Contas a receber</span>
+            <span class="pill">Contas a pagar</span>
+            <span class="pill">Fluxo acumulado</span>
+            <span class="pill">Manual integrado</span>
+        </div>
+        <div class="grid-2" style="margin-top:20px;">
+            <div class="card"><h3>Fluxo do orçamento</h3><p>Aguardando retorno → Aprovado → Executado (ou Declinado), com KPIs na tela de consulta.</p></div>
+            <div class="card"><h3>Requisitos</h3><p>Windows 7 a 11. Não precisa instalar Python. Banco criado automaticamente na pasta do .exe.</p></div>
+        </div>
+    </section>
+
+    <section id="comercial">
+        <h2>Implantação</h2>
+        <div class="grid-2">
+            <div class="destaque">
+                <h3>Desktop · Offline · Trial 30 dias</h3>
+                <p>Teste o sistema completo por 30 dias com licença <strong>trial.lic</strong> assinada. Ideal para validar na rotina real da oficina antes da compra.</p>
+            </div>
+            <div class="destaque">
+                <h3>Desenvolvido por</h3>
+                <p><strong style="color:var(--text)">Animo Serviços Administrativos</strong> — Adriano Montes.<br>Mesma linha de qualidade do sistema logístico integrado, agora para o segmento automotivo.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="download">
+        <h2>Solicitar trial — 30 dias</h2>
+        <div class="download-box">
+            <p>Preencha com <strong>e-mail corporativo</strong> da oficina. Após liberação, o download aparece nesta página.</p>
+            <form id="form-solicitar-trial" class="trial-form-grid">
+                <input type="text" name="nome" id="trial-nome" placeholder="Seu nome" required>
+                <input type="email" name="email" id="trial-email" placeholder="E-mail corporativo (voce@oficina.com.br)" required>
+                <p class="form-hint">Não use Gmail, Hotmail ou Outlook pessoal.</p>
+                <input type="text" name="empresa" id="trial-empresa" placeholder="Nome da oficina" required>
+                <input type="tel" name="telefone" id="trial-telefone" placeholder="WhatsApp / telefone">
+                <textarea name="mensagem" id="trial-mensagem" rows="3" placeholder="Quantos elevadores? Principais serviços? (opcional)"></textarea>
+                <button type="submit" class="btn btn-primary" id="btn-solicitar-trial">Enviar e verificar download</button>
+            </form>
+            <div class="download-msg" id="download-msg"></div>
+            <div id="trial-download-painel">
+                <a href="#" class="btn btn-ok" id="btn-baixar-trial" download>Baixar MultiEscapeTrial-v1.zip</a>
+                <p class="trial-expira" id="trial-expira-texto"></p>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Mantenha <strong>trial.lic</strong> na mesma pasta do .exe.</p>
+            </div>
+            <p style="margin-top:16px;font-size:.78rem;color:var(--muted);">Contato: <a href="mailto:adrianomontes55@gmail.com" id="link-email-inline">adrianomontes55@gmail.com</a></p>
+        </div>
+    </section>
+
+    <section id="contato">
+        <h2>Contato</h2>
+        <div class="contato-box">
+            <p><strong style="color:var(--text)" id="contato-empresa">Animo Serviços Administrativos</strong><br>
+            <span id="contato-cargo">Desenvolvedor</span>: <span id="contato-diretor">Adriano Montes</span></p>
+            <p><a href="#" id="link-email">adrianomontes55@gmail.com</a></p>
+            <a href="#download" class="btn btn-primary" style="margin-top:12px;">Solicitar trial</a>
+        </div>
+    </section>
+</div>
+
+<footer>
+    <span id="footer-empresa">Animo Serviços Administrativos</span> · <span id="footer-diretor">Adriano Montes</span><br>
+    <span class="footer-tech" id="footer-tech"></span><br>
+    <a href="../">Gestão de Logística Integrada</a>
+</footer>
+
+<script>
+(function() {
+    document.title = CONFIG.nomeSistema + ' — Oficinas mecânicas';
+    document.getElementById('hero-titulo').textContent = CONFIG.nomeSistema;
+    document.getElementById('hero-tagline').textContent = CONFIG.tagline;
+    document.getElementById('hero-badge').textContent = 'Oficinas mecânicas · ' + CONFIG.empresa;
+    document.getElementById('footer-empresa').textContent = CONFIG.empresa;
+    document.getElementById('footer-diretor').textContent = CONFIG.diretor;
+    document.getElementById('footer-tech').textContent = CONFIG.rodapeTech;
+    document.getElementById('contato-empresa').textContent = CONFIG.empresa;
+    document.getElementById('contato-cargo').textContent = CONFIG.cargo;
+    document.getElementById('contato-diretor').textContent = CONFIG.diretor;
+    document.getElementById('link-email').textContent = CONFIG.email;
+    document.getElementById('link-email').href = 'mailto:' + CONFIG.email;
+    document.getElementById('link-email-inline').href = 'mailto:' + CONFIG.email;
+
+    var DOMINIOS_PESSOAIS = ['gmail.com','googlemail.com','hotmail.com','outlook.com','live.com','yahoo.com','yahoo.com.br','icloud.com','bol.com.br','uol.com.br','terra.com.br','ig.com.br'];
+
+    function emailCorporativo(email) {
+        var p = String(email||'').trim().toLowerCase().split('@');
+        return p.length === 2 && DOMINIOS_PESSOAIS.indexOf(p[1]) < 0;
+    }
+
+    function formatarDataBr(iso) {
+        if (!iso) return '';
+        var x = iso.split('-');
+        return x.length === 3 ? x[2]+'/'+x[1]+'/'+x[0] : iso;
+    }
+
+    var trialInfoCache, trialControleCache;
+    function carregarTrialInfo() {
+        if (trialInfoCache) return Promise.resolve(trialInfoCache);
+        return fetch(CONFIG.trialInfoUrl).then(function(r){return r.json();}).then(function(j){ trialInfoCache=j; return j; });
+    }
+    function carregarControleAcesso() {
+        if (trialControleCache) return Promise.resolve(trialControleCache);
+        return fetch(CONFIG.trialControleUrl).then(function(r){return r.json();}).then(function(j){ trialControleCache=j; return j; });
+    }
+
+    document.getElementById('form-solicitar-trial').addEventListener('submit', function(ev) {
+        ev.preventDefault();
+        var btn = document.getElementById('btn-solicitar-trial');
+        var msg = document.getElementById('download-msg');
+        var painel = document.getElementById('trial-download-painel');
+        var email = document.getElementById('trial-email').value.trim().toLowerCase();
+        var nome = document.getElementById('trial-nome').value.trim();
+        var empresa = document.getElementById('trial-empresa').value.trim();
+        msg.className = 'download-msg';
+        painel.classList.remove('visivel');
+        if (!nome || !empresa || !email) { msg.textContent = 'Preencha todos os campos obrigatórios.'; msg.classList.add('err'); return; }
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        Promise.all([carregarControleAcesso(), carregarTrialInfo()]).then(function(res) {
+            var ctrl = res[0], info = res[1];
+            var lista = (ctrl.emails_autorizados||[]).map(function(e){return String(e).trim().toLowerCase();});
+            var autorizado = lista.indexOf(email) >= 0;
+            if (!autorizado && !emailCorporativo(email)) {
+                msg.textContent = 'Use e-mail corporativo da oficina.';
+                msg.classList.add('err');
+                return Promise.reject('email');
+            }
+            var fd = new FormData(document.getElementById('form-solicitar-trial'));
+            fd.append('_subject', 'Trial Multi Escape ERP — ' + empresa);
+            fd.append('_captcha', 'false');
+            fd.append('_template', 'table');
+            return fetch('https://formsubmit.co/ajax/' + encodeURIComponent(EMAIL_SOLICITACOES), { method:'POST', headers:{'Accept':'application/json'}, body:fd })
+            .then(function(r){return r.json();}).then(function() {
+                if (autorizado) {
+                    document.getElementById('btn-baixar-trial').href = info.url_download;
+                    document.getElementById('btn-baixar-trial').textContent = 'Baixar ' + (info.nome_arquivo||'trial.zip');
+                    document.getElementById('trial-expira-texto').textContent = 'Validade do pacote: até ' + formatarDataBr(info.expira_em) + ' (' + (info.dias_trial||30) + ' dias de uso).';
+                    painel.classList.add('visivel');
+                    msg.textContent = 'Download liberado para o e-mail informado.';
+                    msg.classList.add('ok');
+                } else {
+                    msg.textContent = 'Solicitação enviada! Quando liberado, reenvie com o mesmo e-mail corporativo.';
+                    msg.classList.add('ok');
+                }
+            });
+        }).catch(function(e){ if(e!=='email'){ msg.textContent='Erro ao enviar. Escreva para '+CONFIG.email; msg.classList.add('err'); }})
+        .finally(function(){ btn.disabled=false; btn.textContent='Enviar e verificar download'; });
+    });
+})();
+</script>
+</body>
+</html>
