@@ -1,0 +1,39 @@
+LANDING PAGE ESTÁTICA — COMO PUBLICAR
+======================================
+
+Pasta: landing-sistema-logistico/ (repositório Git — separada do app Flask)
+
+Arquivos:
+  index.html          → página principal
+  assets/             → fluxogramas SVG (+ opcional logo.png)
+  COMO-PUBLICAR.txt   → este arquivo
+
+1. PERSONALIZAR
+   Abra index.html e edite o bloco CONFIG no início do <body>:
+   - nomeSistema, tagline, email, telefone, whatsapp
+   - urlDemo → link do sistema em produção (ex: https://demo.suaempresa.com/login)
+   - logoArquivo → coloque logo.png em assets/ se tiver
+
+2. PUBLICAR NO SEU SITE
+   Envie a pasta inteira "site" para o servidor web:
+   - Hospedagem compartilhada: pasta public_html/ ou www/
+   - GitHub Pages: renomeie para docs/ ou use branch gh-pages
+   - Netlify / Vercel: arraste a pasta site/
+
+   A URL final será algo como: https://seudominio.com.br/
+
+3. ESTRUTURA NO SERVIDOR
+   /
+   ├── index.html
+   └── assets/
+       ├── fluxograma-operacional-completo.svg
+       ├── fluxo-resumido.svg
+       └── logo.png (opcional)
+
+4. TESTAR LOCALMENTE
+   Abra index.html direto no navegador (duplo clique).
+   Os SVGs carregam por caminho relativo — funciona sem Python/Flask.
+
+5. DEMO AO VIVO
+   O botão "Solicitar demonstração" aponta para #contato por padrão.
+   Altere CONFIG.urlDemo para o endereço do sistema instalado no cliente.

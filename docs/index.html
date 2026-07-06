@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Plataforma de controle logístico integrado: pedidos, WMS, faturamento, rotas, expedição, canhotos e indicadores em um único sistema. White-label para distribuidores e CDs.">
+    <meta name="keywords" content="controle logístico, WMS, expedição, canhotos, roteirização, distribuidora, CD">
+    <meta property="og:title" content="Sistema Logístico Integrado">
+    <meta property="og:description" content="Do pedido ao indicador — controle ponta a ponta com telas integradas.">
+    <meta property="og:type" content="website">
+    <title>Sistema Logístico Integrado — Solução para operações logísticas</title>
+    <style>
+        :root {
+            --bg: #0f172a; --surface: #1e293b; --surface2: #162032;
+            --border: #334155; --text: #f8fafc; --muted: #94a3b8;
+            --accent: #38bdf8; --ok: #10b981; --primary: #2563eb;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        a { color: var(--accent); }
+        .nav {
+            position: sticky; top: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap;
+            padding: 12px 24px;
+            background: rgba(15,23,42,.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-brand {
+            display: flex; align-items: center; gap: 10px;
+            text-decoration: none; color: var(--text); font-weight: 700; font-size: .95rem;
+        }
+        .nav-logo {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: .75rem; color: #fff; overflow: hidden;
+        }
+        .nav-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+        .nav-links a {
+            color: var(--muted); text-decoration: none; font-size: .82rem;
+            padding: 6px 10px; border-radius: 6px;
+        }
+        .nav-links a:hover { color: var(--text); background: var(--surface); }
+        .hero {
+            padding: 56px 24px 40px;
+            text-align: center;
+            background:
+                radial-gradient(ellipse at top, rgba(56,189,248,.14), transparent 55%),
+                radial-gradient(ellipse at 80% 20%, rgba(16,185,129,.08), transparent 40%),
+                var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .hero-badge {
+            display: inline-block;
+            font-size: .72rem; font-weight: 700;
+            letter-spacing: .08em; text-transform: uppercase;
+            color: var(--accent);
+            border: 1px solid rgba(56,189,248,.35);
+            border-radius: 999px;
+            padding: 6px 14px; margin-bottom: 16px;
+        }
+        .hero h1 {
+            margin: 0 0 12px;
+            font-size: clamp(1.75rem, 4.5vw, 2.6rem);
+            font-weight: 800; letter-spacing: -.03em; line-height: 1.15;
+        }
+        .hero .tagline {
+            max-width: 720px; margin: 0 auto 28px;
+            color: var(--muted); font-size: 1.08rem;
+        }
+        .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 12px 22px; border-radius: 8px;
+            font-weight: 700; font-size: .9rem;
+            text-decoration: none; border: none; cursor: pointer;
+            transition: transform .15s, box-shadow .15s;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary {
+            background: var(--primary); color: #fff;
+            box-shadow: 0 4px 14px rgba(37,99,235,.35);
+        }
+        .btn-ghost {
+            background: transparent; color: var(--accent);
+            border: 1px solid var(--border);
+        }
+        .btn-ok { background: var(--ok); color: #fff; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 0 20px 48px; }
+        section { padding: 44px 0; border-bottom: 1px solid var(--border); }
+        h2 {
+            color: var(--ok); font-size: 1rem;
+            text-transform: uppercase; letter-spacing: .05em;
+            margin: 0 0 16px; padding-left: 12px;
+            border-left: 4px solid var(--ok);
+        }
+        .lead { color: var(--muted); font-size: .92rem; max-width: 820px; margin: 0 0 20px; }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px;
+        }
+        .card h3 { margin: 0 0 8px; font-size: .95rem; color: var(--accent); }
+        .card p { margin: 0; font-size: .84rem; color: var(--muted); }
+        .card-num {
+            font-size: .7rem; font-weight: 800; color: var(--ok);
+            letter-spacing: .06em; margin-bottom: 6px;
+        }
+        .fluxo-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: auto;
+            max-height: 85vh;
+            margin-top: 16px;
+        }
+        .fluxo-wrap img { display: block; width: 100%; min-width: 800px; }
+        .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+        .pill {
+            font-size: .75rem; padding: 6px 12px; border-radius: 6px;
+            background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+        }
+        .destaque {
+            background: linear-gradient(135deg, rgba(16,185,129,.1), rgba(56,189,248,.08));
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px;
+        }
+        .destaque h3 { margin: 0 0 8px; }
+        .destaque p { margin: 0; color: var(--muted); font-size: .9rem; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px; margin-top: 24px;
+        }
+        .stat {
+            text-align: center; padding: 16px;
+            background: var(--surface2); border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .stat strong { display: block; font-size: 1.5rem; color: var(--accent); }
+        .stat span { font-size: .75rem; color: var(--muted); }
+        .contato-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px;
+            max-width: 520px;
+        }
+        .contato-box p { margin: 0 0 16px; color: var(--muted); font-size: .9rem; }
+        .contato-item {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 12px; font-size: .9rem;
+        }
+        .contato-item span:first-child { opacity: .7; }
+        .mini-fluxo {
+            margin-top: 20px;
+            border-radius: 12px; overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .mini-fluxo img { width: 100%; display: block; }
+        .download-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px;
+            max-width: 560px;
+        }
+        .download-box p { margin: 0 0 16px; color: var(--muted); font-size: .88rem; }
+        .download-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+        .download-form input {
+            flex: 1; min-width: 220px;
+            padding: 12px 14px; border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg); color: var(--text);
+            font-size: .9rem;
+        }
+        .trial-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .trial-form-grid textarea,
+        .trial-form-grid button {
+            grid-column: 1 / -1;
+        }
+        .trial-form-grid input,
+        .trial-form-grid textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: .9rem;
+            font-family: inherit;
+        }
+        @media (max-width: 600px) {
+            .trial-form-grid { grid-template-columns: 1fr; }
+        }
+        .download-msg {
+            font-size: .85rem; padding: 12px 14px;
+            border-radius: 8px; display: none;
+        }
+        .download-msg.ok {
+            display: block; background: rgba(16,185,129,.12);
+            border: 1px solid rgba(16,185,129,.35); color: #6ee7b7;
+        }
+        .download-msg.err {
+            display: block; background: rgba(239,68,68,.1);
+            border: 1px solid rgba(239,68,68,.35); color: #fca5a5;
+        }
+        .empresa-linha { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+        footer {
+            text-align: center; padding: 32px 20px 40px;
+            color: var(--muted); font-size: .8rem;
+            border-top: 1px solid var(--border);
+        }
+        .logo-slot {
+            width: 64px; height: 64px; border-radius: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1.2rem; color: #fff;
+            margin-bottom: 16px; overflow: hidden;
+        }
+        .logo-slot img { width: 100%; height: 100%; object-fit: contain; }
+        @media (max-width: 600px) {
+            .nav { padding: 10px 16px; }
+            .nav-links { display: none; }
+            .hero { padding: 40px 16px 32px; }
+        }
+    </style>
+</head>
+<body>
+
+<script>
+/* ═══ PERSONALIZE AQUI (antes de publicar) ═══ */
+const CONFIG = {
+    nomeSistema: 'Sistema Logístico Integrado',
+    tagline: 'Solução white-label da Animo Serviços Administrativos — controle logístico ponta a ponta com acurácia e gestão à vista.',
+    siglaLogo: 'AN',
+    logoArquivo: 'assets/logo.png',
+    empresa: 'Animo Serviços Administrativos',
+    diretor: 'Adriano Montes',
+    email: 'adrianomontes55@gmail.com',
+    telefone: '',
+    whatsapp: '',
+    urlDemo: '#contato'
+};
+/* E-mail que recebe solicitações de trial (FormSubmit) */
+const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
+</script>
+
+<nav class="nav">
+    <a href="#" class="nav-brand" id="nav-brand">
+        <span class="nav-logo" id="nav-logo">SL</span>
+        <span id="nav-nome">Sistema Logístico</span>
+    </a>
+    <div class="nav-links">
+        <a href="#proposta">Proposta</a>
+        <a href="#fluxograma">Fluxograma</a>
+        <a href="#modulos">Módulos</a>
+        <a href="#comercial">Implantação</a>
+        <a href="#download">Download</a>
+        <a href="#contato">Contato</a>
+    </div>
+    <a href="#contato" class="btn btn-primary" style="padding:8px 16px;font-size:.82rem;" id="nav-cta">Falar com consultor</a>
+</nav>
+
+<header class="hero">
+    <div class="logo-slot" id="hero-logo">SL</div>
+    <div class="hero-badge">Animo Serviços Administrativos · Diretor Adriano Montes</div>
+    <h1 id="hero-titulo">Sistema Logístico Integrado</h1>
+    <p class="tagline" id="hero-tagline">Do pedido ao indicador — controle logístico ponta a ponta.</p>
+    <div class="hero-cta">
+        <a href="#contato" class="btn btn-primary" id="cta-demo">Solicitar demonstração</a>
+        <a href="#fluxograma" class="btn btn-ghost">Ver fluxograma operacional</a>
+    </div>
+    <div class="stats">
+        <div class="stat"><strong>10</strong><span>fases integradas</span></div>
+        <div class="stat"><strong>1</strong><span>banco de dados único</span></div>
+        <div class="stat"><strong>0</strong><span>planilhas paralelas</span></div>
+        <div class="stat"><strong>WL</strong><span>white-label</span></div>
+    </div>
+</header>
+
+<div class="wrap">
+    <section id="proposta">
+        <h2>O que entregamos</h2>
+        <p class="lead">
+            Uma plataforma que <strong style="color:var(--text)">amarra todo o ciclo logístico</strong> em um único banco de dados:
+            do controle de pedidos à validação de fretes, passando por separação WMS, faturamento,
+            roteirização, expedição por modal (próprio ou contratado), canhotos digitais e indicadores em tempo real.
+        </p>
+        <div class="grid-3">
+            <div class="card">
+                <div class="card-num">01</div>
+                <h3>Controle total</h3>
+                <p>Cada NF rastreada do faturamento à baixa. Sem planilhas paralelas. Sem versões conflitantes da verdade.</p>
+            </div>
+            <div class="card">
+                <div class="card-num">02</div>
+                <h3>Alta acurácia</h3>
+                <p>Cruzamento faturamento × expedição × WMS × entrega. Anti-duplicidade e conciliação automática.</p>
+            </div>
+            <div class="card">
+                <div class="card-num">03</div>
+                <h3>Gestão à vista</h3>
+                <p>Torre de controle, painéis TV e KPIs para reuniões diárias com números reais, não achismos.</p>
+            </div>
+        </div>
+
+        <div class="mini-fluxo" style="margin-top:28px;">
+            <img src="assets/fluxo-resumido.svg" alt="Fluxo resumido: faturamento, expedição e canhotos" loading="lazy"
+                 onerror="this.parentElement.style.display='none'">
+        </div>
+    </section>
+
+    <section id="fluxograma">
+        <h2>Fluxograma operacional completo</h2>
+        <p class="lead">
+            Dez fases integradas — cada caixa corresponde a módulos reais do sistema, prontos para operação no dia a dia do CD.
+        </p>
+        <div class="pill-row">
+            <span class="pill">Pedidos &amp; estoque</span>
+            <span class="pill">Separação WMS</span>
+            <span class="pill">Embalagem</span>
+            <span class="pill">Faturamento</span>
+            <span class="pill">Clusters &amp; rotas</span>
+            <span class="pill">Montagem de carga</span>
+            <span class="pill">Expedição</span>
+            <span class="pill">Nosso carro / contratadas</span>
+            <span class="pill">Canhotos &amp; baixas</span>
+            <span class="pill">Ocorrências &amp; agendamentos</span>
+            <span class="pill">Frete &amp; validação</span>
+            <span class="pill">Indicadores</span>
+        </div>
+        <div class="fluxo-wrap">
+            <img src="assets/fluxograma-operacional-completo.svg" alt="Fluxograma operacional logístico completo — 10 fases integradas">
+        </div>
+    </section>
+
+    <section id="modulos">
+        <h2>Módulos por etapa da operação</h2>
+        <div class="grid-3">
+            <div class="card"><h3>Pedido &amp; inventário</h3><p>Estoque, curva ABC, integração ERP, espelho de pedidos na NF.</p></div>
+            <div class="card"><h3>WMS &amp; embalagem</h3><p>Apontamento de posição, volumes, etiquetas e peso na expedição.</p></div>
+            <div class="card"><h3>Faturamento</h3><p>Conciliação NF-e × expedição × entrega com status em tempo real.</p></div>
+            <div class="card"><h3>Rotas &amp; clusters</h3><p>CEP/IBGE, mesorregiões, cadastro de rotas e montagem da saída.</p></div>
+            <div class="card"><h3>Expedição multimodal</h3><p>Nosso carro, CIF, FOB, cliente retira e transportadoras contratadas.</p></div>
+            <div class="card"><h3>Canhotos digitais</h3><p>Assinatura mobile, WhatsApp, baixa por NF e esteira de validação.</p></div>
+            <div class="card"><h3>Exceções</h3><p>Devoluções, ocorrências no pátio e coletas FOB com SLA.</p></div>
+            <div class="card"><h3>Frete &amp; custos</h3><p>Validação de modais, volume FOB e conciliação financeira logística.</p></div>
+            <div class="card"><h3>Indicadores</h3><p>Torre de controle, TVs operacionais e lead times ponta a ponta.</p></div>
+        </div>
+    </section>
+
+    <section id="comercial">
+        <h2>Pronto para o mercado</h2>
+        <div class="grid-2">
+            <div class="destaque">
+                <h3>White-label · Rede local · Executável Windows</h3>
+                <p>
+                    Implante na infraestrutura do cliente (servidor na rede ou máquina dedicada).
+                    Personalize nome, logo e identidade visual.
+                    Ideal para distribuidores, CDs, operadores logísticos e consultorias que querem
+                    oferecer controle logístico profissional sem desenvolver do zero.
+                </p>
+            </div>
+            <div class="destaque">
+                <h3>Como funciona a implantação</h3>
+                <p>
+                    <strong style="color:var(--text)">1.</strong> Diagnóstico da operação e integrações ERP<br>
+                    <strong style="color:var(--text)">2.</strong> Instalação e parametrização white-label<br>
+                    <strong style="color:var(--text)">3.</strong> Treinamento das equipes (faturamento, expedição, pátio)<br>
+                    <strong style="color:var(--text)">4.</strong> Go-live com torre de controle e indicadores
+                </p>
+            </div>
+        </div>
+        <div class="hero-cta" style="margin-top:28px;">
+            <a href="#contato" class="btn btn-primary" id="cta-comercial">Solicitar proposta comercial</a>
+            <a href="#fluxograma" class="btn btn-ghost">Explorar fluxograma</a>
+        </div>
+    </section>
+
+    <section id="download">
+        <h2>Solicitar versão trial</h2>
+        <div class="download-box">
+            <p>
+                Preencha o formulário abaixo. A solicitação será enviada para
+                <strong style="color:var(--text)">adrianomontes55@gmail.com</strong>.
+                Após análise, você recebe por e-mail um pacote com o executável trial
+                (<strong>somente o .exe</strong>, banco demonstrativo e licença com prazo de validade).
+            </p>
+            <form id="form-solicitar-trial" class="trial-form-grid">
+                <input type="text" name="nome" id="trial-nome" placeholder="Seu nome" required autocomplete="name">
+                <input type="email" name="email" id="trial-email" placeholder="E-mail corporativo" required autocomplete="email">
+                <input type="text" name="empresa" id="trial-empresa" placeholder="Empresa / CD" required>
+                <input type="tel" name="telefone" id="trial-telefone" placeholder="Telefone / WhatsApp" autocomplete="tel">
+                <textarea name="mensagem" id="trial-mensagem" rows="3" placeholder="Descreva sua operação (opcional)"></textarea>
+                <button type="submit" class="btn btn-primary" id="btn-solicitar-trial">Enviar solicitação de trial</button>
+            </form>
+            <div class="download-msg" id="download-msg"></div>
+            <p style="margin-top:16px;font-size:.78rem;color:var(--muted);">
+                A versão trial inclui banco demonstrativo, expira em dias definidos na licença e não permite exportação completa.
+                Contato direto: <a href="mailto:adrianomontes55@gmail.com" id="link-email-inline">adrianomontes55@gmail.com</a>
+            </p>
+        </div>
+    </section>
+
+    <section id="contato">
+        <h2>Contato</h2>
+        <div class="contato-box">
+            <p>
+                <strong style="color:var(--text)" id="contato-empresa">Animo Serviços Administrativos</strong><br>
+                Diretor: <span id="contato-diretor">Adriano Montes</span><br>
+                Agende uma demonstração personalizada para sua operação.
+            </p>
+            <div class="contato-item"><span>✉</span> <a href="#" id="link-email">adrianomontes55@gmail.com</a></div>
+            <div class="contato-item" id="row-telefone" style="display:none;"><span>📞</span> <span id="text-telefone"></span></div>
+            <div class="hero-cta" style="justify-content:flex-start;margin-top:20px;">
+                <a href="#" class="btn btn-ok" id="btn-whatsapp" target="_blank" rel="noopener" style="display:none;">WhatsApp</a>
+                <a href="#" class="btn btn-ghost" id="btn-email">Enviar e-mail</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<footer>
+    <span id="footer-empresa">Animo Serviços Administrativos</span> · Diretor <span id="footer-diretor">Adriano Montes</span><br>
+    <span class="empresa-linha"><span id="footer-text">Sistema Logístico Integrado</span> — solução white-label para operações logísticas</span>
+</footer>
+
+<script>
+(function applyConfig() {
+    document.title = CONFIG.nomeSistema + ' — Solução para operações logísticas';
+    document.querySelector('meta[property="og:title"]').content = CONFIG.nomeSistema;
+    document.querySelector('meta[property="og:description"]').content = CONFIG.tagline;
+    document.getElementById('hero-titulo').textContent = CONFIG.nomeSistema;
+    document.getElementById('hero-tagline').textContent = CONFIG.tagline;
+    document.getElementById('nav-nome').textContent = CONFIG.nomeSistema.split(' ').slice(0, 2).join(' ');
+    document.getElementById('footer-text').textContent = CONFIG.nomeSistema;
+    document.getElementById('footer-empresa').textContent = CONFIG.empresa;
+    document.getElementById('footer-diretor').textContent = CONFIG.diretor;
+    document.getElementById('contato-empresa').textContent = CONFIG.empresa;
+    document.getElementById('contato-diretor').textContent = CONFIG.diretor;
+
+    function setLogo(el, sigla) {
+        const img = new Image();
+        img.onload = function() {
+            el.innerHTML = '';
+            el.appendChild(img);
+        };
+        img.onerror = function() { el.textContent = sigla; };
+        img.src = CONFIG.logoArquivo;
+        img.alt = CONFIG.nomeSistema;
+    }
+    setLogo(document.getElementById('hero-logo'), CONFIG.siglaLogo);
+    setLogo(document.getElementById('nav-logo'), CONFIG.siglaLogo);
+
+    const demoLinks = ['cta-demo', 'nav-cta'];
+    demoLinks.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el && CONFIG.urlDemo && CONFIG.urlDemo !== '#contato') {
+            el.href = CONFIG.urlDemo;
+        }
+    });
+
+    document.getElementById('link-email').textContent = CONFIG.email;
+    document.getElementById('link-email').href = 'mailto:' + CONFIG.email;
+    if (CONFIG.telefone) {
+        document.getElementById('row-telefone').style.display = 'flex';
+        document.getElementById('text-telefone').textContent = CONFIG.telefone;
+    }
+    document.getElementById('btn-email').href = 'mailto:' + CONFIG.email + '?subject=Demonstração%20' + encodeURIComponent(CONFIG.nomeSistema);
+    if (CONFIG.whatsapp) {
+        document.getElementById('btn-whatsapp').style.display = 'inline-flex';
+        document.getElementById('btn-whatsapp').href =
+            'https://wa.me/' + CONFIG.whatsapp + '?text=' +
+            encodeURIComponent('Olá! Gostaria de agendar uma demonstração do ' + CONFIG.nomeSistema + '.');
+    }
+
+    document.getElementById('form-solicitar-trial').addEventListener('submit', function(ev) {
+        ev.preventDefault();
+        var form = document.getElementById('form-solicitar-trial');
+        var btn = document.getElementById('btn-solicitar-trial');
+        var msg = document.getElementById('download-msg');
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+        msg.className = 'download-msg';
+
+        var fd = new FormData(form);
+        fd.append('_subject', 'Solicitação TRIAL — Sistema Logístico Integrado');
+        fd.append('_captcha', 'false');
+        fd.append('_template', 'table');
+
+        fetch('https://formsubmit.co/ajax/' + encodeURIComponent(EMAIL_SOLICITACOES), {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: fd
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+            msg.textContent = 'Solicitação enviada! Adriano Montes (Animo) analisará e responderá em ' + CONFIG.email + ' com o pacote trial se aprovado.';
+            msg.classList.add('ok');
+            form.reset();
+        })
+        .catch(function() {
+            msg.textContent = 'Não foi possível enviar agora. Escreva diretamente para ' + CONFIG.email;
+            msg.classList.add('err');
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = 'Enviar solicitação de trial';
+        });
+    });
+})();
+</script>
+
+</body>
+</html>
