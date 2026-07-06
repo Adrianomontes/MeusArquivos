@@ -30,6 +30,47 @@ landing-sistema-logistico/
 
 Abra `landing-sistema-logistico/index.html` no navegador ou publique a pasta no seu servidor.
 
+## Sistema integrado (Logística + Produção)
+
+**Um banco** (`sistema_integrado.db`) e **um executável** (`SistemaLogisticoIntegrado.exe`).
+
+```powershell
+cd Controle_ocorrencias
+# Desenvolvimento
+py -3 app_integrado.py --servidor --porta 5000
+
+# Build executável integrado
+build_executavel_integrado.bat
+```
+
+| URL | Módulo |
+|-----|--------|
+| http://localhost:5000/ | Logística (ocorrências, faturamento, rotas…) |
+| http://localhost:5000/producao/ | Produção (pedidos, separação, fila…) |
+| http://localhost:5000/configuracao_fontes | Caminhos dos arquivos Excel/CSV |
+
+**Logins:** logística `admin`/`admin123` · produção `admin`/`corax2026` (até unificar auth).
+
+**Fontes de dados:** não há mais busca automática em Downloads — configure em `/configuracao_fontes`.
+
+Atualizar módulo Produção após mudanças na pasta Desktop\Produção:
+
+```powershell
+py -3 scripts\preparar_producao_integrado.py
+```
+
+### Migrar dados dos bancos antigos
+
+Une `sistema_operacional.db` + `producao.db` em `sistema_integrado.db` (com backup automático):
+
+```powershell
+py -3 scripts\migrar_bancos_integrado.py
+```
+
+- Faturamento da **logística** → tabela `faturamento`
+- Faturamento da **produção** → tabela `prod_faturamento`
+- Logins: logística (`usuarios_sistema`) e produção (`usuarios`) são preservados
+
 ## Versão trial (envio a clientes)
 
 Fluxo: formulário no site → e-mail para adrianomontes55@gmail.com → você gera ZIP com exe trial.
@@ -78,4 +119,7 @@ Build do executável: `build_executavel.bat`
 
 ## Repositório
 
-Este repositório também contém outros arquivos pessoais em `MeusArquivos/`. O produto logístico está em `Controle_ocorrencias/`.
+**GitHub:** [Adrianomontes/sistema-gestao-logistico](https://github.com/Adrianomontes/sistema-gestao-logistico)  
+**Site (landing):** https://adrianomontes.github.io/sistema-gestao-logistico/
+
+O produto logístico está em `Controle_ocorrencias/`.

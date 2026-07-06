@@ -22,6 +22,9 @@ Arquivos:
 
    A URL final será algo como: https://seudominio.com.br/
 
+   GitHub Pages deste projeto:
+   https://adrianomontes.github.io/sistema-gestao-logistico/
+
 3. ESTRUTURA NO SERVIDOR
    /
    ├── index.html

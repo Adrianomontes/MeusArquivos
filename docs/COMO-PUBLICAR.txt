@@ -20,7 +20,10 @@ Arquivos:
    - GitHub Pages: renomeie para docs/ ou use branch gh-pages
    - Netlify / Vercel: arraste a pasta site/
 
-   A URL final será algo como: https://seudominio.com.br/
+   GitHub Pages (repositório sistema-gestao-logistico):
+   https://adrianomontes.github.io/sistema-gestao-logistico/
+
+   A URL usa o nome do repositório sem espaços nem acentos (sistema-gestao-logistico).
 
 3. ESTRUTURA NO SERVIDOR
    /

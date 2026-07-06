@@ -4,7 +4,7 @@ PACOTE TRIAL OFICIAL — v1
 Arquivo: SistemaLogisticoTrial-v1.zip (~247 MB)
 
 Download direto no GitHub:
-https://github.com/Adrianomontes/MeusArquivos/blob/main/Controle_ocorrencias/trial_distribuicao/releases/SistemaLogisticoTrial-v1.zip
+https://github.com/Adrianomontes/sistema-gestao-logistico/blob/main/Controle_ocorrencias/trial_distribuicao/releases/SistemaLogisticoTrial-v1.zip
 
 Conteúdo do ZIP
 ---------------
