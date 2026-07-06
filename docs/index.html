@@ -263,15 +263,6 @@
             display: block; background: rgba(239,68,68,.1);
             border: 1px solid rgba(239,68,68,.35); color: #fca5a5;
         }
-        .trial-seguranca {
-            margin-top: 20px; padding: 16px 18px;
-            background: rgba(56,189,248,.06);
-            border: 1px solid rgba(56,189,248,.25);
-            border-radius: 10px; font-size: .82rem; color: var(--muted);
-        }
-        .trial-seguranca strong { color: var(--text); }
-        .trial-seguranca ul { margin: 10px 0 0 18px; padding: 0; }
-        .trial-seguranca li { margin-bottom: 6px; }
         .trial-download-box {
             margin-top: 20px; padding: 18px;
             background: var(--bg); border: 1px solid var(--border);
@@ -287,6 +278,7 @@
         #trial-download-painel.visivel { display: block; }
         .trial-expira { font-size: .8rem; color: #fbbf24; margin-top: 8px; }
         .empresa-linha { font-size: .85rem; color: var(--muted); margin-top: 8px; }
+        .footer-tech { font-size: .78rem; color: var(--muted); margin-top: 10px; max-width: 640px; margin-left: auto; margin-right: auto; line-height: 1.5; }
         footer {
             text-align: center; padding: 32px 20px 40px;
             color: var(--muted); font-size: .8rem;
@@ -324,7 +316,10 @@ const CONFIG = {
     whatsapp: '',
     urlDemo: '#contato',
     trialControleUrl: 'https://raw.githubusercontent.com/Adrianomontes/sistema-gestao-logistico/main/.github/access-control.json',
-    trialInfoUrl: 'trial-info.json'
+    trialInfoUrl: 'trial-info.json',
+    /* URL do servidor Flask para registrar leads automaticamente (ex: https://seu-servidor/api/public/lead-trial) */
+    leadApiUrl: '',
+    rodapeTech: 'Desenvolvemos nossos produtos com as melhores ferramentas de IA do mercado, em linguagem Python e bancos de dados SQLite e MySQL.'
 };
 /* E-mail que recebe solicitações de trial (FormSubmit) */
 const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
@@ -526,16 +521,6 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
                 </p>
             </div>
 
-            <div class="trial-seguranca">
-                <strong>Como garantimos que o trial para de funcionar?</strong>
-                <ul>
-                    <li>O pacote inclui <strong>trial.lic</strong> — licença com <strong>data de expiração</strong> e <strong>assinatura digital</strong> (não pode ser alterada sem invalidar).</li>
-                    <li>Após a data, o sistema exibe <em>“Período de avaliação encerrado”</em> e bloqueia o uso (verificado a cada acesso).</li>
-                    <li>Exportações completas e gestão de usuários permanecem bloqueadas na edição trial.</li>
-                    <li>Mesmo que alguém copie o ZIP, <strong>não há como estender o prazo</strong> sem a chave secreta da Animo.</li>
-                </ul>
-            </div>
-
             <p style="margin-top:16px;font-size:.78rem;color:var(--muted);">
                 Contato direto: <a href="mailto:adrianomontes55@gmail.com" id="link-email-inline">adrianomontes55@gmail.com</a>
             </p>
@@ -562,7 +547,8 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 
 <footer>
     <span id="footer-empresa">Animo Serviços Administrativos</span> · <span id="footer-cargo">Desenvolvedor</span> <span id="footer-diretor">Adriano Montes</span><br>
-    <span class="empresa-linha"><span id="footer-text">Sistema Logístico Integrado</span> — solução white-label para operações logísticas</span>
+    <span class="empresa-linha"><span id="footer-text">Sistema Logístico Integrado</span> — solução white-label para operações logísticas</span><br>
+    <span class="footer-tech" id="footer-tech">Desenvolvemos nossos produtos com as melhores ferramentas de IA do mercado, em linguagem Python e bancos de dados SQLite e MySQL.</span>
 </footer>
 
 <script>
@@ -577,6 +563,9 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
     document.getElementById('footer-empresa').textContent = CONFIG.empresa;
     document.getElementById('footer-diretor').textContent = CONFIG.diretor;
     document.getElementById('footer-cargo').textContent = CONFIG.cargo;
+    if (CONFIG.rodapeTech) {
+        document.getElementById('footer-tech').textContent = CONFIG.rodapeTech;
+    }
     document.getElementById('contato-empresa').textContent = CONFIG.empresa;
     document.getElementById('contato-cargo').textContent = CONFIG.cargo;
     document.getElementById('contato-diretor').textContent = CONFIG.diretor;
@@ -692,6 +681,19 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
                     headers: { 'Accept': 'application/json' },
                     body: fd
                 }).then(function(r) { return r.json(); }).then(function() {
+                    if (CONFIG.leadApiUrl) {
+                        fetch(CONFIG.leadApiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                            body: JSON.stringify({
+                                nome: nome,
+                                email: email,
+                                empresa: empresa,
+                                telefone: (document.getElementById('trial-telefone').value || '').trim(),
+                                mensagem: (document.getElementById('trial-mensagem').value || '').trim()
+                            })
+                        }).catch(function() {});
+                    }
                     if (autorizado) {
                         mostrarDownloadLiberado(email, info, msg, painel);
                     } else {
