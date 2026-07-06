@@ -279,11 +279,9 @@
         }
         .trial-download-box h3 { margin: 0 0 10px; font-size: .95rem; color: var(--accent); }
         .trial-download-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-        .trial-download-row input {
-            flex: 1; min-width: 200px;
-            padding: 10px 12px; border-radius: 8px;
-            border: 1px solid var(--border); background: var(--surface2);
-            color: var(--text); font-size: .9rem;
+        .form-hint {
+            font-size: .78rem; color: var(--muted); margin: -4px 0 8px;
+            grid-column: 1 / -1;
         }
         #trial-download-painel { display: none; margin-top: 14px; }
         #trial-download-painel.visivel { display: block; }
@@ -505,18 +503,28 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
         <h2>Solicitar versão trial</h2>
         <div class="download-box">
             <p>
-                Preencha o formulário para solicitar acesso. Após análise, seu e-mail é incluído na lista autorizada
-                e você poderá baixar o pacote trial abaixo.
+                Preencha o <strong>formulário de identificação</strong> com <strong>e-mail corporativo</strong>
+                (domínio da sua empresa). Após análise, seu e-mail entra na lista autorizada e o download é liberado
+                na mesma página — use o <strong>mesmo e-mail</strong> do formulário.
             </p>
             <form id="form-solicitar-trial" class="trial-form-grid">
-                <input type="text" name="nome" id="trial-nome" placeholder="Seu nome" required autocomplete="name">
-                <input type="email" name="email" id="trial-email" placeholder="E-mail corporativo" required autocomplete="email">
+                <input type="text" name="nome" id="trial-nome" placeholder="Seu nome completo" required autocomplete="name">
+                <input type="email" name="email" id="trial-email" placeholder="E-mail corporativo (voce@empresa.com.br)" required autocomplete="email">
+                <p class="form-hint">Não use Gmail, Hotmail ou Outlook pessoal — informe o e-mail da empresa.</p>
                 <input type="text" name="empresa" id="trial-empresa" placeholder="Empresa / CD" required>
                 <input type="tel" name="telefone" id="trial-telefone" placeholder="Telefone / WhatsApp" autocomplete="tel">
                 <textarea name="mensagem" id="trial-mensagem" rows="3" placeholder="Descreva sua operação (opcional)"></textarea>
-                <button type="submit" class="btn btn-primary" id="btn-solicitar-trial">Enviar solicitação de trial</button>
+                <button type="submit" class="btn btn-primary" id="btn-solicitar-trial">Enviar identificação e verificar download</button>
             </form>
             <div class="download-msg" id="download-msg"></div>
+            <div id="trial-download-painel">
+                <a href="#" class="btn btn-ok" id="btn-baixar-trial" download>Baixar SistemaLogisticoTrial-v1.zip</a>
+                <p class="trial-expira" id="trial-expira-texto"></p>
+                <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">
+                    Login demonstração: <strong id="trial-login-demo">trial / trial123</strong> ·
+                    Mantenha <strong>trial.lic</strong> na mesma pasta do .exe.
+                </p>
+            </div>
 
             <div class="trial-seguranca">
                 <strong>Como garantimos que o trial para de funcionar?</strong>
@@ -526,26 +534,6 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
                     <li>Exportações completas e gestão de usuários permanecem bloqueadas na edição trial.</li>
                     <li>Mesmo que alguém copie o ZIP, <strong>não há como estender o prazo</strong> sem a chave secreta da Animo.</li>
                 </ul>
-            </div>
-
-            <div class="trial-download-box">
-                <h3>Baixar trial (e-mail já autorizado)</h3>
-                <p style="margin:0;font-size:.84rem;color:var(--muted);">
-                    Use o mesmo e-mail cadastrado por Adriano Montes. O download libera o ZIP com executável, banco demonstrativo e licença.
-                </p>
-                <div class="trial-download-row">
-                    <input type="email" id="trial-download-email" placeholder="seu@email.com.br" autocomplete="email">
-                    <button type="button" class="btn btn-primary" id="btn-verificar-trial">Verificar e baixar</button>
-                </div>
-                <div class="download-msg" id="trial-download-msg"></div>
-                <div id="trial-download-painel">
-                    <a href="#" class="btn btn-ok" id="btn-baixar-trial" download>Baixar SistemaLogisticoTrial-v1.zip</a>
-                    <p class="trial-expira" id="trial-expira-texto"></p>
-                    <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">
-                        Login demonstração: <strong id="trial-login-demo">trial / trial123</strong> ·
-                        Mantenha <strong>trial.lic</strong> na mesma pasta do .exe.
-                    </p>
-                </div>
             </div>
 
             <p style="margin-top:16px;font-size:.78rem;color:var(--muted);">
@@ -629,39 +617,99 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
             encodeURIComponent('Olá! Gostaria de agendar uma demonstração do ' + CONFIG.nomeSistema + '.');
     }
 
+    var DOMINIOS_PESSOAIS = [
+        'gmail.com', 'googlemail.com', 'hotmail.com', 'outlook.com', 'live.com', 'msn.com',
+        'yahoo.com', 'yahoo.com.br', 'icloud.com', 'me.com', 'bol.com.br', 'uol.com.br',
+        'terra.com.br', 'ig.com.br', 'zipmail.com.br', 'r7.com', 'aol.com', 'proton.me', 'protonmail.com'
+    ];
+
+    function extrairDominio(email) {
+        var partes = String(email || '').trim().toLowerCase().split('@');
+        return partes.length === 2 ? partes[1] : '';
+    }
+
+    function emailCorporativo(email) {
+        var dominio = extrairDominio(email);
+        return dominio && DOMINIOS_PESSOAIS.indexOf(dominio) < 0;
+    }
+
+    function mostrarDownloadLiberado(email, info, msgEl, painel) {
+        document.getElementById('btn-baixar-trial').href = info.url_download;
+        document.getElementById('btn-baixar-trial').textContent = 'Baixar ' + (info.nome_arquivo || 'trial.zip');
+        document.getElementById('trial-expira-texto').textContent =
+            'E-mail ' + email + ' autorizado. Validade: até ' + formatarDataBr(info.expira_em) +
+            '. Após essa data o sistema não funciona.';
+        if (info.login_demo) {
+            document.getElementById('trial-login-demo').textContent = info.login_demo;
+        }
+        painel.classList.add('visivel');
+        msgEl.textContent = 'Identificação recebida. Download liberado para o e-mail corporativo informado.';
+        msgEl.classList.add('ok');
+    }
+
     document.getElementById('form-solicitar-trial').addEventListener('submit', function(ev) {
         ev.preventDefault();
         var form = document.getElementById('form-solicitar-trial');
         var btn = document.getElementById('btn-solicitar-trial');
         var msg = document.getElementById('download-msg');
+        var painel = document.getElementById('trial-download-painel');
+        var email = (document.getElementById('trial-email').value || '').trim().toLowerCase();
+        var nome = (document.getElementById('trial-nome').value || '').trim();
+        var empresa = (document.getElementById('trial-empresa').value || '').trim();
+
+        msg.className = 'download-msg';
+        painel.classList.remove('visivel');
+
+        if (!nome || !empresa || !email || email.indexOf('@') < 1) {
+            msg.textContent = 'Preencha nome, empresa e e-mail corporativo.';
+            msg.classList.add('err');
+            return;
+        }
+
         btn.disabled = true;
         btn.textContent = 'Enviando...';
-        msg.className = 'download-msg';
 
-        var fd = new FormData(form);
-        fd.append('_subject', 'Solicitação TRIAL — ' + CONFIG.nomeSistema);
-        fd.append('_captcha', 'false');
-        fd.append('_template', 'table');
+        Promise.all([carregarControleAcesso(), carregarTrialInfo()])
+            .then(function(res) {
+                var ctrl = res[0];
+                var info = res[1];
+                var lista = (ctrl.emails_autorizados || []).map(function(e) { return String(e).trim().toLowerCase(); });
+                var autorizado = lista.indexOf(email) >= 0;
 
-        fetch('https://formsubmit.co/ajax/' + encodeURIComponent(EMAIL_SOLICITACOES), {
-            method: 'POST',
-            headers: { 'Accept': 'application/json' },
-            body: fd
-        })
-        .then(function(r) { return r.json(); })
-        .then(function() {
-            msg.textContent = 'Solicitação enviada! Adriano Montes (Animo) analisará e responderá em ' + CONFIG.email + ' com o pacote trial se aprovado.';
-            msg.classList.add('ok');
-            form.reset();
-        })
-        .catch(function() {
-            msg.textContent = 'Não foi possível enviar agora. Escreva diretamente para ' + CONFIG.email;
-            msg.classList.add('err');
-        })
-        .finally(function() {
-            btn.disabled = false;
-            btn.textContent = 'Enviar solicitação de trial';
-        });
+                if (!autorizado && !emailCorporativo(email)) {
+                    msg.textContent = 'Use e-mail corporativo (@suaempresa.com.br). E-mails pessoais (Gmail, Hotmail etc.) não são aceitos na solicitação.';
+                    msg.classList.add('err');
+                    return Promise.reject('email_pessoal');
+                }
+
+                var fd = new FormData(form);
+                fd.append('_subject', 'Identificação TRIAL — ' + CONFIG.nomeSistema);
+                fd.append('_captcha', 'false');
+                fd.append('_template', 'table');
+
+                return fetch('https://formsubmit.co/ajax/' + encodeURIComponent(EMAIL_SOLICITACOES), {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: fd
+                }).then(function(r) { return r.json(); }).then(function() {
+                    if (autorizado) {
+                        mostrarDownloadLiberado(email, info, msg, painel);
+                    } else {
+                        msg.textContent = 'Identificação enviada! Seu e-mail corporativo será analisado. Quando liberado, envie o formulário novamente com o mesmo e-mail para baixar.';
+                        msg.classList.add('ok');
+                    }
+                });
+            })
+            .catch(function(err) {
+                if (err !== 'email_pessoal') {
+                    msg.textContent = 'Não foi possível enviar agora. Escreva diretamente para ' + CONFIG.email;
+                    msg.classList.add('err');
+                }
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.textContent = 'Enviar identificação e verificar download';
+            });
     });
 
     var trialInfoCache = null;
@@ -689,55 +737,6 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
         if (p.length !== 3) return iso;
         return p[2] + '/' + p[1] + '/' + p[0];
     }
-
-    document.getElementById('btn-verificar-trial').addEventListener('click', function() {
-        var email = (document.getElementById('trial-download-email').value || '').trim().toLowerCase();
-        var msg = document.getElementById('trial-download-msg');
-        var painel = document.getElementById('trial-download-painel');
-        var btn = document.getElementById('btn-verificar-trial');
-        msg.className = 'download-msg';
-        painel.classList.remove('visivel');
-
-        if (!email || email.indexOf('@') < 1) {
-            msg.textContent = 'Informe um e-mail válido.';
-            msg.classList.add('err');
-            return;
-        }
-
-        btn.disabled = true;
-        btn.textContent = 'Verificando...';
-
-        Promise.all([carregarControleAcesso(), carregarTrialInfo()])
-            .then(function(res) {
-                var ctrl = res[0];
-                var info = res[1];
-                var lista = (ctrl.emails_autorizados || []).map(function(e) { return String(e).trim().toLowerCase(); });
-                if (lista.indexOf(email) < 0) {
-                    msg.textContent = 'E-mail ainda não autorizado. Envie a solicitação acima ou contate ' + CONFIG.email + '.';
-                    msg.classList.add('err');
-                    return;
-                }
-                document.getElementById('btn-baixar-trial').href = info.url_download;
-                document.getElementById('btn-baixar-trial').textContent = 'Baixar ' + (info.nome_arquivo || 'trial.zip');
-                document.getElementById('trial-expira-texto').textContent =
-                    'Validade desta build: até ' + formatarDataBr(info.expira_em) +
-                    ' (' + (info.dias_trial || '?') + ' dias). Depois disso o sistema não inicia o uso normal.';
-                if (info.login_demo) {
-                    document.getElementById('trial-login-demo').textContent = info.login_demo;
-                }
-                msg.textContent = 'E-mail autorizado. Clique para baixar o pacote trial.';
-                msg.classList.add('ok');
-                painel.classList.add('visivel');
-            })
-            .catch(function() {
-                msg.textContent = 'Não foi possível verificar agora. Tente mais tarde ou escreva para ' + CONFIG.email + '.';
-                msg.classList.add('err');
-            })
-            .finally(function() {
-                btn.disabled = false;
-                btn.textContent = 'Verificar e baixar';
-            });
-    });
 })();
 </script>
 
