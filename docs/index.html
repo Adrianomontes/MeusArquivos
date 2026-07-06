@@ -289,11 +289,12 @@
 <script>
 /* ═══ PERSONALIZE AQUI (antes de publicar) ═══ */
 const CONFIG = {
-    nomeSistema: 'Sistema Logístico Integrado',
-    tagline: 'Solução white-label da Animo Serviços Administrativos — controle logístico ponta a ponta com acurácia e gestão à vista.',
+    nomeSistema: 'Gestão de Logística Integrada',
+    tagline: 'Chega de planilhas paralelas, oferecemos Controle total sobre sua operação, todas as áreas vão falar de forma orgânica, as tarefas serão automatizadas e o seu ganho de produtividade vai ganhar novos patamares.',
     siglaLogo: 'AJM',
     logoArquivo: 'assets/logo.png',
     empresa: 'Animo Serviços Administrativos',
+    cargo: 'Desenvolvedor',
     diretor: 'Adriano Montes',
     email: 'adrianomontes55@gmail.com',
     telefone: '',
@@ -307,7 +308,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 <nav class="nav">
     <a href="#" class="nav-brand" id="nav-brand">
         <span class="nav-logo" id="nav-logo">AJM</span>
-        <span id="nav-nome">Sistema Logístico</span>
+        <span id="nav-nome">Gestão de Logística</span>
     </a>
     <div class="nav-links">
         <a href="#proposta">Proposta</a>
@@ -322,9 +323,9 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 
 <header class="hero">
     <div class="logo-slot" id="hero-logo">AJM</div>
-    <div class="hero-badge">Animo Serviços Administrativos · Diretor Adriano Montes</div>
-    <h1 id="hero-titulo">Sistema Logístico Integrado</h1>
-    <p class="tagline" id="hero-tagline">Do pedido ao indicador — controle logístico ponta a ponta.</p>
+    <div class="hero-badge" id="hero-badge">Animo Serviços Administrativos · Desenvolvedor Adriano Montes</div>
+    <h1 id="hero-titulo">Gestão de Logística Integrada</h1>
+    <p class="tagline" id="hero-tagline">Chega de planilhas paralelas, oferecemos Controle total sobre sua operação.</p>
     <div class="hero-cta">
         <a href="#contato" class="btn btn-primary" id="cta-demo">Solicitar demonstração</a>
         <a href="#fluxograma" class="btn btn-ghost">Ver fluxograma operacional</a>
@@ -342,7 +343,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
         <h2>O que entregamos</h2>
         <p class="lead">
             Uma plataforma que <strong style="color:var(--text)">amarra todo o ciclo logístico</strong> em um único banco de dados:
-            do controle de pedidos à validação de fretes, passando por separação WMS, faturamento,
+            do controle de pedidos à validação de fretes, passando por separação WMS, faturamento, agendamentos,
             roteirização, expedição por modal (próprio ou contratado), canhotos digitais e indicadores em tempo real.
         </p>
         <div class="grid-3">
@@ -503,7 +504,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
         <div class="contato-box">
             <p>
                 <strong style="color:var(--text)" id="contato-empresa">Animo Serviços Administrativos</strong><br>
-                Diretor: <span id="contato-diretor">Adriano Montes</span><br>
+                <span id="contato-cargo">Desenvolvedor</span>: <span id="contato-diretor">Adriano Montes</span><br>
                 Agende uma demonstração personalizada para sua operação.
             </p>
             <div class="contato-item"><span>✉</span> <a href="#" id="link-email">adrianomontes55@gmail.com</a></div>
@@ -517,7 +518,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
 </div>
 
 <footer>
-    <span id="footer-empresa">Animo Serviços Administrativos</span> · Diretor <span id="footer-diretor">Adriano Montes</span><br>
+    <span id="footer-empresa">Animo Serviços Administrativos</span> · <span id="footer-cargo">Desenvolvedor</span> <span id="footer-diretor">Adriano Montes</span><br>
     <span class="empresa-linha"><span id="footer-text">Sistema Logístico Integrado</span> — solução white-label para operações logísticas</span>
 </footer>
 
@@ -528,12 +529,15 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
     document.querySelector('meta[property="og:description"]').content = CONFIG.tagline;
     document.getElementById('hero-titulo').textContent = CONFIG.nomeSistema;
     document.getElementById('hero-tagline').textContent = CONFIG.tagline;
-    document.getElementById('nav-nome').textContent = CONFIG.nomeSistema.split(' ').slice(0, 2).join(' ');
+    document.getElementById('nav-nome').textContent = CONFIG.nomeSistema.split(' ').slice(0, 3).join(' ');
     document.getElementById('footer-text').textContent = CONFIG.nomeSistema;
     document.getElementById('footer-empresa').textContent = CONFIG.empresa;
     document.getElementById('footer-diretor').textContent = CONFIG.diretor;
+    document.getElementById('footer-cargo').textContent = CONFIG.cargo;
     document.getElementById('contato-empresa').textContent = CONFIG.empresa;
+    document.getElementById('contato-cargo').textContent = CONFIG.cargo;
     document.getElementById('contato-diretor').textContent = CONFIG.diretor;
+    document.getElementById('hero-badge').textContent = CONFIG.empresa + ' · ' + CONFIG.cargo + ' ' + CONFIG.diretor;
 
     function setLogo(el, sigla) {
         const img = new Image();
