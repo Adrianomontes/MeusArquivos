@@ -177,6 +177,34 @@
             border: 1px solid var(--border);
         }
         .mini-fluxo img { width: 100%; display: block; }
+        .download-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px;
+            max-width: 560px;
+        }
+        .download-box p { margin: 0 0 16px; color: var(--muted); font-size: .88rem; }
+        .download-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+        .download-form input {
+            flex: 1; min-width: 220px;
+            padding: 12px 14px; border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg); color: var(--text);
+            font-size: .9rem;
+        }
+        .download-msg {
+            font-size: .85rem; padding: 12px 14px;
+            border-radius: 8px; display: none;
+        }
+        .download-msg.ok {
+            display: block; background: rgba(16,185,129,.12);
+            border: 1px solid rgba(16,185,129,.35); color: #6ee7b7;
+        }
+        .download-msg.err {
+            display: block; background: rgba(239,68,68,.1);
+            border: 1px solid rgba(239,68,68,.35); color: #fca5a5;
+        }
+        .empresa-linha { font-size: .85rem; color: var(--muted); margin-top: 8px; }
         footer {
             text-align: center; padding: 32px 20px 40px;
             color: var(--muted); font-size: .8rem;
@@ -203,16 +231,21 @@
 /* ═══ PERSONALIZE AQUI (antes de publicar) ═══ */
 const CONFIG = {
     nomeSistema: 'Sistema Logístico Integrado',
-    tagline: 'Do pedido ao indicador — controle logístico ponta a ponta com acurácia e gestão à vista.',
-    siglaLogo: 'SL',
-    logoArquivo: 'assets/logo.png',   /* opcional: coloque logo.png em assets/ */
-    urlDemo: '#contato',              /* ex: https://demo.suaempresa.com.br/login */
-    urlManual: '#fluxograma',         /* ex: https://demo.suaempresa.com.br/manual */
-    email: 'contato@suaempresa.com.br',
-    telefone: '(00) 0000-0000',
-    whatsapp: '5500000000000',        /* só números, com DDI */
-    empresa: 'Sua Empresa'
+    tagline: 'Solução white-label da Animo Serviços Administrativos — controle logístico ponta a ponta com acurácia e gestão à vista.',
+    siglaLogo: 'AN',
+    logoArquivo: 'assets/logo.png',
+    empresa: 'Animo Serviços Administrativos',
+    diretor: 'Adriano Montes',
+    email: 'adrianomontes55@gmail.com',
+    telefone: '',
+    whatsapp: '',
+    urlDemo: '#contato',
+    urlDownloadRelease: 'https://github.com/Adrianomontes/MeusArquivos/releases'
 };
+/* Mesma lista de .github/access-control.json — manter sincronizado */
+const EMAILS_AUTORIZADOS_DOWNLOAD = [
+    'adrianomontes55@gmail.com'
+];
 </script>
 
 <nav class="nav">
@@ -225,6 +258,7 @@ const CONFIG = {
         <a href="#fluxograma">Fluxograma</a>
         <a href="#modulos">Módulos</a>
         <a href="#comercial">Implantação</a>
+        <a href="#download">Download</a>
         <a href="#contato">Contato</a>
     </div>
     <a href="#contato" class="btn btn-primary" style="padding:8px 16px;font-size:.82rem;" id="nav-cta">Falar com consultor</a>
@@ -232,7 +266,7 @@ const CONFIG = {
 
 <header class="hero">
     <div class="logo-slot" id="hero-logo">SL</div>
-    <div class="hero-badge">Plataforma white-label para distribuidores e CDs</div>
+    <div class="hero-badge">Animo Serviços Administrativos · Diretor Adriano Montes</div>
     <h1 id="hero-titulo">Sistema Logístico Integrado</h1>
     <p class="tagline" id="hero-tagline">Do pedido ao indicador — controle logístico ponta a ponta.</p>
     <div class="hero-cta">
@@ -346,14 +380,36 @@ const CONFIG = {
         </div>
     </section>
 
+    <section id="download">
+        <h2>Download do sistema</h2>
+        <div class="download-box">
+            <p>
+                O download é restrito a <strong style="color:var(--text)">e-mails autorizados</strong>.
+                Após a liberação, você também recebe convite como colaborador no repositório privado no GitHub.
+            </p>
+            <div class="download-form">
+                <input type="email" id="email-download" placeholder="Seu e-mail corporativo" autocomplete="email">
+                <button type="button" class="btn btn-primary" id="btn-verificar-download">Verificar acesso</button>
+            </div>
+            <div class="download-msg" id="download-msg"></div>
+            <div class="hero-cta" style="justify-content:flex-start;margin-top:12px;display:none;" id="download-links">
+                <a href="#" class="btn btn-ok" id="link-release" target="_blank" rel="noopener">Baixar release autorizado</a>
+            </div>
+        </div>
+    </section>
+
     <section id="contato">
         <h2>Contato</h2>
         <div class="contato-box">
-            <p>Agende uma demonstração personalizada para sua operação. Mostramos o fluxo completo ao vivo — do faturamento ao canhoto.</p>
-            <div class="contato-item"><span>✉</span> <a href="#" id="link-email">contato@suaempresa.com.br</a></div>
-            <div class="contato-item"><span>📞</span> <span id="text-telefone">(00) 0000-0000</span></div>
+            <p>
+                <strong style="color:var(--text)" id="contato-empresa">Animo Serviços Administrativos</strong><br>
+                Diretor: <span id="contato-diretor">Adriano Montes</span><br>
+                Agende uma demonstração personalizada para sua operação.
+            </p>
+            <div class="contato-item"><span>✉</span> <a href="#" id="link-email">adrianomontes55@gmail.com</a></div>
+            <div class="contato-item" id="row-telefone" style="display:none;"><span>📞</span> <span id="text-telefone"></span></div>
             <div class="hero-cta" style="justify-content:flex-start;margin-top:20px;">
-                <a href="#" class="btn btn-ok" id="btn-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+                <a href="#" class="btn btn-ok" id="btn-whatsapp" target="_blank" rel="noopener" style="display:none;">WhatsApp</a>
                 <a href="#" class="btn btn-ghost" id="btn-email">Enviar e-mail</a>
             </div>
         </div>
@@ -361,7 +417,8 @@ const CONFIG = {
 </div>
 
 <footer>
-    <span id="footer-text">Sistema Logístico Integrado</span> — solução para operações logísticas · Personalizável para sua marca
+    <span id="footer-empresa">Animo Serviços Administrativos</span> · Diretor <span id="footer-diretor">Adriano Montes</span><br>
+    <span class="empresa-linha"><span id="footer-text">Sistema Logístico Integrado</span> — solução white-label para operações logísticas</span>
 </footer>
 
 <script>
@@ -373,6 +430,11 @@ const CONFIG = {
     document.getElementById('hero-tagline').textContent = CONFIG.tagline;
     document.getElementById('nav-nome').textContent = CONFIG.nomeSistema.split(' ').slice(0, 2).join(' ');
     document.getElementById('footer-text').textContent = CONFIG.nomeSistema;
+    document.getElementById('footer-empresa').textContent = CONFIG.empresa;
+    document.getElementById('footer-diretor').textContent = CONFIG.diretor;
+    document.getElementById('contato-empresa').textContent = CONFIG.empresa;
+    document.getElementById('contato-diretor').textContent = CONFIG.diretor;
+    document.getElementById('link-release').href = CONFIG.urlDownloadRelease;
 
     function setLogo(el, sigla) {
         const img = new Image();
@@ -397,11 +459,41 @@ const CONFIG = {
 
     document.getElementById('link-email').textContent = CONFIG.email;
     document.getElementById('link-email').href = 'mailto:' + CONFIG.email;
-    document.getElementById('text-telefone').textContent = CONFIG.telefone;
+    if (CONFIG.telefone) {
+        document.getElementById('row-telefone').style.display = 'flex';
+        document.getElementById('text-telefone').textContent = CONFIG.telefone;
+    }
     document.getElementById('btn-email').href = 'mailto:' + CONFIG.email + '?subject=Demonstração%20' + encodeURIComponent(CONFIG.nomeSistema);
-    document.getElementById('btn-whatsapp').href =
-        'https://wa.me/' + CONFIG.whatsapp + '?text=' +
-        encodeURIComponent('Olá! Gostaria de agendar uma demonstração do ' + CONFIG.nomeSistema + '.');
+    if (CONFIG.whatsapp) {
+        document.getElementById('btn-whatsapp').style.display = 'inline-flex';
+        document.getElementById('btn-whatsapp').href =
+            'https://wa.me/' + CONFIG.whatsapp + '?text=' +
+            encodeURIComponent('Olá! Gostaria de agendar uma demonstração do ' + CONFIG.nomeSistema + '.');
+    }
+
+    document.getElementById('btn-verificar-download').addEventListener('click', function() {
+        var email = (document.getElementById('email-download').value || '').trim().toLowerCase();
+        var msg = document.getElementById('download-msg');
+        var links = document.getElementById('download-links');
+        msg.className = 'download-msg';
+        links.style.display = 'none';
+        if (!email || email.indexOf('@') < 1) {
+            msg.textContent = 'Informe um e-mail válido.';
+            msg.classList.add('err');
+            return;
+        }
+        var autorizado = EMAILS_AUTORIZADOS_DOWNLOAD.some(function(e) {
+            return e.toLowerCase() === email;
+        });
+        if (autorizado) {
+            msg.textContent = 'Acesso liberado. Use o link abaixo para baixar (requer login GitHub como colaborador do repositório privado).';
+            msg.classList.add('ok');
+            links.style.display = 'flex';
+        } else {
+            msg.textContent = 'E-mail não autorizado. Solicite acesso a ' + CONFIG.email + ' informando sua empresa e operação.';
+            msg.classList.add('err');
+        }
+    });
 })();
 </script>
 

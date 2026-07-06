@@ -30,6 +30,12 @@ landing-sistema-logistico/
 
 Abra `landing-sistema-logistico/index.html` no navegador ou publique a pasta no seu servidor.
 
+## Controle de acesso (downloads)
+
+- Lista de e-mails: `.github/access-control.json`
+- Documentação: `CONTROLE_ACESSO_GIT.md`
+- Repositório deve estar **privado** no GitHub para bloquear downloads não autorizados
+
 
 ```powershell
 cd Controle_ocorrencias

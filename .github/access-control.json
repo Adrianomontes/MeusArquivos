@@ -1,0 +1,14 @@
+{
+  "empresa": "Animo Serviços Administrativos",
+  "diretor": "Adriano Montes",
+  "contato_principal": "adrianomontes55@gmail.com",
+  "repositorio_privado_recomendado": true,
+  "emails_autorizados": [
+    "adrianomontes55@gmail.com"
+  ],
+  "usuarios_github_autorizados": [
+    "Adrianomontes"
+  ],
+  "politica": "Somente e-mails desta lista podem ser convidados como colaboradores e liberados para download de releases e clone do repositório privado.",
+  "como_adicionar": "GitHub → Repositório → Settings → Collaborators → Add people (usar o e-mail cadastrado no GitHub do cliente)."
+}

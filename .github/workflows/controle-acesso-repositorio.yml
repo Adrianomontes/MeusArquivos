@@ -1,0 +1,48 @@
+name: Controle de acesso do repositório
+
+on:
+  push:
+    branches: [main, landing-sistema-logistico]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published, created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar-email-commit:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validar e-mail do autor do commit
+        run: python3 .github/scripts/verificar_email.py
+
+  verificar-usuario-release:
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar usuário GitHub autorizado para releases/downloads
+        run: |
+          python3 << 'PY'
+          import json, os, sys
+          with open('.github/access-control.json', encoding='utf-8') as f:
+              cfg = json.load(f)
+          actor = os.environ.get('GITHUB_ACTOR', '').lower()
+          allowed = [u.lower() for u in cfg.get('usuarios_github_autorizados', [])]
+          if actor not in allowed:
+              print(f'::error::Usuário GitHub "{actor}" não autorizado para publicar releases ou liberar downloads.')
+              print('Somente usuários em usuarios_github_autorizados podem executar downloads/releases.')
+              sys.exit(1)
+          print(f'OK: {actor} autorizado para releases/downloads.')
+          PY
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
