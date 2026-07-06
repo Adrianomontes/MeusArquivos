@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 3180" role="img" aria-label="Fluxograma operacional logístico completo">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .tit{font-family:Segoe UI,system-ui,sans-serif;fill:#f8fafc;font-weight:700}
+      .sub{font-family:Segoe UI,system-ui,sans-serif;fill:#94a3b8;font-size:11px}
+      .mod{font-family:Consolas,monospace;fill:#38bdf8;font-size:10px}
+      .fase{font-family:Segoe UI,system-ui,sans-serif;fill:#0f172a;font-size:11px;font-weight:800;letter-spacing:.08em}
+    </style>
+  </defs>
+  <rect width="1040" height="3180" fill="#0f172a"/>
+  <text x="520" y="42" class="tit" font-size="22" text-anchor="middle">FLUXOGRAMA OPERACIONAL LOGÍSTICO</text>
+  <text x="520" y="68" class="sub" font-size="13" text-anchor="middle">Do pedido ao indicador  controle ponta a ponta com telas integradas</text>
+
+  <!-- helper: box template positions y increments ~155 -->
+  <!-- FASE 1 -->
+  <rect x="30" y="90" width="980" height="28" rx="6" fill="#38bdf8"/>
+  <text x="520" y="109" class="fase" text-anchor="middle">FASE 1  ENTRADA E CONTROLE DE PEDIDOS</text>
+  <g>
+    <rect x="80" y="135" width="880" height="118" rx="10" fill="#1e293b" stroke="#38bdf8"/>
+    <text x="100" y="162" class="tit" font-size="14">=Ë Controle de pedidos e demanda</text>
+    <text x="100" y="184" class="sub">Integração ERP · saldo · pedido vinculado à NF · lead time pedido’faturamento</text>
+    <text x="100" y="204" class="mod">/ver_estoque · /curva_abc · /auditar_apis_nomus · campo Pedido no faturamento</text>
+    <text x="100" y="224" class="sub">Gestão: visibilidade do backlog e priorização de separação por criticidade ABC</text>
+  </g>
+  <line x1="520" y1="253" x2="520" y2="278" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 2 -->
+  <rect x="30" y="285" width="980" height="28" rx="6" fill="#10b981"/>
+  <text x="520" y="304" class="fase" text-anchor="middle">FASE 2  CENTRO DE DISTRIBUIÇÃO (WMS)</text>
+  <g>
+    <rect x="80" y="330" width="420" height="118" rx="10" fill="#1e293b" stroke="#10b981"/>
+    <text x="100" y="357" class="tit" font-size="14">=æ Separação (picking)</text>
+    <text x="100" y="379" class="sub">Apontamento WMS · posição por NF e código · DW_POSICAO_WMS</text>
+    <text x="100" y="399" class="mod">/relatorio_faturamento + wms_apontamento.xlsx</text>
+    <text x="100" y="419" class="sub">Acurácia: item certo, lugar certo, antes de embalar</text>
+  </g>
+  <g>
+    <rect x="540" y="330" width="420" height="118" rx="10" fill="#1e293b" stroke="#10b981"/>
+    <text x="560" y="357" class="tit" font-size="14"><÷ Embalagem e identificação</text>
+    <text x="560" y="379" class="sub">Volumes · espécie · peso bruto · etiquetas operacionais</text>
+    <text x="560" y="399" class="mod">/gerador_etiquetas · volumes na NF</text>
+    <text x="560" y="419" class="sub">Rastreio físico alinhado ao documento fiscal</text>
+  </g>
+  <line x1="520" y1="448" x2="520" y2="473" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 3 -->
+  <rect x="30" y="480" width="980" height="28" rx="6" fill="#6366f1"/>
+  <text x="520" y="499" class="fase" text-anchor="middle">FASE 3  FATURAMENTO E DOCUMENTAÇÃO FISCAL</text>
+  <g>
+    <rect x="80" y="525" width="880" height="118" rx="10" fill="#1e293b" stroke="#6366f1"/>
+    <text x="100" y="552" class="tit" font-size="14">=¸ Faturamento conciliado</text>
+    <text x="100" y="574" class="sub">NF-e emitidas · status faturada / expedida / em aberto / entregue · anti-duplicidade</text>
+    <text x="100" y="594" class="mod">/relatorio_faturamento · /relatorio_faturamento_local</text>
+    <text x="100" y="614" class="sub">Gestão: fonte única da verdade financeiro-operacional</text>
+  </g>
+  <line x1="520" y1="643" x2="520" y2="668" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 4 -->
+  <rect x="30" y="675" width="980" height="28" rx="6" fill="#0ea5e9"/>
+  <text x="520" y="694" class="fase" text-anchor="middle">FASE 4  INTELIGÊNCIA GEOGRÁFICA E PERFIL DE CLIENTES</text>
+  <g>
+    <rect x="80" y="720" width="420" height="118" rx="10" fill="#1e293b" stroke="#0ea5e9"/>
+    <text x="100" y="747" class="tit" font-size="14">=ú Clusters e mesorregiões</text>
+    <text x="100" y="769" class="sub">CEP × IBGE · mesorregião · microrregião · município</text>
+    <text x="100" y="789" class="mod">/roteirizador/auditoria · base cep_mesorregiao_brasil</text>
+    <text x="100" y="809" class="sub">Segmentação geográfica para rotas e SLA</text>
+  </g>
+  <g>
+    <rect x="540" y="720" width="420" height="118" rx="10" fill="#1e293b" stroke="#0ea5e9"/>
+    <text x="560" y="747" class="tit" font-size="14">=È Perfil de clientes</text>
+    <text x="560" y="769" class="sub">Curva ABC · praças de atendimento · clusters de demanda</text>
+    <text x="560" y="789" class="mod">/curva_abc · /painel_pracas · /tv_pracas</text>
+    <text x="560" y="809" class="sub">Priorização comercial e logística por perfil</text>
+  </g>
+  <line x1="520" y1="838" x2="520" y2="863" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 5 -->
+  <rect x="30" y="870" width="980" height="28" rx="6" fill="#8b5cf6"/>
+  <text x="520" y="889" class="fase" text-anchor="middle">FASE 5  PLANEJAMENTO DE ROTAS E MONTAGEM DE CARGA</text>
+  <g>
+    <rect x="80" y="915" width="420" height="118" rx="10" fill="#1e293b" stroke="#8b5cf6"/>
+    <text x="100" y="942" class="tit" font-size="14">=ã Identificação de rotas</text>
+    <text x="100" y="964" class="sub">Cadastro UF · faixa CEP · transportadora por rota</text>
+    <text x="100" y="984" class="mod">/roteirizador/cadastro · /roteirizador</text>
+    <text x="100" y="1004" class="sub">Padronização do direcionamento de entregas</text>
+  </g>
+  <g>
+    <rect x="540" y="915" width="420" height="118" rx="10" fill="#1e293b" stroke="#8b5cf6"/>
+    <text x="560" y="942" class="tit" font-size="14">=š Montagem de carga / saída do dia</text>
+    <text x="560" y="964" class="sub">Notas não expedidas · filtros avançados · drag-and-drop em rotas</text>
+    <text x="560" y="984" class="mod">/roteirizador/montagem</text>
+    <text x="560" y="1004" class="sub">Carga otimizada antes do embarque físico</text>
+  </g>
+  <line x1="520" y1="1033" x2="520" y2="1058" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 6 -->
+  <rect x="30" y="1065" width="980" height="28" rx="6" fill="#f59e0b"/>
+  <text x="520" y="1084" class="fase" text-anchor="middle">FASE 6  EXPEDIÇÃO E MODAL DE TRANSPORTE</text>
+  <g>
+    <rect x="80" y="1110" width="880" height="118" rx="10" fill="#1e293b" stroke="#f59e0b"/>
+    <text x="100" y="1137" class="tit" font-size="14">=ä Controle de expedição</text>
+    <text x="100" y="1159" class="sub">Relatório de notas expedidas · cruzamento faturamento × expedição</text>
+    <text x="100" y="1179" class="mod">/relatorio_expedicao · upload expedicao_manual.xlsx</text>
+    <text x="100" y="1199" class="sub">Prova do que saiu do CD  elimina nota fantasma</text>
+  </g>
+  <g>
+    <rect x="80" y="1245" width="880" height="145" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-dasharray="6 3"/>
+    <text x="100" y="1272" class="tit" font-size="14">=› Expedição por modal e transportadora</text>
+    <text x="100" y="1294" class="sub">De-para MODAIS.csv: NOSSO CARRO · CIF · FOB · CLIENTE RETIRA · CONTRATADAS</text>
+    <text x="100" y="1318" class="mod">/gerenciar_transportadoras · /relatorio_transportadoras · de_para_modais</text>
+    <rect x="100" y="1332" width="155" height="42" rx="6" fill="#0f172a" stroke="#38bdf8"/>
+    <text x="177" y="1357" class="sub" text-anchor="middle" fill="#38bdf8">Nosso carro</text>
+    <rect x="270" y="1332" width="155" height="42" rx="6" fill="#0f172a" stroke="#10b981"/>
+    <text x="347" y="1357" class="sub" text-anchor="middle" fill="#10b981">Contratadas</text>
+    <rect x="440" y="1332" width="155" height="42" rx="6" fill="#0f172a" stroke="#f59e0b"/>
+    <text x="517" y="1357" class="sub" text-anchor="middle" fill="#f59e0b">FOB / Coletas</text>
+    <rect x="610" y="1332" width="155" height="42" rx="6" fill="#0f172a" stroke="#8b5cf6"/>
+    <text x="687" y="1357" class="sub" text-anchor="middle" fill="#8b5cf6">CIF</text>
+    <rect x="780" y="1332" width="155" height="42" rx="6" fill="#0f172a" stroke="#94a3b8"/>
+    <text x="857" y="1357" class="sub" text-anchor="middle" fill="#94a3b8">Cliente retira</text>
+  </g>
+  <line x1="520" y1="1390" x2="520" y2="1415" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 7 -->
+  <rect x="30" y="1422" width="980" height="28" rx="6" fill="#ec4899"/>
+  <text x="520" y="1441" class="fase" text-anchor="middle">FASE 7  ENTREGA, CANHOTOS E BAIXAS</text>
+  <g>
+    <rect x="80" y="1467" width="270" height="110" rx="10" fill="#1e293b" stroke="#ec4899"/>
+    <text x="100" y="1494" class="tit" font-size="13">=ñ Canhoto motorista</text>
+    <text x="100" y="1516" class="mod">/canhoto_motorista</text>
+    <text x="100" y="1536" class="sub">Assinatura digital mobile</text>
+  </g>
+  <g>
+    <rect x="370" y="1467" width="270" height="110" rx="10" fill="#1e293b" stroke="#ec4899"/>
+    <text x="390" y="1494" class="tit" font-size="13">=å Baixa de entrega</text>
+    <text x="390" y="1516" class="mod">/baixa_entrega_mobile</text>
+    <text x="390" y="1536" class="sub">/buscar_nf_baixa</text>
+  </g>
+  <g>
+    <rect x="660" y="1467" width="300" height="110" rx="10" fill="#1e293b" stroke="#ec4899"/>
+    <text x="680" y="1494" class="tit" font-size="13">>þ Canhotos WhatsApp / ZIP</text>
+    <text x="680" y="1516" class="mod">/canhotos_assinados · /validar_canhoto</text>
+    <text x="680" y="1536" class="sub">Esteira de conferência documental</text>
+  </g>
+  <line x1="520" y1="1577" x2="520" y2="1602" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 8 -->
+  <rect x="30" y="1609" width="980" height="28" rx="6" fill="#ef4444"/>
+  <text x="520" y="1628" class="fase" text-anchor="middle">FASE 8  OCORRÊNCIAS, DEVOLUÇÕES E AGENDAMENTOS</text>
+  <g>
+    <rect x="80" y="1654" width="420" height="118" rx="10" fill="#1e293b" stroke="#ef4444"/>
+    <text x="100" y="1681" class="tit" font-size="14">  Ocorrências e devoluções</text>
+    <text x="100" y="1703" class="sub">Pátio · histórico sequencial · motivos · fotos · status NF</text>
+    <text x="100" y="1723" class="mod">/devolucao · /gerenciar_motivos · /relatorio</text>
+    <text x="100" y="1743" class="sub">Gestão de exceções sem perder rastreio</text>
+  </g>
+  <g>
+    <rect x="540" y="1654" width="420" height="118" rx="10" fill="#1e293b" stroke="#ef4444"/>
+    <text x="560" y="1681" class="tit" font-size="14">=Å Agendamentos e coletas FOB</text>
+    <text x="560" y="1703" class="sub">Farol de prazo · minuta e-mail · coletas pendentes</text>
+    <text x="560" y="1723" class="mod">/formulario · /registrar_coleta · /relatorio_coletas</text>
+    <text x="560" y="1743" class="sub">SLA de retirada sob controle</text>
+  </g>
+  <line x1="520" y1="1772" x2="520" y2="1797" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 9 -->
+  <rect x="30" y="1804" width="980" height="28" rx="6" fill="#14b8a6"/>
+  <text x="520" y="1823" class="fase" text-anchor="middle">FASE 9  FRETE, CUSTOS E VALIDAÇÃO FINANCEIRA</text>
+  <g>
+    <rect x="80" y="1849" width="880" height="118" rx="10" fill="#1e293b" stroke="#14b8a6"/>
+    <text x="100" y="1876" class="tit" font-size="14">=° Controle e validação de fretes</text>
+    <text x="100" y="1898" class="sub">Modal × transportadora × valor NF · volume frete FOB · conciliação cobrança</text>
+    <text x="100" y="1918" class="mod">/relatorio_faturamento · /custos_pessoais · KPIs modais na Torre</text>
+    <text x="100" y="1938" class="sub">Evita pagar frete indevido ou cobrar cliente sem lastro</text>
+  </g>
+  <line x1="520" y1="1967" x2="520" y2="1992" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- FASE 10 -->
+  <rect x="30" y="1999" width="980" height="28" rx="6" fill="#a855f7"/>
+  <text x="520" y="2018" class="fase" text-anchor="middle">FASE 10  INDICADORES E GESTÃO À VISTA</text>
+  <g>
+    <rect x="80" y="2044" width="270" height="110" rx="10" fill="#1e293b" stroke="#a855f7"/>
+    <text x="100" y="2071" class="tit" font-size="13">=ü Torre de controle</text>
+    <text x="100" y="2093" class="mod">/torre_controle</text>
+    <text x="100" y="2113" class="sub">Meta × realizado</text>
+  </g>
+  <g>
+    <rect x="370" y="2044" width="270" height="110" rx="10" fill="#1e293b" stroke="#a855f7"/>
+    <text x="390" y="2071" class="tit" font-size="13">=ú Painéis TV</text>
+    <text x="390" y="2093" class="mod">/monitor · /tv_coletas_fob</text>
+    <text x="390" y="2113" class="sub">/tv_devolucoes · /tv_canhotos</text>
+  </g>
+  <g>
+    <rect x="660" y="2044" width="300" height="110" rx="10" fill="#1e293b" stroke="#a855f7"/>
+    <text x="680" y="2071" class="tit" font-size="13">=Ê Indicadores e auditoria</text>
+    <text x="680" y="2093" class="mod">/painel_indicadores · /auditoria_torre</text>
+    <text x="680" y="2113" class="sub">Lead times · eficiência expedição</text>
+  </g>
+
+  <!-- LOOP BACK -->
+  <path d="M 960 2100 C 1020 2100, 1020 180, 960 120" fill="none" stroke="#475569" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#arrow)"/>
+  <text x="990" y="1100" class="sub" font-size="10" transform="rotate(90 990 1100)">Melhoria contínua · dados retroalimentam pedido e estoque</text>
+
+  <rect x="80" y="2185" width="880" height="95" rx="10" fill="#151f32" stroke="#334155"/>
+  <text x="520" y="2218" class="tit" font-size="15" text-anchor="middle">RESULTADO: OPERAÇÃO LOGÍSTICA EFICIENTE E CONFIÁVEL</text>
+  <text x="520" y="2244" class="sub" font-size="12" text-anchor="middle">Um único sistema · um único banco · rastreio por NF do pedido ao indicador</text>
+  <text x="520" y="2266" class="mod" text-anchor="middle">White-label · rede local ou nuvem · portal + executável Windows</text>
+
+  <text x="520" y="3140" class="sub" font-size="11" text-anchor="middle">Sistema Logístico Integrado  fluxograma operacional v1.0</text>
+</svg>
