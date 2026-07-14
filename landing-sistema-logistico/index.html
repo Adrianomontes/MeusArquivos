@@ -351,11 +351,10 @@ const CONFIG = {
     urlDemo: '#contato',
     /*
       Acesso ao sistema pela vitrine:
-      - Em casa / neste PC: http://127.0.0.1:5000/  (servidor Flask precisa estar rodando)
-      - Rede interna: http://IP_DA_MAQUINA:5000/
-      - Internet pública: use um túnel (ngrok/cloudflare) e cole a URL https aqui
+      - Local: http://127.0.0.1:5000/
+      - Público (ngrok): atualize urlSistema com a URL https do túnel ativo
     */
-    urlSistema: 'http://127.0.0.1:5000/',
+    urlSistema: 'https://zen-uncouple-musket.ngrok-free.dev/',
     trialControleUrl: 'https://raw.githubusercontent.com/Adrianomontes/sistema-gestao-logistico/main/.github/access-control.json',
     trialInfoUrl: 'trial-info.json',
     leadApiUrl: '',
