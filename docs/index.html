@@ -348,6 +348,8 @@ const CONFIG = {
     telefone: '',
     whatsapp: '',
     urlDemo: '#contato',
+    /* Link do botão "Acessar sistema" na vitrine (túnel ngrok / servidor público) */
+    urlSistema: 'https://zen-uncouple-musket.ngrok-free.dev/',
     trialControleUrl: 'https://raw.githubusercontent.com/Adrianomontes/sistema-gestao-logistico/main/.github/access-control.json',
     trialInfoUrl: 'trial-info.json',
     /* URL do servidor Flask para registrar leads automaticamente (ex: https://seu-servidor/api/public/lead-trial) */
@@ -372,7 +374,10 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
         <a href="controle-oficina-mecanica/">Oficina mecânica</a>
         <a href="#contato">Contato</a>
     </div>
-    <a href="#contato" class="btn btn-primary" style="padding:8px 16px;font-size:.82rem;" id="nav-cta">Falar com consultor</a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <a href="https://zen-uncouple-musket.ngrok-free.dev/" class="btn btn-ok" style="padding:8px 16px;font-size:.82rem;" id="nav-sistema" target="_blank" rel="noopener">Acessar sistema</a>
+        <a href="#contato" class="btn btn-primary" style="padding:8px 16px;font-size:.82rem;" id="nav-cta">Falar com consultor</a>
+    </div>
 </nav>
 
 <header class="hero">
@@ -381,6 +386,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
     <h1 id="hero-titulo">Gestão de Logística Integrada</h1>
     <p class="tagline" id="hero-tagline">Chega de planilhas paralelas, oferecemos Controle total sobre sua operação.</p>
     <div class="hero-cta">
+        <a href="https://zen-uncouple-musket.ngrok-free.dev/" class="btn btn-ok" id="cta-sistema" target="_blank" rel="noopener">Acessar sistema</a>
         <a href="#contato" class="btn btn-primary" id="cta-demo">Solicitar demonstração</a>
         <a href="#fluxograma" class="btn btn-ghost">Ver fluxograma operacional</a>
     </div>
@@ -416,6 +422,11 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
                 <h3>Gestão à vista</h3>
                 <p>Torre de controle, painéis TV e KPIs para reuniões diárias com números reais, não achismos.</p>
             </div>
+        </div>
+
+        <div class="hero-cta" style="margin-top:28px;justify-content:flex-start;">
+            <a href="https://zen-uncouple-musket.ngrok-free.dev/" class="btn btn-ok" id="cta-proposta-sistema" target="_blank" rel="noopener">Acessar sistema pela vitrine</a>
+            <a href="#download" class="btn btn-ghost">Baixar trial Windows</a>
         </div>
 
         <div class="mini-fluxo" style="margin-top:28px;">
@@ -529,6 +540,7 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
             </div>
         </div>
         <div class="hero-cta" style="margin-top:28px;">
+            <a href="https://zen-uncouple-musket.ngrok-free.dev/" class="btn btn-ok" id="cta-comercial-sistema" target="_blank" rel="noopener">Acessar sistema</a>
             <a href="#contato" class="btn btn-primary" id="cta-comercial">Solicitar proposta comercial</a>
             <a href="#fluxograma" class="btn btn-ghost">Explorar fluxograma</a>
         </div>
@@ -624,11 +636,21 @@ const EMAIL_SOLICITACOES = 'adrianomontes55@gmail.com';
     setLogo(document.getElementById('hero-logo'), CONFIG.siglaLogo);
     setLogo(document.getElementById('nav-logo'), CONFIG.siglaLogo);
 
-    const demoLinks = ['cta-demo', 'nav-cta'];
+    const demoLinks = ['cta-demo', 'nav-cta', 'cta-comercial'];
     demoLinks.forEach(function(id) {
         const el = document.getElementById(id);
         if (el && CONFIG.urlDemo && CONFIG.urlDemo !== '#contato') {
             el.href = CONFIG.urlDemo;
+        }
+    });
+
+    const sistemaLinks = ['nav-sistema', 'cta-sistema', 'cta-comercial-sistema', 'cta-proposta-sistema'];
+    sistemaLinks.forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el && CONFIG.urlSistema) {
+            el.href = CONFIG.urlSistema;
+            el.target = '_blank';
+            el.rel = 'noopener';
         }
     });
 
